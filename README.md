@@ -79,14 +79,20 @@ Phase 2:
 - [x] Integration tests against real `tsc` / `eslint` runs on fixtures
 - [x] 48 tests passing across the workspace
 
+Phase 3:
+
+- [x] `packages/adapters/biome` — wraps `biome ci --reporter=json`, parses NDJSON-style output, normalizes to `Diagnostic[]`
+- [x] `packages/adapters/vitest` — wraps `vitest run --reporter=json`, normalizes to `TestSuite` / `TestRunResult`
+- [x] `packages/adapters/jest` — wraps `jest --json`, normalizes to `TestSuite` / `TestRunResult`
+- [x] Real fixtures with deliberate lint findings, passing tests, and failing tests
+- [x] 80 tests passing across the workspace
+
 Upcoming milestones (see `CLAUDE.md`):
 
-- Biome adapter
-- Wire `DiagnosticsViewProvider` to the live `DiagnosticStore`
-- Test adapters (Vitest, Jest, Node test)
-- Runtime engine
+- Wire `DiagnosticsViewProvider` + `Tests` view to the live `DiagnosticStore` and test adapters
+- Runtime engine (process manager, runtime error → diagnostic mapping)
 - Git intelligence
-- Database adapters
+- Database adapters (Prisma, Drizzle)
 - Agent interface (MCP)
 
 ## Development

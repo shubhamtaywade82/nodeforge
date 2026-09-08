@@ -1,0 +1,14 @@
+{
+  "name": "fixture-node-ts-jest",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "test": "jest"
+  },
+  "jest": {
+    "transform": {
+      "^.+\\.ts$": "@swc/jest"
+    },
+    "testRegex": "test/.+\\.test\\.ts$"
+  }
+}
