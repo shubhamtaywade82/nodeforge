@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+build/
+out/
+*.tsbuildinfo
+[._]cache/
+.turbo/
+
+# VS Code extension artifacts
+*.vsix
+.vsix/
+
+# Test artifacts
+coverage/
+.nyc_output/
+test-results/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Env / secrets
+.env
+.env.local
+.env.*.local
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.idea/
+*.swp
+
+# Test fixtures: their own node_modules live in repo but not as workspace pkg
+packages/test-fixtures/*/node_modules/

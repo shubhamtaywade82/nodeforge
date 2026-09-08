@@ -1,0 +1,6 @@
+# pnpm-lock.yaml fixture (truncated — enough for the detector to recognize the format)
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false

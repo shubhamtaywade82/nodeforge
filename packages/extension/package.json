@@ -1,0 +1,117 @@
+{
+  "name": "@nodeforge/extension",
+  "displayName": "NodeForge",
+  "description": "Autonomous Node.js/TypeScript engineering workspace — orchestration core for VS Code and Cursor.",
+  "version": "0.0.1",
+  "publisher": "nodeforge",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Other", "Programming Languages", "Debuggers", "Testing"],
+  "keywords": ["node", "typescript", "eslint", "biome", "vitest", "jest", "prisma", "drizzle", "ai", "cursor"],
+  "activationEvents": [
+    "onCommand:nodeforge.analyzeWorkspace",
+    "onView:nodeforge.workspace"
+  ],
+  "main": "./dist/extension.cjs",
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "Workspace inspection, configuration display, and read-only diagnostics run in Restricted Mode. Running commands, tests, processes, and agent execution require Workspace Trust."
+    }
+  },
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "nodeforge-sidebar",
+          "title": "NodeForge",
+          "icon": "media/nodeforge.svg"
+        }
+      ]
+    },
+    "views": {
+      "nodeforge-sidebar": [
+        {
+          "id": "nodeforge.workspace",
+          "name": "Workspace"
+        },
+        {
+          "id": "nodeforge.diagnostics",
+          "name": "Diagnostics"
+        },
+        {
+          "id": "nodeforge.tests",
+          "name": "Tests"
+        },
+        {
+          "id": "nodeforge.runtime",
+          "name": "Runtime"
+        },
+        {
+          "id": "nodeforge.agent",
+          "name": "Agent"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "nodeforge.analyzeWorkspace",
+          "when": "view == nodeforge.workspace",
+          "group": "navigation"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "nodeforge.analyzeWorkspace",
+        "title": "NodeForge: Analyze Workspace",
+        "category": "NodeForge"
+      },
+      {
+        "command": "nodeforge.refresh",
+        "title": "NodeForge: Refresh",
+        "category": "NodeForge"
+      }
+    ],
+    "configuration": {
+      "title": "NodeForge",
+      "properties": {
+        "nodeforge.runtime.preferredNodeBinary": {
+          "type": "string",
+          "default": "",
+          "description": "Optional absolute path to a Node binary used for spawned commands. If empty, NodeForge uses PATH resolution."
+        },
+        "nodeforge.diagnostics.aggressiveRefresh": {
+          "type": "boolean",
+          "default": false,
+          "description": "If true, refresh diagnostics on every file save instead of debouncing."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node esbuild.mjs --production",
+    "dev": "node esbuild.mjs --watch",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "echo \"[extension] integration tests live in packages/extension-vscode-tests — TBD\" && exit 0",
+    "test:unit": "echo \"[extension] no unit tests yet\" && exit 0",
+    "package": "pnpm build && vsce package --no-dependencies --no-git-tag-version",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@nodeforge/contracts": "workspace:*",
+    "@nodeforge/core": "workspace:*",
+    "@nodeforge/runner": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/vscode": "^1.85.0",
+    "esbuild": "^0.21.5",
+    "typescript": "^5.6.3"
+  }
+}
