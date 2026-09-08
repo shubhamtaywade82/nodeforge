@@ -17,21 +17,27 @@ import * as vscode from "vscode";
 import { InMemoryEventBus, NodeFilesystemReader, ProcessManager } from "@nodeforge/core";
 import { ProcessRunner } from "@nodeforge/runner";
 import { GitAdapter } from "@nodeforge/adapter-git";
-import type { EventBus, GitState, WorkspaceProfile } from "@nodeforge/contracts";
+import type { EventBus, GitState, WorkspaceProfile, DatabaseSchema, DependencyReport } from "@nodeforge/contracts";
 
 import { WorkspaceViewProvider } from "./ui/WorkspaceViewProvider.js";
 import { DiagnosticsViewProvider } from "./ui/DiagnosticsViewProvider.js";
 import { TestsViewProvider } from "./ui/TestsViewProvider.js";
 import { RuntimeViewProvider } from "./ui/RuntimeViewProvider.js";
 import { GitViewProvider } from "./ui/GitViewProvider.js";
+import { DatabaseViewProvider } from "./ui/DatabaseViewProvider.js";
+import { DependencyViewProvider } from "./ui/DependencyViewProvider.js";
 import { WorkspaceManager } from "./core/WorkspaceManager.js";
 import { DiagnosticManager } from "./core/DiagnosticManager.js";
 import { TestManager } from "./core/TestManager.js";
+import { DatabaseManager } from "./core/DatabaseManager.js";
+import { DependencyManager } from "./core/DependencyManager.js";
 
 let workspaceManager: WorkspaceManager | undefined;
 let diagnosticManager: DiagnosticManager | undefined;
 let testManager: TestManager | undefined;
 let processManager: ProcessManager | undefined;
+let databaseManager: DatabaseManager | undefined;
+let dependencyManager: DependencyManager | undefined;
 let gitAdapter: GitAdapter | undefined;
 let eventBus: EventBus | undefined;
 
@@ -48,6 +54,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   testManager = tests;
   const procMgr = new ProcessManager(bus);
   processManager = procMgr;
+  const dbManager = new DatabaseManager(bus);
+  databaseManager = dbManager;
+  const depManager = new DependencyManager(runner, bus);
+  dependencyManager = depManager;
   const git = new GitAdapter(runner);
   gitAdapter = git;
 
@@ -57,13 +67,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const testsView = new TestsViewProvider(context, tests, bus);
   const runtimeView = new RuntimeViewProvider(context, procMgr, bus);
   const gitView = new GitViewProvider();
+  const databaseView = new DatabaseViewProvider();
+  const dependencyView = new DependencyViewProvider();
 
   context.subscriptions.push(
     vscode.window.registerTreeDataProvider("nodeforge.workspace", workspaceView),
     vscode.window.registerTreeDataProvider("nodeforge.diagnostics", diagnosticsView),
     vscode.window.registerTreeDataProvider("nodeforge.tests", testsView),
     vscode.window.registerTreeDataProvider("nodeforge.runtime", runtimeView),
-    vscode.window.registerTreeDataProvider("nodeforge.git", gitView)
+    vscode.window.registerTreeDataProvider("nodeforge.git", gitView),
+    vscode.window.registerTreeDataProvider("nodeforge.database", databaseView),
+    vscode.window.registerTreeDataProvider("nodeforge.dependencies", dependencyView)
   );
 
   // Internal command — opens a file at a line/col. Used by diagnostic + test
@@ -191,6 +205,68 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
           `NodeForge: git detection failed — ${err instanceof Error ? err.message : String(err)}`
         );
       }
+    }),
+    vscode.commands.registerCommand("nodeforge.detectDatabase", async () => {
+      const root = resolveWorkspaceRoot();
+      if (!root) return;
+      if (!manager.current()) {
+        await manager.analyze(root);
+      }
+      if (!dbManager.isEnabled()) {
+        void vscode.window.showInformationMessage(
+          "NodeForge: no ORM detected (expected Prisma or Drizzle)."
+        );
+        return;
+      }
+      await vscode.window.withProgress(
+        { location: vscode.ProgressLocation.Window, title: "NodeForge: detecting database schema" },
+        async () => {
+          const schema = await dbManager.detect();
+          databaseView.setSchema(schema);
+          if (schema) {
+            const relCount = schema.relations.length;
+            void vscode.window.showInformationMessage(
+              `NodeForge: ${schema.tables.length} table${schema.tables.length === 1 ? "" : "s"}${relCount > 0 ? `, ${relCount} relation${relCount === 1 ? "" : "s"}` : ""} (${schema.product})`
+            );
+          } else {
+            void vscode.window.showWarningMessage("NodeForge: could not detect database schema.");
+          }
+        }
+      );
+    }),
+    vscode.commands.registerCommand("nodeforge.auditDependencies", async () => {
+      const root = resolveWorkspaceRoot();
+      if (!root) return;
+      if (!(await isWorkspaceTrusted())) {
+        void vscode.window.showWarningMessage("NodeForge: running audits requires Workspace Trust.");
+        return;
+      }
+      if (!manager.current()) {
+        await manager.analyze(root);
+      }
+      await vscode.window.withProgress(
+        { location: vscode.ProgressLocation.Window, title: "NodeForge: running dependency audit" },
+        async () => {
+          const report = await depManager.audit();
+          dependencyView.setReport(report);
+          if (report) {
+            const parts: string[] = [];
+            if (report.findings.length > 0) {
+              parts.push(`${report.findings.length} vulnerabilit${report.findings.length === 1 ? "y" : "ies"}`);
+            }
+            if (report.outdated.length > 0) {
+              parts.push(`${report.outdated.length} outdated`);
+            }
+            void vscode.window.showInformationMessage(
+              parts.length > 0
+                ? `NodeForge: ${parts.join(", ")}`
+                : "NodeForge: dependencies up to date"
+            );
+          } else {
+            void vscode.window.showWarningMessage("NodeForge: audit failed (no lockfile or no package manager).");
+          }
+        }
+      );
     })
   );
 
@@ -260,6 +336,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
             console.error("[nodeforge] initial git detect failed", err);
           }
         );
+        // Detect database schema if an ORM is present.
+        if (dbManager.isEnabled()) {
+          void dbManager.detect().then(
+            (schema) => databaseView.setSchema(schema),
+            (err) => {
+              // eslint-disable-next-line no-console
+              console.error("[nodeforge] initial database detect failed", err);
+            }
+          );
+        }
       },
       (err) => {
         // eslint-disable-next-line no-console
@@ -274,6 +360,8 @@ export function deactivate(): void {
   diagnosticManager = undefined;
   testManager = undefined;
   processManager = undefined;
+  databaseManager = undefined;
+  dependencyManager = undefined;
   gitAdapter = undefined;
   eventBus = undefined;
 }
@@ -313,5 +401,14 @@ function formatProfileSummary(p: WorkspaceProfile): string {
 }
 
 // Exported for integration tests.
-export { workspaceManager, diagnosticManager, testManager, processManager, gitAdapter, eventBus };
-export type { EventBus, GitState };
+export {
+  workspaceManager,
+  diagnosticManager,
+  testManager,
+  processManager,
+  databaseManager,
+  dependencyManager,
+  gitAdapter,
+  eventBus
+};
+export type { EventBus, GitState, DatabaseSchema, DependencyReport };

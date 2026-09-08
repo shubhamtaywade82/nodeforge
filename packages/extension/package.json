@@ -58,6 +58,14 @@
           "name": "Git"
         },
         {
+          "id": "nodeforge.database",
+          "name": "Database"
+        },
+        {
+          "id": "nodeforge.dependencies",
+          "name": "Dependencies"
+        },
+        {
           "id": "nodeforge.agent",
           "name": "Agent"
         }
@@ -83,6 +91,16 @@
         {
           "command": "nodeforge.refreshGit",
           "when": "view == nodeforge.git",
+          "group": "navigation"
+        },
+        {
+          "command": "nodeforge.detectDatabase",
+          "when": "view == nodeforge.database",
+          "group": "navigation"
+        },
+        {
+          "command": "nodeforge.auditDependencies",
+          "when": "view == nodeforge.dependencies",
           "group": "navigation"
         }
       ]
@@ -115,6 +133,18 @@
         "title": "NodeForge: Refresh Git State",
         "category": "NodeForge",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "nodeforge.detectDatabase",
+        "title": "NodeForge: Detect Database Schema",
+        "category": "NodeForge",
+        "icon": "$(database)"
+      },
+      {
+        "command": "nodeforge.auditDependencies",
+        "title": "NodeForge: Audit Dependencies",
+        "category": "NodeForge",
+        "icon": "$(shield)"
       }
     ],
     "configuration": {
@@ -151,7 +181,10 @@
     "@nodeforge/adapter-biome": "workspace:*",
     "@nodeforge/adapter-vitest": "workspace:*",
     "@nodeforge/adapter-jest": "workspace:*",
-    "@nodeforge/adapter-git": "workspace:*"
+    "@nodeforge/adapter-git": "workspace:*",
+    "@nodeforge/adapter-prisma": "workspace:*",
+    "@nodeforge/adapter-drizzle": "workspace:*",
+    "@nodeforge/adapter-dependencies": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",

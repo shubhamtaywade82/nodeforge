@@ -100,12 +100,25 @@ Phase 4:
 - [x] `nodeforge.refreshGit` command + auto-detection on activation
 - [x] 103 tests passing across the workspace
 
+Phase 5:
+
+- [x] `packages/adapters/prisma` — parses `prisma/schema.prisma` into `DatabaseSchema` (models, enums, relations, @@index/@@unique/@@map, @default, @relation)
+- [x] `packages/adapters/drizzle` — parses Drizzle ORM schema files (pgTable/mysqlTable/sqliteTable, pgEnum, type helpers, modifiers)
+- [x] `packages/adapters/dependencies` — wraps `npm audit --json` / `pnpm audit --json` / `yarn audit --json` and `npm outdated --json`, normalizes to `DependencyFinding[]`
+- [x] `DatabaseManager` orchestrates Prisma/Drizzle based on profile.orm
+- [x] `DependencyManager` runs audit + outdated based on profile.packageManager
+- [x] `DatabaseViewProvider` renders schema tree (tables → columns + indexes + relations)
+- [x] `DependencyViewProvider` renders vulnerabilities + outdated packages with severity breakdown
+- [x] `nodeforge.detectDatabase` and `nodeforge.auditDependencies` commands
+- [x] Auto-detects database schema on activation when ORM is present
+- [x] 152 tests passing across the workspace
+
 Upcoming milestones (see `CLAUDE.md`):
 
-- Database adapters (Prisma, Drizzle schema introspection)
 - Agent interface (MCP) — context + tools + repair loop
-- Dependency intelligence (npm audit / OSV / outdated)
 - Docker / Kubernetes / GitHub Actions deep integration
+- Dependency graph analysis (unused / circular deps)
+- Performance profiling + bundle analysis
 
 ## Development
 
