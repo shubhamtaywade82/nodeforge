@@ -61,7 +61,7 @@ nodeforge/
 
 ## Status
 
-Phase 1 (this milestone):
+Phase 1:
 
 - [x] pnpm monorepo
 - [x] `packages/contracts` — full contract surface
@@ -71,10 +71,18 @@ Phase 1 (this milestone):
 - [x] Fixture repositories for integration tests
 - [x] Unit tests passing for detector + runner
 
+Phase 2:
+
+- [x] `packages/adapters/typescript` — wraps `tsc --noEmit`, parses compiler output, normalizes to `Diagnostic[]`
+- [x] `packages/adapters/eslint` — discovers `eslint.config.*`, runs local ESLint with `--format json`, normalizes to `Diagnostic[]`
+- [x] `packages/core/diagnostics` — `DiagnosticStore` + `DiagnosticAggregator`, publishes `diagnostics.snapshot` events
+- [x] Integration tests against real `tsc` / `eslint` runs on fixtures
+- [x] 48 tests passing across the workspace
+
 Upcoming milestones (see `CLAUDE.md`):
 
-- TypeScript / ESLint / Biome adapters
-- Unified diagnostic store
+- Biome adapter
+- Wire `DiagnosticsViewProvider` to the live `DiagnosticStore`
 - Test adapters (Vitest, Jest, Node test)
 - Runtime engine
 - Git intelligence
