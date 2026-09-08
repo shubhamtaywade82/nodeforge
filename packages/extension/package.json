@@ -14,6 +14,8 @@
   "keywords": ["node", "typescript", "eslint", "biome", "vitest", "jest", "prisma", "drizzle", "ai", "cursor"],
   "activationEvents": [
     "onCommand:nodeforge.analyzeWorkspace",
+    "onCommand:nodeforge.runDiagnostics",
+    "onCommand:nodeforge.runTests",
     "onView:nodeforge.workspace"
   ],
   "main": "./dist/extension.cjs",
@@ -52,6 +54,10 @@
           "name": "Runtime"
         },
         {
+          "id": "nodeforge.git",
+          "name": "Git"
+        },
+        {
           "id": "nodeforge.agent",
           "name": "Agent"
         }
@@ -62,6 +68,21 @@
         {
           "command": "nodeforge.analyzeWorkspace",
           "when": "view == nodeforge.workspace",
+          "group": "navigation"
+        },
+        {
+          "command": "nodeforge.runDiagnostics",
+          "when": "view == nodeforge.diagnostics",
+          "group": "navigation"
+        },
+        {
+          "command": "nodeforge.runTests",
+          "when": "view == nodeforge.tests",
+          "group": "navigation"
+        },
+        {
+          "command": "nodeforge.refreshGit",
+          "when": "view == nodeforge.git",
           "group": "navigation"
         }
       ]
@@ -76,6 +97,24 @@
         "command": "nodeforge.refresh",
         "title": "NodeForge: Refresh",
         "category": "NodeForge"
+      },
+      {
+        "command": "nodeforge.runDiagnostics",
+        "title": "NodeForge: Run Diagnostics",
+        "category": "NodeForge",
+        "icon": "$(play)"
+      },
+      {
+        "command": "nodeforge.runTests",
+        "title": "NodeForge: Run Tests",
+        "category": "NodeForge",
+        "icon": "$(run)"
+      },
+      {
+        "command": "nodeforge.refreshGit",
+        "title": "NodeForge: Refresh Git State",
+        "category": "NodeForge",
+        "icon": "$(refresh)"
       }
     ],
     "configuration": {
@@ -106,7 +145,13 @@
   "dependencies": {
     "@nodeforge/contracts": "workspace:*",
     "@nodeforge/core": "workspace:*",
-    "@nodeforge/runner": "workspace:*"
+    "@nodeforge/runner": "workspace:*",
+    "@nodeforge/adapter-typescript": "workspace:*",
+    "@nodeforge/adapter-eslint": "workspace:*",
+    "@nodeforge/adapter-biome": "workspace:*",
+    "@nodeforge/adapter-vitest": "workspace:*",
+    "@nodeforge/adapter-jest": "workspace:*",
+    "@nodeforge/adapter-git": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",

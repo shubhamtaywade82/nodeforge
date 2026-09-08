@@ -53,6 +53,25 @@ importers:
         specifier: ^2.1.4
         version: 2.1.9(@types/node@20.19.43)
 
+  packages/adapters/git:
+    dependencies:
+      '@nodeforge/contracts':
+        specifier: workspace:*
+        version: link:../../contracts
+      '@nodeforge/runner':
+        specifier: workspace:*
+        version: link:../../runner
+    devDependencies:
+      '@types/node':
+        specifier: ^20.14.0
+        version: 20.19.43
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.4
+        version: 2.1.9(@types/node@20.19.43)
+
   packages/adapters/jest:
     dependencies:
       '@nodeforge/contracts':
@@ -134,6 +153,24 @@ importers:
 
   packages/extension:
     dependencies:
+      '@nodeforge/adapter-biome':
+        specifier: workspace:*
+        version: link:../adapters/biome
+      '@nodeforge/adapter-eslint':
+        specifier: workspace:*
+        version: link:../adapters/eslint
+      '@nodeforge/adapter-git':
+        specifier: workspace:*
+        version: link:../adapters/git
+      '@nodeforge/adapter-jest':
+        specifier: workspace:*
+        version: link:../adapters/jest
+      '@nodeforge/adapter-typescript':
+        specifier: workspace:*
+        version: link:../adapters/typescript
+      '@nodeforge/adapter-vitest':
+        specifier: workspace:*
+        version: link:../adapters/vitest
       '@nodeforge/contracts':
         specifier: workspace:*
         version: link:../contracts

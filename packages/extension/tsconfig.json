@@ -16,6 +16,12 @@
   "references": [
     { "path": "../contracts" },
     { "path": "../core" },
-    { "path": "../runner" }
+    { "path": "../runner" },
+    { "path": "../adapters/typescript" },
+    { "path": "../adapters/eslint" },
+    { "path": "../adapters/biome" },
+    { "path": "../adapters/vitest" },
+    { "path": "../adapters/jest" },
+    { "path": "../adapters/git" }
   ]
 }

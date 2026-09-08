@@ -1,39 +1,88 @@
 /**
  * NodeForge extension entry point.
  *
- * Activated on first `nodeforge.analyzeWorkspace` command or when the
- * sidebar view is opened. Wires together the detector, event bus, and
- * VS Code UI.
+ * Activated on first `nodeforge.*` command or when the sidebar view is opened.
+ * Wires together the detector, diagnostic manager, test manager, and VS Code UI.
+ *
+ * Workspace Trust model:
+ *   - Restricted Mode: workspace inspection (detection) runs, but no
+ *     adapters execute and no tests run. The sidebar shows the profile
+ *     and an "Operation requires Workspace Trust" notice.
+ *   - Trusted Mode: full functionality — adapters run on save, tests run
+ *     on demand, runtime processes can be started.
  */
 
 import * as vscode from "vscode";
 
-import { InMemoryEventBus, NodeFilesystemReader, detectWorkspaceProfile } from "@nodeforge/core";
+import { InMemoryEventBus, NodeFilesystemReader, ProcessManager } from "@nodeforge/core";
 import { ProcessRunner } from "@nodeforge/runner";
-import type { EventBus, NodeForgeEvent, WorkspaceProfile } from "@nodeforge/contracts";
+import { GitAdapter } from "@nodeforge/adapter-git";
+import type { EventBus, GitState, WorkspaceProfile } from "@nodeforge/contracts";
 
 import { WorkspaceViewProvider } from "./ui/WorkspaceViewProvider.js";
 import { DiagnosticsViewProvider } from "./ui/DiagnosticsViewProvider.js";
+import { TestsViewProvider } from "./ui/TestsViewProvider.js";
+import { RuntimeViewProvider } from "./ui/RuntimeViewProvider.js";
+import { GitViewProvider } from "./ui/GitViewProvider.js";
 import { WorkspaceManager } from "./core/WorkspaceManager.js";
+import { DiagnosticManager } from "./core/DiagnosticManager.js";
+import { TestManager } from "./core/TestManager.js";
 
 let workspaceManager: WorkspaceManager | undefined;
+let diagnosticManager: DiagnosticManager | undefined;
+let testManager: TestManager | undefined;
+let processManager: ProcessManager | undefined;
+let gitAdapter: GitAdapter | undefined;
 let eventBus: EventBus | undefined;
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const bus: EventBus = new InMemoryEventBus();
   eventBus = bus;
-  const detectorReader = new NodeFilesystemReader();
+  const reader = new NodeFilesystemReader();
   const runner = new ProcessRunner();
-  const manager = new WorkspaceManager(detectorReader, runner, bus);
+  const manager = new WorkspaceManager(reader, runner, bus);
   workspaceManager = manager;
+  const diagManager = new DiagnosticManager(reader, runner, bus);
+  diagnosticManager = diagManager;
+  const tests = new TestManager(runner, bus);
+  testManager = tests;
+  const procMgr = new ProcessManager(bus);
+  processManager = procMgr;
+  const git = new GitAdapter(runner);
+  gitAdapter = git;
 
   // Wire sidebar views.
   const workspaceView = new WorkspaceViewProvider(context, manager);
-  const diagnosticsView = new DiagnosticsViewProvider(context, bus);
+  const diagnosticsView = new DiagnosticsViewProvider(context, diagManager.getStore(), bus);
+  const testsView = new TestsViewProvider(context, tests, bus);
+  const runtimeView = new RuntimeViewProvider(context, procMgr, bus);
+  const gitView = new GitViewProvider();
 
   context.subscriptions.push(
     vscode.window.registerTreeDataProvider("nodeforge.workspace", workspaceView),
-    vscode.window.registerTreeDataProvider("nodeforge.diagnostics", diagnosticsView)
+    vscode.window.registerTreeDataProvider("nodeforge.diagnostics", diagnosticsView),
+    vscode.window.registerTreeDataProvider("nodeforge.tests", testsView),
+    vscode.window.registerTreeDataProvider("nodeforge.runtime", runtimeView),
+    vscode.window.registerTreeDataProvider("nodeforge.git", gitView)
+  );
+
+  // Internal command — opens a file at a line/col. Used by diagnostic + test
+  // tree click handlers. We register it under a non-user-facing id.
+  context.subscriptions.push(
+    vscode.commands.registerCommand("nodeforge.openDiagnostic", async (file: string, line: number, col: number) => {
+      try {
+        const uri = vscode.Uri.file(file);
+        const doc = await vscode.workspace.openTextDocument(uri);
+        const editor = await vscode.window.showTextDocument(doc);
+        const position = new vscode.Position(Math.max(0, line - 1), Math.max(0, col - 1));
+        editor.revealRange(new vscode.Range(position, position), vscode.TextEditorRevealType.InCenter);
+        editor.selection = new vscode.Selection(position, position);
+      } catch (err) {
+        void vscode.window.showWarningMessage(
+          `NodeForge: could not open ${file} — ${err instanceof Error ? err.message : String(err)}`
+        );
+      }
+    })
   );
 
   // Commands.
@@ -41,15 +90,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand("nodeforge.analyzeWorkspace", async () => {
       const root = resolveWorkspaceRoot();
       if (!root) {
-        void vscode.window.showWarningMessage(
-          "NodeForge: open a workspace folder before analyzing."
-        );
-        return;
-      }
-      if (!(await isWorkspaceTrusted())) {
-        void vscode.window.showWarningMessage(
-          "NodeForge: this operation requires Workspace Trust."
-        );
+        void vscode.window.showWarningMessage("NodeForge: open a workspace folder before analyzing.");
         return;
       }
       try {
@@ -64,19 +105,120 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }),
     vscode.commands.registerCommand("nodeforge.refresh", () => {
       workspaceView.refresh();
+      diagnosticsView.refresh();
+      testsView.refresh();
+      runtimeView.refresh();
+    }),
+    vscode.commands.registerCommand("nodeforge.runDiagnostics", async () => {
+      const root = resolveWorkspaceRoot();
+      if (!root) {
+        void vscode.window.showWarningMessage("NodeForge: open a workspace folder first.");
+        return;
+      }
+      if (!(await isWorkspaceTrusted())) {
+        void vscode.window.showWarningMessage("NodeForge: running diagnostics requires Workspace Trust.");
+        return;
+      }
+      // Make sure the profile is fresh before deciding which adapters to run.
+      if (!manager.current()) {
+        await manager.analyze(root);
+      }
+      await vscode.window.withProgress(
+        { location: vscode.ProgressLocation.Window, title: "NodeForge: running diagnostics" },
+        async () => {
+          await diagManager.refresh();
+        }
+      );
+      const counts = diagManager.getStore().counts();
+      const total = counts.error + counts.warning + counts.info + counts.hint;
+      void vscode.window.showInformationMessage(
+        `NodeForge: ${total} finding${total === 1 ? "" : "s"} (${counts.error} error${counts.error === 1 ? "" : "s"}, ${counts.warning} warning${counts.warning === 1 ? "" : "s"})`
+      );
+    }),
+    vscode.commands.registerCommand("nodeforge.runTests", async () => {
+      const root = resolveWorkspaceRoot();
+      if (!root) {
+        void vscode.window.showWarningMessage("NodeForge: open a workspace folder first.");
+        return;
+      }
+      if (!(await isWorkspaceTrusted())) {
+        void vscode.window.showWarningMessage("NodeForge: running tests requires Workspace Trust.");
+        return;
+      }
+      if (!manager.current()) {
+        await manager.analyze(root);
+      }
+      if (!tests.isEnabled()) {
+        void vscode.window.showWarningMessage(
+          "NodeForge: no test runner detected (expected Vitest or Jest in dependencies)."
+        );
+        return;
+      }
+      await vscode.window.withProgress(
+        { location: vscode.ProgressLocation.Window, title: "NodeForge: running tests" },
+        async () => {
+          await tests.run().catch((err) => {
+            // eslint-disable-next-line no-console
+            console.error("[nodeforge] test run failed", err);
+          });
+        }
+      );
+      const outcome = tests.getCurrent();
+      if (outcome) {
+        const r = outcome.result;
+        void vscode.window.showInformationMessage(
+          `NodeForge: ${r.counts.passed} passed, ${r.counts.failed} failed, ${r.counts.skipped} skipped (${r.durationMs}ms)`
+        );
+      }
+      testsView.refresh();
+    }),
+    vscode.commands.registerCommand("nodeforge.refreshGit", async () => {
+      const root = resolveWorkspaceRoot();
+      if (!root) return;
+      try {
+        const state = await git.detect(root);
+        gitView.setState(state);
+        if (state) {
+          const parts: string[] = [`branch=${state.branch}`];
+          parts.push(state.dirty ? "dirty" : "clean");
+          if (state.upstream) parts.push(`+${state.ahead} -${state.behind}`);
+          void vscode.window.showInformationMessage(`NodeForge: ${parts.join(", ")}`);
+        } else {
+          void vscode.window.showInformationMessage("NodeForge: not a git repository");
+        }
+      } catch (err) {
+        void vscode.window.showErrorMessage(
+          `NodeForge: git detection failed — ${err instanceof Error ? err.message : String(err)}`
+        );
+      }
     })
   );
 
-  // Re-run detection when package.json or known config files change.
+  // Save listener → debounced diagnostic refresh. Only fires in Trusted Mode.
+  context.subscriptions.push(
+    vscode.workspace.onDidSaveTextDocument(() => {
+      if (!isWorkspaceTrustedSync()) return;
+      const profile = manager.current();
+      if (!profile) return;
+      const aggressive = vscode.workspace
+        .getConfiguration("nodeforge.diagnostics")
+        .get<boolean>("aggressiveRefresh", false);
+      if (aggressive) {
+        void diagManager.refresh().catch(() => undefined);
+      } else {
+        diagManager.triggerOnSave();
+      }
+    })
+  );
+
+  // Config-file watcher — re-runs detection when the workspace shape changes.
   const watcher = vscode.workspace.createFileSystemWatcher(
     "**/{package.json,pnpm-workspace.yaml,tsconfig.json,eslint.config.*,.prettierrc*,biome.json,prisma/schema.prisma,drizzle.config.*,Dockerfile,docker-compose.*}"
   );
   context.subscriptions.push(watcher);
   const onConfigChange = async (uri: vscode.Uri): Promise<void> => {
-    if (!manager) return;
     const root = resolveWorkspaceRoot();
     if (!root) return;
-    // Skip events outside the workspace root.
     const rel = vscode.workspace.asRelativePath(uri, false);
     if (rel.includes("/")) {
       // Only re-analyze if the file is at the workspace root.
@@ -94,11 +236,31 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(watcher.onDidCreate(onConfigChange));
   context.subscriptions.push(watcher.onDidDelete(onConfigChange));
 
-  // Auto-run once on activation if a folder is open.
+  // Dispose managers when the extension is deactivated.
+  context.subscriptions.push({ dispose: () => diagManager.dispose() });
+  context.subscriptions.push({ dispose: () => tests.dispose() });
+  context.subscriptions.push({ dispose: () => procMgr.dispose() });
+
+  // Auto-run once on activation if a folder is open and trusted.
   const root = resolveWorkspaceRoot();
   if (root && (await isWorkspaceTrusted())) {
     void manager.analyze(root).then(
-      (profile) => workspaceView.render(profile),
+      (profile) => {
+        workspaceView.render(profile);
+        // Kick off an initial diagnostic run so the sidebar is populated.
+        void diagManager.refresh().catch((err) => {
+          // eslint-disable-next-line no-console
+          console.error("[nodeforge] initial diagnostic run failed", err);
+        });
+        // Detect git state on activation.
+        void git.detect(root).then(
+          (state) => gitView.setState(state),
+          (err) => {
+            // eslint-disable-next-line no-console
+            console.error("[nodeforge] initial git detect failed", err);
+          }
+        );
+      },
       (err) => {
         // eslint-disable-next-line no-console
         console.error("[nodeforge] initial analyze failed", err);
@@ -109,6 +271,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
 export function deactivate(): void {
   workspaceManager = undefined;
+  diagnosticManager = undefined;
+  testManager = undefined;
+  processManager = undefined;
+  gitAdapter = undefined;
   eventBus = undefined;
 }
 
@@ -120,11 +286,14 @@ function resolveWorkspaceRoot(): string | undefined {
 }
 
 async function isWorkspaceTrusted(): Promise<boolean> {
-  // `isWorkspaceTrusted` exists on `vscode.workspace` from 1.56+.
-  // The cast handles older typings that may not include it.
   const ws = vscode.workspace as typeof vscode.workspace & { isWorkspaceTrusted?: boolean };
   if (typeof ws.isWorkspaceTrusted === "boolean") return ws.isWorkspaceTrusted;
-  // Fallback: assume trusted (VS Code < 1.56). Document this in README.
+  return true;
+}
+
+function isWorkspaceTrustedSync(): boolean {
+  const ws = vscode.workspace as typeof vscode.workspace & { isWorkspaceTrusted?: boolean };
+  if (typeof ws.isWorkspaceTrusted === "boolean") return ws.isWorkspaceTrusted;
   return true;
 }
 
@@ -144,5 +313,5 @@ function formatProfileSummary(p: WorkspaceProfile): string {
 }
 
 // Exported for integration tests.
-export { workspaceManager, eventBus };
-export type { EventBus, NodeForgeEvent };
+export { workspaceManager, diagnosticManager, testManager, processManager, gitAdapter, eventBus };
+export type { EventBus, GitState };

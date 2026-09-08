@@ -87,13 +87,25 @@ Phase 3:
 - [x] Real fixtures with deliberate lint findings, passing tests, and failing tests
 - [x] 80 tests passing across the workspace
 
+Phase 4:
+
+- [x] Live extension UI — `DiagnosticManager` orchestrates TS/ESLint/Biome adapters based on `WorkspaceProfile`, runs them on save (debounced), records results into the `DiagnosticStore`
+- [x] `DiagnosticsViewProvider` renders real findings grouped by source with click-to-navigate
+- [x] `TestManager` runs Vitest/Jest based on profile; `TestsViewProvider` renders the test tree with pass/fail icons
+- [x] `nodeforge.runDiagnostics` and `nodeforge.runTests` commands with progress UI
+- [x] `packages/core/runtime/ProcessManager` — long-lived process management with stdout/stderr streaming, runtime error detection, exit-code → diagnostic mapping
+- [x] `packages/adapters/git` — detects branch, dirty state, ahead/behind, changed/staged files via `git status --porcelain=v2`
+- [x] `RuntimeViewProvider` shows running processes with recent output
+- [x] `GitViewProvider` shows branch/HEAD/upstream/changed-files/staged-files
+- [x] `nodeforge.refreshGit` command + auto-detection on activation
+- [x] 103 tests passing across the workspace
+
 Upcoming milestones (see `CLAUDE.md`):
 
-- Wire `DiagnosticsViewProvider` + `Tests` view to the live `DiagnosticStore` and test adapters
-- Runtime engine (process manager, runtime error → diagnostic mapping)
-- Git intelligence
-- Database adapters (Prisma, Drizzle)
-- Agent interface (MCP)
+- Database adapters (Prisma, Drizzle schema introspection)
+- Agent interface (MCP) — context + tools + repair loop
+- Dependency intelligence (npm audit / OSV / outdated)
+- Docker / Kubernetes / GitHub Actions deep integration
 
 ## Development
 
