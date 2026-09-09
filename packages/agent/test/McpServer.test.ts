@@ -63,7 +63,7 @@ describe("McpServer protocol", () => {
       method: "tools/list"
     });
     const result = response!.result as { tools: Array<{ name: string; description: string; inputSchema: unknown }> };
-    expect(result.tools.length).toBeGreaterThanOrEqual(13);
+    expect(result.tools.length).toBeGreaterThanOrEqual(17);
     const names = result.tools.map((t) => t.name);
     expect(names).toEqual(
       expect.arrayContaining([
@@ -79,7 +79,11 @@ describe("McpServer protocol", () => {
         "getDockerConfig",
         "getKubernetesManifests",
         "getGitHubWorkflows",
-        "getDependencyGraph"
+        "getDependencyGraph",
+        "runScript",
+        "formatFiles",
+        "applyEslintFix",
+        "validateWorkspace"
       ])
     );
   });
@@ -347,6 +351,89 @@ describe("McpServer tool dispatch (real adapter runs)", () => {
 
     // The fixture has a circular dependency: a → b → c → a.
     expect(analysis.circular.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("runScript executes a package.json script", async () => {
+    const server = makeServer();
+    const response = await server.handleMessage({
+      jsonrpc: "2.0",
+      id: 20,
+      method: "tools/call",
+      params: { name: "runScript", arguments: { script: "typecheck" } }
+    });
+
+    const result = response!.result as { content: Array<{ text: string }> };
+    const scriptResult = JSON.parse(result.content[0]!.text) as {
+      script: string;
+      exitCode: number | null;
+      stdout: string;
+    };
+
+    expect(scriptResult.script).toBe("typecheck");
+    expect(scriptResult.exitCode).toBe(0); // tsc --noEmit on clean fixture
+  });
+
+  it("runScript returns error for missing script parameter", async () => {
+    const server = makeServer();
+    const response = await server.handleMessage({
+      jsonrpc: "2.0",
+      id: 21,
+      method: "tools/call",
+      params: { name: "runScript", arguments: {} }
+    });
+
+    const result = response!.result as { content: Array<{ text: string }> };
+    const parsed = JSON.parse(result.content[0]!.text) as { error: string };
+    expect(parsed.error).toContain("Missing required parameter: script");
+  });
+
+  it("validateWorkspace runs typecheck + lint and returns overall status", async () => {
+    const server = makeServer();
+    const response = await server.handleMessage({
+      jsonrpc: "2.0",
+      id: 22,
+      method: "tools/call",
+      params: { name: "validateWorkspace", arguments: {} }
+    });
+
+    const result = response!.result as { content: Array<{ text: string }> };
+    const validation = JSON.parse(result.content[0]!.text) as {
+      typecheck: { passed: boolean; errorCount: number };
+      lint: { passed: boolean; errorCount: number; warningCount: number };
+      overallPassed: boolean;
+    };
+
+    // The docker fixture has a clean typecheck (no type errors).
+    expect(validation.typecheck).toBeDefined();
+    expect(typeof validation.typecheck.passed).toBe("boolean");
+
+    // Lint should run (ESLint is configured).
+    expect(validation.lint).toBeDefined();
+    expect(typeof validation.lint.passed).toBe("boolean");
+
+    // overallPassed should be a boolean.
+    expect(typeof validation.overallPassed).toBe("boolean");
+  });
+
+  it("formatFiles runs the detected formatter", async () => {
+    const server = makeServer();
+    const response = await server.handleMessage({
+      jsonrpc: "2.0",
+      id: 23,
+      method: "tools/call",
+      params: { name: "formatFiles", arguments: {} }
+    });
+
+    const result = response!.result as { content: Array<{ text: string }> };
+    const formatResult = JSON.parse(result.content[0]!.text) as {
+      formatter: string;
+      filesFormatted: number;
+    };
+
+    // The docker fixture doesn't have Prettier or Biome formatter configured,
+    // so we expect formatter = "none".
+    expect(formatResult.formatter).toBeDefined();
+    expect(["prettier", "biome", "none"]).toContain(formatResult.formatter);
   });
 });
 

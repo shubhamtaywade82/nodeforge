@@ -199,6 +199,25 @@ importers:
         specifier: ^2.1.4
         version: 2.1.9(@types/node@20.19.43)
 
+  packages/adapters/prettier:
+    dependencies:
+      '@nodeforge/contracts':
+        specifier: workspace:*
+        version: link:../../contracts
+      '@nodeforge/runner':
+        specifier: workspace:*
+        version: link:../../runner
+    devDependencies:
+      '@types/node':
+        specifier: ^20.14.0
+        version: 20.19.43
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.4
+        version: 2.1.9(@types/node@20.19.43)
+
   packages/adapters/prisma:
     dependencies:
       '@nodeforge/contracts':
@@ -285,6 +304,9 @@ importers:
       '@nodeforge/adapter-kubernetes':
         specifier: workspace:*
         version: link:../adapters/kubernetes
+      '@nodeforge/adapter-prettier':
+        specifier: workspace:*
+        version: link:../adapters/prettier
       '@nodeforge/adapter-prisma':
         specifier: workspace:*
         version: link:../adapters/prisma

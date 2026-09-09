@@ -213,6 +213,73 @@ export const TOOLS: McpTool[] = [
       }
       return JSON.stringify(analysis, null, 2);
     }
+  },
+  {
+    definition: {
+      name: "runScript",
+      description:
+        "Run a script from package.json (e.g. `build`, `test`, `lint`, `dev`). Uses the detected package manager (npm/pnpm/yarn). Returns stdout, stderr, exit code, and duration. This is a write operation — the script may modify files or start processes.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          script: {
+            type: "string",
+            description: "The script name from package.json `scripts` (e.g. `build`, `test`, `lint`)."
+          },
+          args: {
+            type: "array",
+            items: { type: "string" },
+            description: "Additional arguments to pass to the script."
+          }
+        },
+        required: ["script"]
+      }
+    },
+    handler: async (args, ctx) => {
+      const script = String(args["script"] ?? "");
+      if (!script) {
+        return JSON.stringify({ error: "Missing required parameter: script" });
+      }
+      const scriptArgs = Array.isArray(args["args"]) ? args["args"].map(String) : [];
+      const result = await ctx.runScript(script, scriptArgs);
+      return JSON.stringify(result, null, 2);
+    }
+  },
+  {
+    definition: {
+      name: "formatFiles",
+      description:
+        "Format source files using the detected formatter. If Biome is the formatter, runs `biome format --write`. Otherwise, if Prettier is configured, runs `prettier --write`. Returns the number of files formatted. This is a write operation — it modifies files on disk.",
+      inputSchema: { type: "object", properties: {} }
+    },
+    handler: async (_args, ctx) => {
+      const result = await ctx.formatFiles();
+      return JSON.stringify(result, null, 2);
+    }
+  },
+  {
+    definition: {
+      name: "applyEslintFix",
+      description:
+        "Run ESLint with --fix to auto-fix lint issues. Returns the diagnostics remaining after the fix (issues that couldn't be auto-fixed). Only works when ESLint is the detected linter. This is a write operation — it modifies files on disk.",
+      inputSchema: { type: "object", properties: {} }
+    },
+    handler: async (_args, ctx) => {
+      const result = await ctx.applyEslintFix();
+      return JSON.stringify(result, null, 2);
+    }
+  },
+  {
+    definition: {
+      name: "validateWorkspace",
+      description:
+        "Run a comprehensive validation: TypeScript typecheck + ESLint/Biome lint + tests (Vitest/Jest) + dependency audit. Returns pass/fail status for each stage plus an overall pass/fail. Use this to check if the workspace is in a healthy state.",
+      inputSchema: { type: "object", properties: {} }
+    },
+    handler: async (_args, ctx) => {
+      const result = await ctx.validateWorkspace();
+      return JSON.stringify(result, null, 2);
+    }
   }
 ];
 

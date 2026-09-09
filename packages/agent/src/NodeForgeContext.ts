@@ -28,6 +28,7 @@ import { DockerAdapter } from "@nodeforge/adapter-docker";
 import { KubernetesAdapter } from "@nodeforge/adapter-kubernetes";
 import { GitHubActionsAdapter } from "@nodeforge/adapter-github-actions";
 import { DependencyGraphAdapter } from "@nodeforge/adapter-dependency-graph";
+import { PrettierAdapter } from "@nodeforge/adapter-prettier";
 import type {
   DatabaseSchema,
   DependencyGraphAnalysis,
@@ -240,6 +241,273 @@ export class NodeForgeContext {
       console.error("[nodeforge:mcp] dependency graph analysis failed", err);
       return undefined;
     }
+  }
+
+  // ─── Action tools (write operations) ───
+
+  /**
+   * Run a script from package.json (`npm run <script>`, `pnpm run <script>`,
+   * or `yarn <script>` depending on the detected package manager).
+   *
+   * Returns stdout, stderr, exit code, and duration.
+   */
+  async runScript(
+    scriptName: string,
+    args: string[] = []
+  ): Promise<{
+    script: string;
+    stdout: string;
+    stderr: string;
+    exitCode: number | null;
+    durationMs: number;
+  }> {
+    const profile = await this.getProfile();
+    const pm = profile.packageManager === "pnpm" ? "pnpm" : profile.packageManager === "yarn" ? "yarn" : "npm";
+    // For npm/pnpm: `run <script>`. For yarn: `<script>` (no `run` needed for most scripts).
+    const pmArgs = pm === "yarn" ? [scriptName, ...args] : ["run", scriptName, ...args];
+
+    const result = await this.runner.run({
+      command: pm,
+      args: pmArgs,
+      cwd: this.workspaceRoot,
+      timeoutMs: 120_000
+    });
+
+    return {
+      script: scriptName,
+      stdout: result.stdout,
+      stderr: result.stderr,
+      exitCode: result.exitCode,
+      durationMs: result.durationMs
+    };
+  }
+
+  /**
+   * Format files using the detected formatter (Prettier or Biome).
+   *
+   * If the workspace uses Biome as its formatter, runs `biome format --write`.
+   * Otherwise, if a Prettier config exists, runs `prettier --write`.
+   *
+   * Returns the number of files formatted and the raw output.
+   */
+  async formatFiles(): Promise<{
+    formatter: "prettier" | "biome" | "none";
+    filesFormatted: number;
+    stdout: string;
+    stderr: string;
+    exitCode: number | null;
+    durationMs: number;
+  }> {
+    const profile = await this.getProfile();
+
+    if (profile.formatter === "biome") {
+      try {
+        const adapter = new BiomeAdapter(this.runner);
+        const result = await adapter.format(this.workspaceRoot);
+        return {
+          formatter: "biome",
+          filesFormatted: result.filesFormatted,
+          stdout: result.rawStdout,
+          stderr: result.rawStderr,
+          exitCode: result.exitCode,
+          durationMs: result.durationMs
+        };
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error("[nodeforge:mcp] Biome format failed", err);
+        return {
+          formatter: "biome",
+          filesFormatted: 0,
+          stdout: "",
+          stderr: err instanceof Error ? err.message : String(err),
+          exitCode: null,
+          durationMs: 0
+        };
+      }
+    }
+
+    // Try Prettier
+    const hasPrettier = await PrettierAdapter.hasConfig(this.workspaceRoot);
+    if (hasPrettier) {
+      try {
+        const adapter = new PrettierAdapter(this.runner);
+        const result = await adapter.format(this.workspaceRoot);
+        return {
+          formatter: "prettier",
+          filesFormatted: result.filesFormatted,
+          stdout: result.rawStdout,
+          stderr: result.rawStderr,
+          exitCode: result.exitCode,
+          durationMs: result.durationMs
+        };
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error("[nodeforge:mcp] Prettier format failed", err);
+        return {
+          formatter: "prettier",
+          filesFormatted: 0,
+          stdout: "",
+          stderr: err instanceof Error ? err.message : String(err),
+          exitCode: null,
+          durationMs: 0
+        };
+      }
+    }
+
+    return {
+      formatter: "none",
+      filesFormatted: 0,
+      stdout: "",
+      stderr: "No formatter detected (expected Prettier or Biome).",
+      exitCode: null,
+      durationMs: 0
+    };
+  }
+
+  /**
+   * Run ESLint with `--fix` to auto-fix lint issues.
+   *
+   * Returns the diagnostics remaining after the fix (i.e., issues that
+   * couldn't be auto-fixed).
+   */
+  async applyEslintFix(): Promise<{
+    fixed: boolean;
+    remainingDiagnostics: Diagnostic[];
+    stdout: string;
+    stderr: string;
+    exitCode: number | null;
+    durationMs: number;
+  }> {
+    const profile = await this.getProfile();
+    if (profile.linter !== "eslint") {
+      return {
+        fixed: false,
+        remainingDiagnostics: [],
+        stdout: "",
+        stderr: "ESLint is not the detected linter for this workspace.",
+        exitCode: null,
+        durationMs: 0
+      };
+    }
+
+    try {
+      const adapter = new EslintAdapter(this.runner);
+      const result = await adapter.fix(this.workspaceRoot);
+      return {
+        fixed: true,
+        remainingDiagnostics: result.diagnostics,
+        stdout: result.rawStdout,
+        stderr: result.rawStderr,
+        exitCode: result.exitCode,
+        durationMs: result.durationMs
+      };
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error("[nodeforge:mcp] ESLint --fix failed", err);
+      return {
+        fixed: false,
+        remainingDiagnostics: [],
+        stdout: "",
+        stderr: err instanceof Error ? err.message : String(err),
+        exitCode: null,
+        durationMs: 0
+      };
+    }
+  }
+
+  /**
+   * Run a comprehensive validation: typecheck + lint + tests + audit.
+   * Returns a combined report with pass/fail status for each stage.
+   */
+  async validateWorkspace(): Promise<{
+    typecheck: { passed: boolean; errorCount: number; durationMs: number };
+    lint: { passed: boolean; errorCount: number; warningCount: number; durationMs: number };
+    tests: { passed: boolean; passedCount: number; failedCount: number; durationMs: number } | undefined;
+    audit: { passed: boolean; vulnerabilityCount: number; durationMs: number } | undefined;
+    overallPassed: boolean;
+  }> {
+    const profile = await this.getProfile();
+    const results: Awaited<ReturnType<typeof this.validateWorkspace>> = {
+      typecheck: { passed: true, errorCount: 0, durationMs: 0 },
+      lint: { passed: true, errorCount: 0, warningCount: 0, durationMs: 0 },
+      tests: undefined,
+      audit: undefined,
+      overallPassed: true
+    };
+
+    // Type check
+    if (profile.typescript) {
+      const start = Date.now();
+      try {
+        const diagnostics = await this.runTypeCheck();
+        const errors = diagnostics.filter((d) => d.severity === "error");
+        results.typecheck = {
+          passed: errors.length === 0,
+          errorCount: errors.length,
+          durationMs: Date.now() - start
+        };
+      } catch {
+        results.typecheck = { passed: false, errorCount: -1, durationMs: Date.now() - start };
+      }
+    }
+
+    // Lint
+    if (profile.linter) {
+      const start = Date.now();
+      try {
+        const diagnostics = await this.runLinter();
+        const errors = diagnostics.filter((d) => d.severity === "error");
+        const warnings = diagnostics.filter((d) => d.severity === "warning");
+        results.lint = {
+          passed: errors.length === 0,
+          errorCount: errors.length,
+          warningCount: warnings.length,
+          durationMs: Date.now() - start
+        };
+      } catch {
+        results.lint = { passed: false, errorCount: -1, warningCount: 0, durationMs: Date.now() - start };
+      }
+    }
+
+    // Tests
+    if (profile.testRunner === "vitest" || profile.testRunner === "jest") {
+      const start = Date.now();
+      try {
+        const outcome = await this.runTests();
+        if (outcome) {
+          results.tests = {
+            passed: outcome.result.counts.failed === 0,
+            passedCount: outcome.result.counts.passed,
+            failedCount: outcome.result.counts.failed,
+            durationMs: Date.now() - start
+          };
+        }
+      } catch {
+        results.tests = { passed: false, passedCount: 0, failedCount: -1, durationMs: Date.now() - start };
+      }
+    }
+
+    // Audit
+    try {
+      const start = Date.now();
+      const report = await this.getDependencyReport();
+      if (report) {
+        results.audit = {
+          passed: report.findings.length === 0,
+          vulnerabilityCount: report.findings.length,
+          durationMs: Date.now() - start
+        };
+      }
+    } catch {
+      // audit is optional — don't fail the overall validation
+    }
+
+    results.overallPassed =
+      results.typecheck.passed &&
+      results.lint.passed &&
+      (results.tests === undefined || results.tests.passed);
+
+    return results;
   }
 }
 

@@ -149,11 +149,24 @@ Phase 8:
 - [x] Real fixture with deliberate unused dep (`lodash`) and circular chain (`a → b → c → a`)
 - [x] 235 tests passing across the workspace
 
+Phase 9:
+
+- [x] `packages/adapters/prettier` — wraps `prettier --write` for file formatting
+- [x] ESLint adapter gains `fix()` method (runs `eslint --fix`)
+- [x] Biome adapter gains `format()` method (runs `biome format --write`)
+- [x] 4 new MCP action tools (17 total):
+  - `runScript` — runs `npm/pnpm/yarn run <script>` from package.json
+  - `formatFiles` — runs Prettier or Biome formatter with `--write`
+  - `applyEslintFix` — runs ESLint with `--fix` to auto-fix lint issues
+  - `validateWorkspace` — combined typecheck + lint + tests + audit report
+- [x] All action tools are write operations (modify files / run commands)
+- [x] 240 tests passing across the workspace
+
 Upcoming milestones (see `CLAUDE.md`):
 
+- MCP resources (expose config files as MCP resources)
+- MCP prompts (engineering workflows: "fix all lint errors", "audit and upgrade deps")
 - Performance profiling + bundle analysis
-- MCP resources (expose config files) + prompts (engineering workflows)
-- Action tools: `applyEslintFix`, `formatFiles`, `runScript`, `validateWorkspace`
 
 ## Development
 

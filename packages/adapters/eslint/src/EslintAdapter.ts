@@ -113,6 +113,52 @@ export class EslintAdapter {
   }
 
   /**
+   * Run ESLint with `--fix` to auto-fix lint issues. Returns the diagnostics
+   * remaining AFTER the fix (not the ones that were fixed).
+   *
+   * This is a write operation — it modifies files on disk. The caller is
+   * responsible for ensuring Workspace Trust is granted.
+   */
+  async fix(workspaceRoot: string, signal?: AbortSignal): Promise<EslintRunResult> {
+    const eslintBin = this.options.eslintPath ?? (await resolveEslintBinary(workspaceRoot));
+    if (!eslintBin) {
+      throw new FileNotFoundError("eslint");
+    }
+
+    const patterns = this.options.patterns ?? ["."];
+    const args = ["--fix", "--format", "json", ...patterns];
+
+    const request: CommandRequest = {
+      command: eslintBin,
+      args,
+      cwd: workspaceRoot,
+      timeoutMs: this.options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+      signal
+    };
+
+    const result = await this.runner.run(request);
+
+    const stdout = result.stdout ?? "";
+    const stderr = result.stderr ?? "";
+    const exitCode = result.exitCode ?? null;
+
+    if (exitCode === 2) {
+      throw new AdapterParseError("eslint", `ESLint --fix exited with code 2 (config error): ${stderr || stdout}`);
+    }
+
+    // The output after --fix is the remaining (unfixed) diagnostics.
+    const diagnostics = parseEslintJsonOutput(stdout, workspaceRoot);
+
+    return {
+      diagnostics,
+      rawStdout: stdout,
+      rawStderr: stderr,
+      durationMs: result.durationMs,
+      exitCode
+    };
+  }
+
+  /**
    * Returns true if an ESLint config file exists in `workspaceRoot`.
    * Used by the diagnostic manager to decide whether to enable the adapter.
    */

@@ -24,6 +24,7 @@
     { "path": "../adapters/docker" },
     { "path": "../adapters/kubernetes" },
     { "path": "../adapters/github-actions" },
-    { "path": "../adapters/dependency-graph" }
+    { "path": "../adapters/dependency-graph" },
+    { "path": "../adapters/prettier" }
   ]
 }

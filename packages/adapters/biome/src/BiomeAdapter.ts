@@ -136,6 +136,55 @@ export class BiomeAdapter {
   }
 
   /**
+   * Run `biome format --write` to auto-format files. Returns a summary of
+   * how many files were formatted.
+   *
+   * This is a write operation — it modifies files on disk. The caller is
+   * responsible for ensuring Workspace Trust is granted.
+   */
+  async format(workspaceRoot: string, signal?: AbortSignal): Promise<{
+    filesFormatted: number;
+    rawStdout: string;
+    rawStderr: string;
+    exitCode: number | null;
+    durationMs: number;
+  }> {
+    const biomeBin = this.options.biomePath ?? (await resolveBiomeBinary(workspaceRoot));
+    if (!biomeBin) {
+      throw new FileNotFoundError("biome");
+    }
+
+    const patterns = this.options.patterns ?? ["."];
+    const args = ["format", "--write", ...patterns];
+
+    const request: CommandRequest = {
+      command: biomeBin,
+      args,
+      cwd: workspaceRoot,
+      timeoutMs: this.options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+      signal
+    };
+
+    const result = await this.runner.run(request);
+    const stdout = result.stdout ?? "";
+    const stderr = result.stderr ?? "";
+
+    // Biome's --write output includes a summary line like:
+    //   "Formatted N files in Xms."
+    // We extract the count.
+    const match = /Formatted\s+(\d+)\s+files?/i.exec(stdout);
+    const filesFormatted = match ? parseInt(match[1]!, 10) : 0;
+
+    return {
+      filesFormatted,
+      rawStdout: stdout,
+      rawStderr: stderr,
+      exitCode: result.exitCode,
+      durationMs: result.durationMs
+    };
+  }
+
+  /**
    * Returns true if a biome.json config file exists in `workspaceRoot`.
    */
   static async hasConfig(workspaceRoot: string): Promise<boolean> {
