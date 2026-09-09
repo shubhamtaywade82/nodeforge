@@ -10,7 +10,7 @@ extension or before a release. Check off each item as you go.
 ## Prerequisites
 
 | Requirement | Check |
-|-------------|-------|
+| ------------- | ------- |
 | Node.js 20+ (`node --version`) | ☐ |
 | pnpm 9+ (`pnpm --version`) | ☐ |
 | VS Code 1.85+ or Cursor | ☐ |
@@ -66,7 +66,7 @@ cd packages/test-fixtures/pnpm-monorepo && pnpm install
 ### Fixture reference
 
 | Fixture | What it exercises |
-|---------|-------------------|
+| --------- | ------------------- |
 | `node-ts-eslint` | **Primary all-in-one** — ESLint, Prettier, Jest, Prisma, Docker, GitHub Actions |
 | `node-ts-with-errors` | TypeScript + ESLint diagnostics (deliberate errors in `src/broken.ts`) |
 | `node-ts-biome` | Biome linter + formatter, Vitest, Drizzle ORM |
@@ -114,7 +114,7 @@ cursor /home/nemesis/projects/developer-tools/nodeforge/packages/test-fixtures/n
 **Trust the workspace** when prompted.
 
 | View | Expected on load | Pass |
-|------|------------------|------|
+| ------ | ------------------ | ------ |
 | **Workspace** | Profile fields populated within a few seconds | ☐ |
 | **Diagnostics** | Auto-runs; shows findings or "No diagnostics" | ☐ |
 | **Tests** | Empty or placeholder until tests are run | ☐ |
@@ -133,7 +133,7 @@ cursor /home/nemesis/projects/developer-tools/nodeforge/packages/test-fixtures/n
 ### 4.1 Auto-detection on activation
 
 | Field | Expected value | Pass |
-|-------|----------------|------|
+| ------- | ---------------- | ------ |
 | runtime | `node` | ☐ |
 | typescript | `yes` | ☐ |
 | linter | `eslint` | ☐ |
@@ -166,7 +166,7 @@ Click the refresh/analyze icon in the **Workspace** view title bar.
 Open `node-ts-biome` (trusted, deps installed).
 
 | Field | Expected | Pass |
-|-------|----------------|------|
+| ------- | ---------------- | ------ |
 | linter | `biome` | ☐ |
 | formatter | `biome` | ☐ |
 | test runner | `vitest` | ☐ |
@@ -178,7 +178,7 @@ Open `node-ts-biome` (trusted, deps installed).
 Open `pnpm-monorepo` (trusted).
 
 | Field | Expected | Pass |
-|-------|----------------|------|
+| ------- | ---------------- | ------ |
 | package manager | `pnpm` | ☐ |
 | monorepo | `pnpm` | ☐ |
 | workspace packages | Includes `api`, `web`, `shared` | ☐ |
@@ -202,7 +202,7 @@ With `node-ts-eslint` open, edit `package.json` (add a harmless field) and save.
 **NodeForge: Run Diagnostics** (or click ▶ in Diagnostics view title bar)
 
 | Step | Expected | Pass |
-|------|----------|------|
+| ------ | ---------- | ------ |
 | Progress notification | "NodeForge: running diagnostics" | ☐ |
 | Completion toast | Reports finding count (errors + warnings > 0) | ☐ |
 | Diagnostics tree | Groups by source: **TypeScript**, **ESLint** | ☐ |
@@ -255,7 +255,7 @@ Reset setting to `false` after testing.
 **NodeForge: Run Tests**
 
 | Step | Expected | Pass |
-|------|----------|------|
+| ------ | ---------- | ------ |
 | Progress notification | "NodeForge: running tests" | ☐ |
 | Completion toast | e.g. `6 passed, 1 failed, 0 skipped` | ☐ |
 | Tests tree | Suite `math` with pass ✓ and fail ✗ icons | ☐ |
@@ -287,8 +287,8 @@ Reset setting to `false` after testing.
 **NodeForge: Refresh Git State**
 
 | Step | Expected | Pass |
-|------|----------|------|
-| Toast | `branch=<name>, dirty|clean` | ☐ |
+| ------ | ---------- | ------ |
+| Toast | `branch=<name>, dirty | clean` | ☐ |
 | Git view | Branch, HEAD, dirty status | ☐ |
 | Changed files | Listed if you have uncommitted edits | ☐ |
 | Staged files | Listed if you have staged changes | ☐ |
@@ -320,7 +320,7 @@ git reset HEAD README.md && rm -f README.md   # cleanup
 **NodeForge: Detect Database Schema**
 
 | Step | Expected | Pass |
-|------|----------|------|
+| ------ | ---------- | ------ |
 | Progress notification | "NodeForge: detecting database schema" | ☐ |
 | Toast | Reports table count + product `prisma` | ☐ |
 | Database view | Tables → columns, indexes, relations | ☐ |
@@ -351,7 +351,7 @@ git reset HEAD README.md && rm -f README.md   # cleanup
 **NodeForge: Audit Dependencies**
 
 | Step | Expected | Pass |
-|------|----------|------|
+| ------ | ---------- | ------ |
 | Progress notification | "NodeForge: running dependency audit" | ☐ |
 | Toast | Vulnerability/outdated counts or "up to date" | ☐ |
 | Dependencies view | Vulnerabilities grouped by severity | ☐ |
@@ -383,7 +383,7 @@ internals or future commands.
 **Fixture:** any open workspace
 
 | Step | Expected | Pass |
-|------|----------|------|
+| ------ | ---------- | ------ |
 | MCP Server → Status | `ready` | ☐ |
 | MCP Server → Workspace | Current folder path | ☐ |
 | Available Tools | Lists all MCP tools (17) | ☐ |
@@ -407,7 +407,7 @@ Open `node-ts-with-errors` in a **new window** and choose **Don't Trust** (or
 open in Restricted Mode).
 
 | Step | Expected | Pass |
-|------|----------|------|
+| ------ | ---------- | ------ |
 | Workspace view | Profile still detected (read-only) | ☐ |
 | Run Diagnostics | Warning: "requires Workspace Trust" | ☐ |
 | Run Tests | Warning: "requires Workspace Trust" | ☐ |
@@ -474,7 +474,7 @@ call_tool() {
 ```
 
 | Tool | Fixture | Expected (non-empty JSON) | Pass |
-|------|---------|---------------------------|------|
+| ------ | --------- | --------------------------- | ------ |
 | `getProjectContext` | `node-ts-docker` | `runtime`, `linter`, etc. | ☐ |
 | `getDiagnostics` | `node-ts-with-errors` | Array of findings | ☐ |
 | `runTypeCheck` | `node-ts-with-errors` | TypeScript errors only | ☐ |
@@ -491,7 +491,7 @@ call_tool() {
 ### 15.3 Action tools (modify workspace — use a copy or expect changes)
 
 | Tool | Fixture | Expected | Pass |
-|------|---------|----------|------|
+| ------ | --------- | ---------- | ------ |
 | `runScript` | `node-ts-vitest`, script=`test` | exit code + output | ☐ |
 | `formatFiles` | `node-ts-eslint` | files formatted count | ☐ |
 | `applyEslintFix` | `node-ts-with-errors` | auto-fixable issues resolved | ☐ |
@@ -505,7 +505,7 @@ echo '{"jsonrpc":"2.0","id":3,"method":"prompts/list","params":{}}' | \
 ```
 
 | Prompt | Pass |
-|--------|------|
+| -------- | ------ |
 | `fix-lint-errors` | ☐ |
 | `audit-and-upgrade-deps` | ☐ |
 | `validate-and-fix` | ☐ |
@@ -534,7 +534,7 @@ Add to `.cursor/mcp.json` in a test project:
 Restart Cursor.
 
 | Step | Expected | Pass |
-|------|----------|------|
+| ------ | ---------- | ------ |
 | MCP settings | `nodeforge` server connected (green) | ☐ |
 | Agent chat | "What does this project use?" returns structured profile | ☐ |
 | Agent chat | "Run diagnostics" returns findings | ☐ |
@@ -544,7 +544,7 @@ Restart Cursor.
 ## 16. Error handling
 
 | Scenario | How to trigger | Expected | Pass |
-|----------|----------------|----------|------|
+| ---------- | ---------------- | ---------- | ------ |
 | No workspace folder | Close all folders, run Analyze Workspace | Warning: "open a workspace folder" | ☐ |
 | Missing node_modules | Open fixture without `npm install`, run Diagnostics | Graceful failure or empty findings (no crash) | ☐ |
 | Non-git directory | Open `/tmp` as workspace, Refresh Git | "not a git repository" | ☐ |
@@ -556,7 +556,7 @@ Restart Cursor.
 Use this for release or PR verification.
 
 | Area | Pass |
-|------|------|
+| ------ | ------ |
 | Extension installs from `.vsix` | ☐ |
 | All 8 sidebar views render | ☐ |
 | Workspace detection (ESLint + Biome + monorepo fixtures) | ☐ |
@@ -571,10 +571,10 @@ Use this for release or PR verification.
 | MCP server (17 tools, 6 prompts) | ☐ |
 | `pnpm test` green | ☐ |
 
-**Tester:** _______________  
-**Date:** _______________  
-**Extension version:** 0.0.1  
-**Editor:** VS Code / Cursor _______________  
+**Tester:** _______________
+**Date:** _______________
+**Extension version:** 0.0.1
+**Editor:** VS Code / Cursor _______________
 
 ---
 
