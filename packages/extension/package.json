@@ -1,5 +1,5 @@
 {
-  "name": "@nodeforge/extension",
+  "name": "nodeforge",
   "displayName": "NodeForge",
   "description": "Autonomous Node.js/TypeScript engineering workspace — orchestration core for VS Code and Cursor.",
   "version": "0.0.1",

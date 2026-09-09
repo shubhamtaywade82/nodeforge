@@ -11,6 +11,7 @@ import { describe, expect, it } from "vitest";
 import { McpServer } from "../src/McpServer.js";
 import { NodeForgeContext } from "../src/NodeForgeContext.js";
 import { TOOLS, findTool, listToolDefinitions } from "../src/tools.js";
+import { PROMPTS } from "../src/prompts.js";
 
 const FIXTURE = path.resolve(__dirname, "../../test-fixtures/node-ts-docker");
 
@@ -93,7 +94,7 @@ describe("McpServer protocol", () => {
     const response = await server.handleMessage({
       jsonrpc: "2.0",
       id: 4,
-      method: "resources/list"
+      method: "completely/unknown/method"
     });
     expect(response!.error).toBeDefined();
     expect(response!.error!.code).toBe(-32601);
@@ -133,6 +134,110 @@ describe("McpServer protocol", () => {
     expect(response!.error).toBeDefined();
     expect(response!.error!.code).toBe(-32602);
     expect(response!.error!.message).toContain("Invalid params");
+  });
+
+  it("responds to resources/list with config files", async () => {
+    const server = makeServer();
+    const response = await server.handleMessage({
+      jsonrpc: "2.0",
+      id: 30,
+      method: "resources/list"
+    });
+    const result = response!.result as {
+      resources: Array<{ uri: string; name: string; description: string; mimeType: string }>;
+    };
+    expect(result.resources.length).toBeGreaterThan(0);
+    // The docker fixture has package.json, tsconfig.json, Dockerfile, docker-compose.yml, .github/workflows/
+    const names = result.resources.map((r) => r.name);
+    expect(names).toEqual(expect.arrayContaining(["package.json", "tsconfig.json", "Dockerfile", "docker-compose.yml"]));
+    // Check URI format
+    expect(result.resources[0]!.uri).toMatch(/^file:\/\//);
+    expect(result.resources[0]!.mimeType).toBe("text/plain");
+  });
+
+  it("responds to resources/read with file contents", async () => {
+    const server = makeServer();
+    const response = await server.handleMessage({
+      jsonrpc: "2.0",
+      id: 31,
+      method: "resources/read",
+      params: { uri: "file:///package.json" }
+    });
+    const result = response!.result as {
+      contents: Array<{ uri: string; mimeType: string; text: string }>;
+    };
+    expect(result.contents).toHaveLength(1);
+    expect(result.contents[0]!.uri).toBe("file:///package.json");
+    expect(result.contents[0]!.mimeType).toBe("text/plain");
+    // The text should be the package.json content
+    const pkg = JSON.parse(result.contents[0]!.text) as { name: string };
+    expect(pkg.name).toBe("fixture-node-ts-docker");
+  });
+
+  it("returns error for resources/read with missing file", async () => {
+    const server = makeServer();
+    const response = await server.handleMessage({
+      jsonrpc: "2.0",
+      id: 32,
+      method: "resources/read",
+      params: { uri: "file:///nonexistent.json" }
+    });
+    expect(response!.error).toBeDefined();
+    expect(response!.error!.message).toContain("Resource not found");
+  });
+
+  it("responds to prompts/list with available prompts", async () => {
+    const server = makeServer();
+    const response = await server.handleMessage({
+      jsonrpc: "2.0",
+      id: 33,
+      method: "prompts/list"
+    });
+    const result = response!.result as {
+      prompts: Array<{ name: string; description: string }>;
+    };
+    expect(result.prompts.length).toBeGreaterThanOrEqual(5);
+    const names = result.prompts.map((p) => p.name);
+    expect(names).toEqual(expect.arrayContaining([
+      "fix-lint-errors",
+      "audit-and-upgrade-deps",
+      "validate-and-fix",
+      "onboard-to-project",
+      "add-test-for",
+      "explain-errors"
+    ]));
+  });
+
+  it("responds to prompts/get with rendered message", async () => {
+    const server = makeServer();
+    const response = await server.handleMessage({
+      jsonrpc: "2.0",
+      id: 34,
+      method: "prompts/get",
+      params: { name: "add-test-for", arguments: { filePath: "src/index.ts" } }
+    });
+    const result = response!.result as {
+      description: string;
+      messages: Array<{ role: string; content: { type: string; text: string } }>;
+    };
+    expect(result.description).toBeDefined();
+    expect(result.messages).toHaveLength(1);
+    expect(result.messages[0]!.role).toBe("user");
+    // The {{filePath}} placeholder should be substituted
+    expect(result.messages[0]!.content.text).toContain("src/index.ts");
+    expect(result.messages[0]!.content.text).not.toContain("{{filePath}}");
+  });
+
+  it("returns error for prompts/get with unknown prompt", async () => {
+    const server = makeServer();
+    const response = await server.handleMessage({
+      jsonrpc: "2.0",
+      id: 35,
+      method: "prompts/get",
+      params: { name: "nonexistent-prompt" }
+    });
+    expect(response!.error).toBeDefined();
+    expect(response!.error!.message).toContain("Unknown prompt");
   });
 });
 

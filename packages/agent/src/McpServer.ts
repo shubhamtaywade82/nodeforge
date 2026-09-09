@@ -21,6 +21,7 @@
 
 import { createContextFromEnv, NodeForgeContext } from "./NodeForgeContext.js";
 import { findTool, listToolDefinitions } from "./tools.js";
+import { PROMPTS } from "./prompts.js";
 
 // JSON-RPC 2.0 types
 interface JsonRpcRequest {
@@ -49,7 +50,9 @@ const SERVER_INFO = {
 };
 
 const SERVER_CAPABILITIES = {
-  tools: { listChanged: false }
+  tools: { listChanged: false },
+  resources: { listChanged: false, subscribe: false },
+  prompts: { listChanged: false }
 };
 
 export class McpServer {
@@ -86,6 +89,18 @@ export class McpServer {
 
         case "tools/call":
           return await this.handleToolsCall(id, raw.params);
+
+        case "resources/list":
+          return await this.handleResourcesList(id);
+
+        case "resources/read":
+          return await this.handleResourcesRead(id, raw.params);
+
+        case "prompts/list":
+          return this.handlePromptsList(id);
+
+        case "prompts/get":
+          return this.handlePromptsGet(id, raw.params);
 
         default:
           if (isRequest) {
@@ -172,6 +187,133 @@ export class McpServer {
           {
             type: "text",
             text: resultText
+          }
+        ]
+      }
+    };
+  }
+
+  private async handleResourcesList(id: string | number | null): Promise<JsonRpcResponse> {
+    const files = await this.context.listConfigFiles();
+    return {
+      jsonrpc: "2.0",
+      id,
+      result: {
+        resources: files.map((f) => ({
+          uri: `file:///${f.path}`,
+          name: f.path,
+          description: f.description,
+          mimeType: "text/plain"
+        }))
+      }
+    };
+  }
+
+  private async handleResourcesRead(id: string | number | null, params: unknown): Promise<JsonRpcResponse> {
+    const p = params as { uri?: string } | undefined;
+    if (!p || typeof p.uri !== "string") {
+      return {
+        jsonrpc: "2.0",
+        id,
+        error: {
+          code: -32602,
+          message: "Invalid params: expected { uri: string }"
+        }
+      };
+    }
+
+    // Extract the file path from the URI.
+    // URI format: file:///package.json or file:///path/to/file
+    const uri = p.uri;
+    let filePath: string;
+    if (uri.startsWith("file:///")) {
+      filePath = uri.slice("file://".length); // leaves leading /
+      // If it's just /package.json, treat as relative to workspace root
+      if (filePath.startsWith("/")) filePath = filePath.slice(1);
+    } else {
+      filePath = uri;
+    }
+
+    const content = await this.context.readConfigFile(filePath);
+    if (content === undefined) {
+      return {
+        jsonrpc: "2.0",
+        id,
+        error: {
+          code: -32602,
+          message: `Resource not found: ${uri}`
+        }
+      };
+    }
+
+    return {
+      jsonrpc: "2.0",
+      id,
+      result: {
+        contents: [
+          {
+            uri,
+            mimeType: "text/plain",
+            text: content
+          }
+        ]
+      }
+    };
+  }
+
+  private handlePromptsList(id: string | number | null): JsonRpcResponse {
+    return {
+      jsonrpc: "2.0",
+      id,
+      result: {
+        prompts: PROMPTS
+      }
+    };
+  }
+
+  private handlePromptsGet(id: string | number | null, params: unknown): JsonRpcResponse {
+    const p = params as { name?: string; arguments?: Record<string, string> } | undefined;
+    if (!p || typeof p.name !== "string") {
+      return {
+        jsonrpc: "2.0",
+        id,
+        error: {
+          code: -32602,
+          message: "Invalid params: expected { name: string, arguments?: object }"
+        }
+      };
+    }
+
+    const prompt = PROMPTS.find((pr) => pr.name === p.name);
+    if (!prompt) {
+      return {
+        jsonrpc: "2.0",
+        id,
+        error: {
+          code: -32602,
+          message: `Unknown prompt: ${p.name}`
+        }
+      };
+    }
+
+    // Render the prompt message, substituting {{arguments}} placeholders.
+    const args = p.arguments ?? {};
+    const renderedMessage = prompt.message.replace(/\{\{(\w+)\}\}/g, (_match, key: string) => {
+      return args[key] ?? `{{${key}}}`;
+    });
+
+    return {
+      jsonrpc: "2.0",
+      id,
+      result: {
+        description: prompt.description,
+        messages: [
+          {
+            role: "user",
+            content: {
+              type: "text",
+              text: renderedMessage
+            }
           }
         ]
       }

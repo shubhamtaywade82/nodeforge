@@ -162,11 +162,43 @@ Phase 9:
 - [x] All action tools are write operations (modify files / run commands)
 - [x] 240 tests passing across the workspace
 
-Upcoming milestones (see `CLAUDE.md`):
+Phase 10:
 
-- MCP resources (expose config files as MCP resources)
-- MCP prompts (engineering workflows: "fix all lint errors", "audit and upgrade deps")
-- Performance profiling + bundle analysis
+- [x] MCP resources — `resources/list` + `resources/read` expose 22 config file
+  types (package.json, tsconfig.json, eslint.config, Dockerfile, docker-compose,
+  biome.json, .prettierrc, vitest.config, jest.config, drizzle.config, .env, etc.)
+- [x] MCP prompts — 6 engineering workflow prompts with argument substitution:
+  `fix-lint-errors`, `audit-and-upgrade-deps`, `validate-and-fix`,
+  `onboard-to-project`, `add-test-for`, `explain-errors`
+- [x] Extension packaged as installable .vsix (36.99 KB) via `vsce package`
+- [x] Full INSTALL.md guide covering extension install + MCP server config
+- [x] End-to-end verified: initialize returns tools + resources + prompts capabilities
+- [x] 246 tests passing across the workspace
+
+## Installation
+
+See **[INSTALL.md](./INSTALL.md)** for step-by-step instructions on:
+- Installing the VS Code / Cursor extension from .vsix
+- Configuring the MCP agent server in Cursor
+- Using all 17 MCP tools, 6 prompts, and config file resources
+
+Quick install:
+```bash
+code --install-extension packages/extension/nodeforge-0.0.1.vsix
+```
+
+Quick MCP config (`.cursor/mcp.json`):
+```json
+{
+  "mcpServers": {
+    "nodeforge": {
+      "command": "node",
+      "args": ["/path/to/nodeforge/packages/agent/dist/cli.js"],
+      "env": { "NODEFORGE_WORKSPACE_ROOT": "/path/to/your/project" }
+    }
+  }
+}
+```
 
 ## Development
 
