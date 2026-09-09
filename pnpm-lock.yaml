@@ -53,6 +53,25 @@ importers:
         specifier: ^2.1.4
         version: 2.1.9(@types/node@20.19.43)
 
+  packages/adapters/docker:
+    dependencies:
+      '@nodeforge/contracts':
+        specifier: workspace:*
+        version: link:../../contracts
+      yaml:
+        specifier: ^2.5.0
+        version: 2.9.0
+    devDependencies:
+      '@types/node':
+        specifier: ^20.14.0
+        version: 20.19.43
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.4
+        version: 2.1.9(@types/node@20.19.43)
+
   packages/adapters/drizzle:
     dependencies:
       '@nodeforge/contracts':
@@ -107,6 +126,25 @@ importers:
         specifier: ^2.1.4
         version: 2.1.9(@types/node@20.19.43)
 
+  packages/adapters/github-actions:
+    dependencies:
+      '@nodeforge/contracts':
+        specifier: workspace:*
+        version: link:../../contracts
+      yaml:
+        specifier: ^2.5.0
+        version: 2.9.0
+    devDependencies:
+      '@types/node':
+        specifier: ^20.14.0
+        version: 20.19.43
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.4
+        version: 2.1.9(@types/node@20.19.43)
+
   packages/adapters/jest:
     dependencies:
       '@nodeforge/contracts':
@@ -115,6 +153,25 @@ importers:
       '@nodeforge/runner':
         specifier: workspace:*
         version: link:../../runner
+    devDependencies:
+      '@types/node':
+        specifier: ^20.14.0
+        version: 20.19.43
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.4
+        version: 2.1.9(@types/node@20.19.43)
+
+  packages/adapters/kubernetes:
+    dependencies:
+      '@nodeforge/contracts':
+        specifier: workspace:*
+        version: link:../../contracts
+      yaml:
+        specifier: ^2.5.0
+        version: 2.9.0
     devDependencies:
       '@types/node':
         specifier: ^20.14.0
@@ -188,6 +245,9 @@ importers:
       '@nodeforge/adapter-dependencies':
         specifier: workspace:*
         version: link:../adapters/dependencies
+      '@nodeforge/adapter-docker':
+        specifier: workspace:*
+        version: link:../adapters/docker
       '@nodeforge/adapter-drizzle':
         specifier: workspace:*
         version: link:../adapters/drizzle
@@ -197,9 +257,15 @@ importers:
       '@nodeforge/adapter-git':
         specifier: workspace:*
         version: link:../adapters/git
+      '@nodeforge/adapter-github-actions':
+        specifier: workspace:*
+        version: link:../adapters/github-actions
       '@nodeforge/adapter-jest':
         specifier: workspace:*
         version: link:../adapters/jest
+      '@nodeforge/adapter-kubernetes':
+        specifier: workspace:*
+        version: link:../adapters/kubernetes
       '@nodeforge/adapter-prisma':
         specifier: workspace:*
         version: link:../adapters/prisma
@@ -821,6 +887,11 @@ packages:
     engines: {node: '>=8'}
     hasBin: true
 
+  yaml@2.9.0:
+    resolution: {integrity: sha512-2AvhNX3mb8zd6Zy7INTtSpl1F15HW6Wnqj0srWlkKLcpYl/gMIMJiyuGq2KeI2YFxUPjdlB+3Lc10seMLtL4cA==}
+    engines: {node: '>= 14.6'}
+    hasBin: true
+
 snapshots:
 
   '@esbuild/aix-ppc64@0.21.5':
@@ -1219,3 +1290,5 @@ snapshots:
     dependencies:
       siginfo: 2.0.0
       stackback: 0.0.2
+
+  yaml@2.9.0: {}

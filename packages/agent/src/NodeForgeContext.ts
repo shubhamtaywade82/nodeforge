@@ -24,11 +24,17 @@ import { GitAdapter } from "@nodeforge/adapter-git";
 import { PrismaAdapter } from "@nodeforge/adapter-prisma";
 import { DrizzleAdapter } from "@nodeforge/adapter-drizzle";
 import { DependencyAdapter } from "@nodeforge/adapter-dependencies";
+import { DockerAdapter } from "@nodeforge/adapter-docker";
+import { KubernetesAdapter } from "@nodeforge/adapter-kubernetes";
+import { GitHubActionsAdapter } from "@nodeforge/adapter-github-actions";
 import type {
   DatabaseSchema,
   DependencyReport,
   Diagnostic,
+  DockerConfig,
+  GitHubActionsConfig,
   GitState,
+  KubernetesManifests,
   TestRunResult,
   TestSuite,
   WorkspaceProfile
@@ -184,6 +190,43 @@ export class NodeForgeContext {
   /** Run tests and return the result. */
   async runTests(): Promise<{ suite: TestSuite; result: TestRunResult } | undefined> {
     return this.getTestResults();
+  }
+
+  /** Detect Docker configuration (Dockerfile + docker-compose.yml). */
+  async getDockerConfig(): Promise<DockerConfig | undefined> {
+    try {
+      return await new DockerAdapter().detect(this.workspaceRoot);
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error("[nodeforge:mcp] Docker detect failed", err);
+      return undefined;
+    }
+  }
+
+  /** Detect Kubernetes manifests in standard scan directories. */
+  async getKubernetesManifests(): Promise<KubernetesManifests | undefined> {
+    try {
+      const result = await new KubernetesAdapter().detect(this.workspaceRoot);
+      if (result.resources.length === 0) return undefined;
+      return result;
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error("[nodeforge:mcp] Kubernetes detect failed", err);
+      return undefined;
+    }
+  }
+
+  /** Detect GitHub Actions workflows in .github/workflows/. */
+  async getGitHubWorkflows(): Promise<GitHubActionsConfig | undefined> {
+    try {
+      const result = await new GitHubActionsAdapter().detect(this.workspaceRoot);
+      if (result.workflows.length === 0) return undefined;
+      return result;
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error("[nodeforge:mcp] GitHub Actions detect failed", err);
+      return undefined;
+    }
   }
 }
 

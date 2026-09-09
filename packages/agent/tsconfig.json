@@ -20,6 +20,9 @@
     { "path": "../adapters/git" },
     { "path": "../adapters/prisma" },
     { "path": "../adapters/drizzle" },
-    { "path": "../adapters/dependencies" }
+    { "path": "../adapters/dependencies" },
+    { "path": "../adapters/docker" },
+    { "path": "../adapters/kubernetes" },
+    { "path": "../adapters/github-actions" }
   ]
 }

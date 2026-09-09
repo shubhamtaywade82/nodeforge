@@ -16,6 +16,9 @@ export * from "./dependency.js";
 export * from "./database.js";
 export * from "./command.js";
 export * from "./event.js";
+export * from "./docker.js";
+export * from "./kubernetes.js";
+export * from "./github-actions.js";
 
 /**
  * Build a stable diagnostic id from its parts. Used by every adapter so

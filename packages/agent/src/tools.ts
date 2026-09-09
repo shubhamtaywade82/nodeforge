@@ -153,6 +153,51 @@ export const TOOLS: McpTool[] = [
       }
       return JSON.stringify(schema, null, 2);
     }
+  },
+  {
+    definition: {
+      name: "getDockerConfig",
+      description:
+        "Detect Docker configuration: parses Dockerfile (base image, stages, env, ports, healthcheck) and docker-compose.yml (services, ports, volumes, networks, depends_on). Returns undefined if no Docker files exist.",
+      inputSchema: { type: "object", properties: {} }
+    },
+    handler: async (_args, ctx) => {
+      const config = await ctx.getDockerConfig();
+      if (!config || (!config.dockerfile && !config.compose)) {
+        return JSON.stringify({ error: "No Docker configuration detected (no Dockerfile or docker-compose.yml)." });
+      }
+      return JSON.stringify(config, null, 2);
+    }
+  },
+  {
+    definition: {
+      name: "getKubernetesManifests",
+      description:
+        "Detect Kubernetes manifests in standard directories (k8s/, .k8s/, manifests/, kubernetes/). Returns Deployments, Services, ConfigMaps, Secrets, Ingresses with full spec (containers, ports, env, resources, probes). Returns undefined if no manifests found.",
+      inputSchema: { type: "object", properties: {} }
+    },
+    handler: async (_args, ctx) => {
+      const manifests = await ctx.getKubernetesManifests();
+      if (!manifests) {
+        return JSON.stringify({ error: "No Kubernetes manifests detected." });
+      }
+      return JSON.stringify(manifests, null, 2);
+    }
+  },
+  {
+    definition: {
+      name: "getGitHubWorkflows",
+      description:
+        "Detect GitHub Actions workflows in .github/workflows/. Returns each workflow with triggers (push/pull_request/schedule/workflow_dispatch), jobs, steps, matrix strategy, env, concurrency, and permissions. Returns undefined if no workflows found.",
+      inputSchema: { type: "object", properties: {} }
+    },
+    handler: async (_args, ctx) => {
+      const config = await ctx.getGitHubWorkflows();
+      if (!config) {
+        return JSON.stringify({ error: "No GitHub Actions workflows detected." });
+      }
+      return JSON.stringify(config, null, 2);
+    }
   }
 ];
 

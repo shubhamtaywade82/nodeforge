@@ -125,9 +125,20 @@ Phase 6:
 - [x] Full Cursor MCP config documentation in `packages/agent/README.md`
 - [x] 171 tests passing across the workspace
 
+Phase 7:
+
+- [x] `packages/adapters/docker` — parses Dockerfile (FROM/WORKDIR/ENV/EXPOSE/COPY/CMD/HEALTHCHECK,
+  multi-stage builds) and docker-compose.yml (services/ports/volumes/networks/depends_on/healthcheck)
+- [x] `packages/adapters/kubernetes` — parses k8s manifests (Deployment/Service/ConfigMap/Secret/
+  Ingress) with containers, ports, env vars (incl. secret/configmap refs), resources, probes
+- [x] `packages/adapters/github-actions` — parses .github/workflows/*.yml (triggers including
+  push/pull_request/schedule/workflow_dispatch, jobs, steps, matrix, env, concurrency, permissions)
+- [x] 3 new MCP tools: `getDockerConfig`, `getKubernetesManifests`, `getGitHubWorkflows` (12 total)
+- [x] Real fixture repo with Dockerfile, docker-compose.yml, k8s/ manifests, .github/workflows/
+- [x] 208 tests passing across the workspace
+
 Upcoming milestones (see `CLAUDE.md`):
 
-- Docker / Kubernetes / GitHub Actions deep integration
 - Dependency graph analysis (unused / circular deps)
 - Performance profiling + bundle analysis
 - MCP resources (expose config files) + prompts (engineering workflows)
