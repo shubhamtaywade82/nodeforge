@@ -137,11 +137,23 @@ Phase 7:
 - [x] Real fixture repo with Dockerfile, docker-compose.yml, k8s/ manifests, .github/workflows/
 - [x] 208 tests passing across the workspace
 
+Phase 8:
+
+- [x] `packages/adapters/dependency-graph` — builds import graph from source files, detects
+  unused dependencies (declared but never imported), circular dependencies (import cycles),
+  and missing dependencies (imported but not declared)
+- [x] Handles `.js` → `.ts` extension mapping (standard ESM convention)
+- [x] False-positive detection for CLI tools / config plugins / `@types/*` packages
+- [x] DFS-based circular dependency detection among file nodes
+- [x] 1 new MCP tool: `getDependencyGraph` (13 total)
+- [x] Real fixture with deliberate unused dep (`lodash`) and circular chain (`a → b → c → a`)
+- [x] 235 tests passing across the workspace
+
 Upcoming milestones (see `CLAUDE.md`):
 
-- Dependency graph analysis (unused / circular deps)
 - Performance profiling + bundle analysis
 - MCP resources (expose config files) + prompts (engineering workflows)
+- Action tools: `applyEslintFix`, `formatFiles`, `runScript`, `validateWorkspace`
 
 ## Development
 

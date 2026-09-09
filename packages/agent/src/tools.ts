@@ -198,6 +198,21 @@ export const TOOLS: McpTool[] = [
       }
       return JSON.stringify(config, null, 2);
     }
+  },
+  {
+    definition: {
+      name: "getDependencyGraph",
+      description:
+        "Analyze the dependency graph: scans all source files for import/require statements, builds the import graph, and detects unused dependencies (declared but never imported), circular dependencies (import cycles), and missing dependencies (imported but not declared). Returns the full graph + analysis.",
+      inputSchema: { type: "object", properties: {} }
+    },
+    handler: async (_args, ctx) => {
+      const analysis = await ctx.getDependencyGraph();
+      if (!analysis) {
+        return JSON.stringify({ error: "Dependency graph analysis failed (no package.json or source files)." });
+      }
+      return JSON.stringify(analysis, null, 2);
+    }
   }
 ];
 

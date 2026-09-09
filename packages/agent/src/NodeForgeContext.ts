@@ -27,8 +27,10 @@ import { DependencyAdapter } from "@nodeforge/adapter-dependencies";
 import { DockerAdapter } from "@nodeforge/adapter-docker";
 import { KubernetesAdapter } from "@nodeforge/adapter-kubernetes";
 import { GitHubActionsAdapter } from "@nodeforge/adapter-github-actions";
+import { DependencyGraphAdapter } from "@nodeforge/adapter-dependency-graph";
 import type {
   DatabaseSchema,
+  DependencyGraphAnalysis,
   DependencyReport,
   Diagnostic,
   DockerConfig,
@@ -225,6 +227,17 @@ export class NodeForgeContext {
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error("[nodeforge:mcp] GitHub Actions detect failed", err);
+      return undefined;
+    }
+  }
+
+  /** Analyze the dependency graph (unused deps, circular deps, missing deps). */
+  async getDependencyGraph(): Promise<DependencyGraphAnalysis | undefined> {
+    try {
+      return await new DependencyGraphAdapter().analyze(this.workspaceRoot);
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error("[nodeforge:mcp] dependency graph analysis failed", err);
       return undefined;
     }
   }

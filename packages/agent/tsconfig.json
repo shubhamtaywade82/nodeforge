@@ -23,6 +23,7 @@
     { "path": "../adapters/dependencies" },
     { "path": "../adapters/docker" },
     { "path": "../adapters/kubernetes" },
-    { "path": "../adapters/github-actions" }
+    { "path": "../adapters/github-actions" },
+    { "path": "../adapters/dependency-graph" }
   ]
 }

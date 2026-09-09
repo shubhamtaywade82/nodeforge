@@ -41,7 +41,8 @@
     "@nodeforge/adapter-dependencies": "workspace:*",
     "@nodeforge/adapter-docker": "workspace:*",
     "@nodeforge/adapter-kubernetes": "workspace:*",
-    "@nodeforge/adapter-github-actions": "workspace:*"
+    "@nodeforge/adapter-github-actions": "workspace:*",
+    "@nodeforge/adapter-dependency-graph": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",

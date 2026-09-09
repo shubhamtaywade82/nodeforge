@@ -63,7 +63,7 @@ describe("McpServer protocol", () => {
       method: "tools/list"
     });
     const result = response!.result as { tools: Array<{ name: string; description: string; inputSchema: unknown }> };
-    expect(result.tools.length).toBeGreaterThanOrEqual(12);
+    expect(result.tools.length).toBeGreaterThanOrEqual(13);
     const names = result.tools.map((t) => t.name);
     expect(names).toEqual(
       expect.arrayContaining([
@@ -78,7 +78,8 @@ describe("McpServer protocol", () => {
         "getDatabaseSchema",
         "getDockerConfig",
         "getKubernetesManifests",
-        "getGitHubWorkflows"
+        "getGitHubWorkflows",
+        "getDependencyGraph"
       ])
     );
   });
@@ -308,6 +309,44 @@ describe("McpServer tool dispatch (real adapter runs)", () => {
     expect(ci!.triggers.length).toBe(3);
     const release = config.workflows.find((w) => w.name === "Release");
     expect(release).toBeDefined();
+  });
+
+  it("getDependencyGraph returns graph with unused + circular deps", async () => {
+    // Use the depgraph fixture which has deliberate unused + circular deps.
+    const depgraphFixture = path.resolve(__dirname, "../../test-fixtures/node-ts-depgraph");
+    const ctx = new NodeForgeContext(depgraphFixture);
+    const server = new McpServer(ctx);
+    const response = await server.handleMessage({
+      jsonrpc: "2.0",
+      id: 19,
+      method: "tools/call",
+      params: { name: "getDependencyGraph", arguments: {} }
+    });
+
+    const result = response!.result as { content: Array<{ text: string }> };
+    const analysis = JSON.parse(result.content[0]!.text) as {
+      graph: { nodes: Array<{ kind: string }>; edges: unknown[] };
+      unused: Array<{ packageName: string; likelyFalsePositive: boolean }>;
+      circular: Array<{ chain: string[]; length: number }>;
+      missing: unknown[];
+    };
+
+    // The fixture has source files and declared packages.
+    expect(analysis.graph.nodes.length).toBeGreaterThan(0);
+    expect(analysis.graph.edges.length).toBeGreaterThan(0);
+
+    // `lodash` is declared but never imported → unused, not false positive.
+    const lodash = analysis.unused.find((u) => u.packageName === "lodash");
+    expect(lodash).toBeDefined();
+    expect(lodash!.likelyFalsePositive).toBe(false);
+
+    // `typescript` is a false positive (dev tool, not directly imported).
+    const ts = analysis.unused.find((u) => u.packageName === "typescript");
+    expect(ts).toBeDefined();
+    expect(ts!.likelyFalsePositive).toBe(true);
+
+    // The fixture has a circular dependency: a → b → c → a.
+    expect(analysis.circular.length).toBeGreaterThanOrEqual(1);
   });
 });
 
