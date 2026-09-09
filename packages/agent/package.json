@@ -1,0 +1,48 @@
+{
+  "name": "@nodeforge/agent",
+  "version": "0.0.1",
+  "private": true,
+  "description": "NodeForge MCP server — exposes workspace intelligence to AI agents via Model Context Protocol.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "nodeforge-mcp": "./dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "src", "README.md"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:watch": "vitest",
+    "start": "node dist/cli.js",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@nodeforge/contracts": "workspace:*",
+    "@nodeforge/core": "workspace:*",
+    "@nodeforge/runner": "workspace:*",
+    "@nodeforge/adapter-typescript": "workspace:*",
+    "@nodeforge/adapter-eslint": "workspace:*",
+    "@nodeforge/adapter-biome": "workspace:*",
+    "@nodeforge/adapter-vitest": "workspace:*",
+    "@nodeforge/adapter-jest": "workspace:*",
+    "@nodeforge/adapter-git": "workspace:*",
+    "@nodeforge/adapter-prisma": "workspace:*",
+    "@nodeforge/adapter-drizzle": "workspace:*",
+    "@nodeforge/adapter-dependencies": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.4"
+  }
+}

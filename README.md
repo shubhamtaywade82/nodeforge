@@ -113,12 +113,24 @@ Phase 5:
 - [x] Auto-detects database schema on activation when ORM is present
 - [x] 152 tests passing across the workspace
 
+Phase 6:
+
+- [x] `packages/agent` — MCP server (JSON-RPC 2.0 over stdio) with 9 tools:
+  `getProjectContext`, `getDiagnostics`, `runTypeCheck`, `runLinter`,
+  `getTestResults`, `runTests`, `getGitState`, `getDependencyReport`,
+  `getDatabaseSchema`
+- [x] `NodeForgeContext` — re-uses all adapters to read workspace state on demand
+- [x] Standalone CLI entry point (`nodeforge-mcp`) that Cursor/Claude Code can spawn
+- [x] `AgentViewProvider` in the extension sidebar shows MCP server status + tool reference
+- [x] Full Cursor MCP config documentation in `packages/agent/README.md`
+- [x] 171 tests passing across the workspace
+
 Upcoming milestones (see `CLAUDE.md`):
 
-- Agent interface (MCP) — context + tools + repair loop
 - Docker / Kubernetes / GitHub Actions deep integration
 - Dependency graph analysis (unused / circular deps)
 - Performance profiling + bundle analysis
+- MCP resources (expose config files) + prompts (engineering workflows)
 
 ## Development
 

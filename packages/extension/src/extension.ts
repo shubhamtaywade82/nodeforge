@@ -26,6 +26,7 @@ import { RuntimeViewProvider } from "./ui/RuntimeViewProvider.js";
 import { GitViewProvider } from "./ui/GitViewProvider.js";
 import { DatabaseViewProvider } from "./ui/DatabaseViewProvider.js";
 import { DependencyViewProvider } from "./ui/DependencyViewProvider.js";
+import { AgentViewProvider } from "./ui/AgentViewProvider.js";
 import { WorkspaceManager } from "./core/WorkspaceManager.js";
 import { DiagnosticManager } from "./core/DiagnosticManager.js";
 import { TestManager } from "./core/TestManager.js";
@@ -69,6 +70,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const gitView = new GitViewProvider();
   const databaseView = new DatabaseViewProvider();
   const dependencyView = new DependencyViewProvider();
+  const agentView = new AgentViewProvider(context);
 
   context.subscriptions.push(
     vscode.window.registerTreeDataProvider("nodeforge.workspace", workspaceView),
@@ -77,7 +79,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.window.registerTreeDataProvider("nodeforge.runtime", runtimeView),
     vscode.window.registerTreeDataProvider("nodeforge.git", gitView),
     vscode.window.registerTreeDataProvider("nodeforge.database", databaseView),
-    vscode.window.registerTreeDataProvider("nodeforge.dependencies", dependencyView)
+    vscode.window.registerTreeDataProvider("nodeforge.dependencies", dependencyView),
+    vscode.window.registerTreeDataProvider("nodeforge.agent", agentView)
   );
 
   // Internal command — opens a file at a line/col. Used by diagnostic + test

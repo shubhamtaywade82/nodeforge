@@ -184,7 +184,8 @@
     "@nodeforge/adapter-git": "workspace:*",
     "@nodeforge/adapter-prisma": "workspace:*",
     "@nodeforge/adapter-drizzle": "workspace:*",
-    "@nodeforge/adapter-dependencies": "workspace:*"
+    "@nodeforge/adapter-dependencies": "workspace:*",
+    "@nodeforge/agent": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",
