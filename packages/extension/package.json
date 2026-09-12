@@ -10,7 +10,7 @@
   "engines": {
     "vscode": "^1.85.0"
   },
-  "categories": ["Other", "Programming Languages", "Debuggers", "Testing"],
+  "categories": ["Other", "Programming Languages", "Testing"],
   "keywords": ["node", "typescript", "eslint", "biome", "vitest", "jest", "prisma", "drizzle", "ai", "cursor"],
   "activationEvents": [
     "onCommand:nodeforge.analyzeWorkspace",
@@ -103,6 +103,23 @@
           "when": "view == nodeforge.dependencies",
           "group": "navigation"
         }
+      ],
+      "view/item/context": [
+        {
+          "command": "nodeforge.stopProcess",
+          "when": "view == nodeforge.runtime && viewItem == process",
+          "group": "inline"
+        },
+        {
+          "command": "nodeforge.openAdvisoryUrl",
+          "when": "view == nodeforge.dependencies && viewItem == detail",
+          "group": "inline"
+        },
+        {
+          "command": "nodeforge.copyAdvisoryUrl",
+          "when": "view == nodeforge.dependencies && viewItem == detail",
+          "group": "9_cutcopypaste"
+        }
       ]
     },
     "commands": [
@@ -145,6 +162,29 @@
         "title": "NodeForge: Audit Dependencies",
         "category": "NodeForge",
         "icon": "$(shield)"
+      },
+      {
+        "command": "nodeforge.showOutput",
+        "title": "NodeForge: Show Output",
+        "category": "NodeForge"
+      },
+      {
+        "command": "nodeforge.stopProcess",
+        "title": "Stop Process",
+        "category": "NodeForge",
+        "icon": "$(debug-stop)"
+      },
+      {
+        "command": "nodeforge.copyAdvisoryUrl",
+        "title": "Copy Advisory URL",
+        "category": "NodeForge",
+        "icon": "$(copy)"
+      },
+      {
+        "command": "nodeforge.openAdvisoryUrl",
+        "title": "Open Advisory URL",
+        "category": "NodeForge",
+        "icon": "$(link-external)"
       }
     ],
     "configuration": {
