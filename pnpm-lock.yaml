@@ -403,6 +403,9 @@ importers:
       '@nodeforge/adapter-jest':
         specifier: workspace:*
         version: link:../adapters/jest
+      '@nodeforge/adapter-prettier':
+        specifier: workspace:*
+        version: link:../adapters/prettier
       '@nodeforge/adapter-prisma':
         specifier: workspace:*
         version: link:../adapters/prisma

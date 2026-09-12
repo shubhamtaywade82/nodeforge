@@ -10,7 +10,7 @@
   "engines": {
     "vscode": "^1.85.0"
   },
-  "categories": ["Other", "Programming Languages", "Debuggers", "Testing"],
+  "categories": ["Other", "Programming Languages", "Testing", "Debuggers"],
   "keywords": ["node", "typescript", "eslint", "biome", "vitest", "jest", "prisma", "drizzle", "ai", "cursor"],
   "activationEvents": [
     "onCommand:nodeforge.analyzeWorkspace",
@@ -28,6 +28,18 @@
     }
   },
   "contributes": {
+    "taskDefinitions": [
+      {
+        "type": "nodeforge",
+        "required": ["script"],
+        "properties": {
+          "script": {
+            "type": "string",
+            "description": "The package.json script to run"
+          }
+        }
+      }
+    ],
     "viewsContainers": {
       "activitybar": [
         {
@@ -142,6 +154,23 @@
           "when": "editorTextFocus",
           "group": "navigation@95"
         }
+      ],
+      "view/item/context": [
+        {
+          "command": "nodeforge.stopProcess",
+          "when": "view == nodeforge.runtime && viewItem == process",
+          "group": "inline"
+        },
+        {
+          "command": "nodeforge.openAdvisoryUrl",
+          "when": "view == nodeforge.dependencies && viewItem == detail",
+          "group": "inline"
+        },
+        {
+          "command": "nodeforge.copyAdvisoryUrl",
+          "when": "view == nodeforge.dependencies && viewItem == detail",
+          "group": "9_cutcopypaste"
+        }
       ]
     },
     "commands": [
@@ -228,6 +257,75 @@
         "title": "NodeForge: Sync DevDocs Offline",
         "category": "NodeForge",
         "icon": "$(cloud-download)"
+      },
+      {
+        "command": "nodeforge.showOutput",
+        "title": "NodeForge: Show Output",
+        "category": "NodeForge"
+      },
+      {
+        "command": "nodeforge.stopProcess",
+        "title": "Stop Process",
+        "category": "NodeForge",
+        "icon": "$(debug-stop)"
+      },
+      {
+        "command": "nodeforge.copyAdvisoryUrl",
+        "title": "Copy Advisory URL",
+        "category": "NodeForge",
+        "icon": "$(copy)"
+      },
+      {
+        "command": "nodeforge.openAdvisoryUrl",
+        "title": "Open Advisory URL",
+        "category": "NodeForge",
+        "icon": "$(link-external)"
+      },
+      {
+        "command": "nodeforge.applyEslintFix",
+        "title": "NodeForge: Apply ESLint --fix",
+        "category": "NodeForge",
+        "icon": "$(wand)"
+      },
+      {
+        "command": "nodeforge.applyBiomeFix",
+        "title": "NodeForge: Apply Biome Safe Fixes",
+        "category": "NodeForge",
+        "icon": "$(wand)"
+      },
+      {
+        "command": "nodeforge.formatCurrentFile",
+        "title": "NodeForge: Format Current File",
+        "category": "NodeForge",
+        "icon": "$(align-left)"
+      },
+      {
+        "command": "nodeforge.runTestFromFile",
+        "title": "NodeForge: Run Tests from Current File",
+        "category": "NodeForge"
+      },
+      {
+        "command": "nodeforge.debugTestFromFile",
+        "title": "NodeForge: Debug Test at Cursor",
+        "category": "NodeForge"
+      },
+      {
+        "command": "nodeforge.startDevServer",
+        "title": "NodeForge: Start Dev Server",
+        "category": "NodeForge",
+        "icon": "$(play)"
+      },
+      {
+        "command": "nodeforge.showDependencyGraph",
+        "title": "NodeForge: Show Dependency Graph",
+        "category": "NodeForge",
+        "icon": "$(graph)"
+      },
+      {
+        "command": "nodeforge.showDatabaseSchema",
+        "title": "NodeForge: Show Database Schema (ER Diagram)",
+        "category": "NodeForge",
+        "icon": "$(table)"
       }
     ],
     "configuration": {
@@ -297,7 +395,56 @@
           "description": "Additional DevDocs slugs to include when syncing (e.g. react, express)."
         }
       }
-    }
+    },
+    "walkthroughs": [
+      {
+        "id": "nodeforge.welcome",
+        "title": "Get Started with NodeForge",
+        "description": "Your autonomous Node.js/TypeScript engineering workspace",
+        "steps": [
+          {
+            "id": "analyze",
+            "title": "Analyze Your Workspace",
+            "description": "NodeForge detects your runtime, package manager, linter, formatter, test runner, ORM, and more.\n[Analyze Workspace](command:nodeforge.analyzeWorkspace)",
+            "media": {
+              "markdown": "Open any Node.js/TypeScript project and NodeForge will automatically detect:\n\n- **Runtime**: Node, Bun, or Deno\n- **Package Manager**: npm, pnpm, or yarn\n- **Linter**: ESLint or Biome\n- **Formatter**: Prettier or Biome\n- **Test Runner**: Vitest, Jest, or Node test\n- **ORM**: Prisma or Drizzle\n- **Infrastructure**: Docker, Kubernetes, GitHub Actions\n\nThe profile appears in the **Workspace** view in the NodeForge sidebar."
+            }
+          },
+          {
+            "id": "diagnostics",
+            "title": "Run Diagnostics",
+            "description": "Get TypeScript + ESLint/Biome findings with squigglies in the editor and entries in the Problems panel.\n[Run Diagnostics](command:nodeforge.runDiagnostics)",
+            "media": {
+              "markdown": "NodeForge bridges diagnostics from all your tools into VS Code's native Problems panel:\n\n- **TypeScript** compiler errors\n- **ESLint** or **Biome** lint findings\n- Editor squigglies (red/yellow/blue)\n- F8 / Shift+F8 navigation\n- Status bar error count\n\nClick the lightbulb (💡) for Quick Fixes like \"Apply ESLint --fix\" or \"Disable rule on this line\"."
+            }
+          },
+          {
+            "id": "tests",
+            "title": "Run Tests",
+            "description": "Run Vitest or Jest with native Test Explorer integration.\n[Run Tests](command:nodeforge.runTests)",
+            "media": {
+              "markdown": "NodeForge integrates with VS Code's Test Explorer:\n\n- Gutter glyphs (✓ green check / ✗ red X)\n- \"Run Test\" code lenses above `it()` calls\n- Per-test status icons\n- Click a test to jump to its source\n\nUse `Debug Test` to debug a single test with breakpoints."
+            }
+          },
+          {
+            "id": "agent",
+            "title": "Configure the MCP Agent",
+            "description": "Enable AI agents (Cursor, Claude Code) to read your workspace and take actions.\n[Show Agent Setup](command:nodeforge.refresh)",
+            "media": {
+              "markdown": "NodeForge ships an MCP server with **17 tools**, **6 prompts**, and **22 resource types**.\n\n**Quick setup:**\n1. Build: `cd packages/agent && pnpm build`\n2. Add to `.cursor/mcp.json`:\n```json\n{\n  \"mcpServers\": {\n    \"nodeforge\": {\n      \"command\": \"node\",\n      \"args\": [\"/path/to/nodeforge/packages/agent/dist/cli.js\"],\n      \"env\": { \"NODEFORGE_WORKSPACE_ROOT\": \"/your/project\" }\n    }\n  }\n}\n```\n3. Restart Cursor\n\nThen ask: \"What does this project use?\", \"Run diagnostics\", \"Validate the workspace\"."
+            }
+          },
+          {
+            "id": "explore",
+            "title": "Explore More Features",
+            "description": "Dependency graph, ER diagrams, runtime terminals, git state, and more.",
+            "media": {
+              "markdown": "**Explore the sidebar views:**\n\n| View | What it shows |\n|------|----------------|\n| Workspace | Detected profile |\n| Diagnostics | Live findings |\n| Tests | Test suite tree |\n| Runtime | Running processes |\n| Git | Branch, dirty status, files |\n| Database | Schema (Prisma/Drizzle) |\n| Dependencies | Vulnerabilities + outdated |\n| Agent | MCP server setup |\n\n**Try these commands:**\n- `NodeForge: Show Dependency Graph` — interactive import graph\n- `NodeForge: Show Database Schema` — ER diagram\n- `NodeForge: Start Dev Server` — launch in a real terminal\n- `NodeForge: Audit Dependencies` — vulnerability scan"
+            }
+          }
+        ]
+      }
+    ]
   },
   "scripts": {
     "build": "node esbuild.mjs --production",
@@ -323,6 +470,7 @@
     "@nodeforge/adapter-dependencies": "workspace:*",
     "@nodeforge/adapter-dependency-graph": "workspace:*",
     "@nodeforge/adapter-devdocs": "workspace:*",
+    "@nodeforge/adapter-prettier": "workspace:*",
     "@nodeforge/agent": "workspace:*"
   },
   "devDependencies": {

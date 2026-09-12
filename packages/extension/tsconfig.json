@@ -28,6 +28,7 @@
     { "path": "../adapters/dependencies" },
     { "path": "../adapters/dependency-graph" },
     { "path": "../adapters/devdocs" },
+    { "path": "../adapters/prettier" },
     { "path": "../agent" }
   ]
 }
