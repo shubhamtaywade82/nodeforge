@@ -175,19 +175,33 @@ Phase 10:
 - [x] End-to-end verified: initialize returns tools + resources + prompts capabilities
 - [x] 246 tests passing across the workspace
 
+## Documentation
+
+| Doc | Description |
+| ----- | ------------- |
+| **[docs/extension-user-guide.md](./docs/extension-user-guide.md)** | Full guide for the VS Code / Cursor extension |
+| **[docs/devdocs.md](./docs/devdocs.md)** | DevDocs.io integration in the sidebar |
+| **[docs/README.md](./docs/README.md)** | Documentation index |
+| **[INSTALL.md](./INSTALL.md)** | Install `.vsix`, optional MCP |
+| **[TESTING.md](./TESTING.md)** | Manual QA checklists |
+| **[packages/extension/README.md](./packages/extension/README.md)** | Extension package + F5 dev loop |
+
 ## Installation
 
 See **[INSTALL.md](./INSTALL.md)** for step-by-step instructions on:
+
 - Installing the VS Code / Cursor extension from .vsix
 - Configuring the MCP agent server in Cursor
 - Using all 17 MCP tools, 6 prompts, and config file resources
 
 Quick install:
+
 ```bash
 code --install-extension packages/extension/nodeforge-0.0.1.vsix
 ```
 
 Quick MCP config (`.cursor/mcp.json`):
+
 ```json
 {
   "mcpServers": {

@@ -276,8 +276,10 @@ async function detectPackageManager(
         if (pmField.startsWith("bun@")) return "bun";
       }
     } catch {
-      // ignore — fall through to unknown
+      // ignore — fall through
     }
+    // No lockfile in repo (common in fixtures and new projects); npm is the default runner.
+    return "npm";
   }
   return "unknown";
 }

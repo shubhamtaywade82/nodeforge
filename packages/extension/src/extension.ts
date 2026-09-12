@@ -14,7 +14,14 @@
 
 import * as vscode from "vscode";
 
-import { InMemoryEventBus, NodeFilesystemReader, ProcessManager, buildDevDocsUrl, DEVDOCS_HOME_URL } from "@nodeforge/core";
+import {
+  InMemoryEventBus,
+  NodeFilesystemReader,
+  ProcessManager,
+  buildDevDocsUrl,
+  devDocsDefaultSlug,
+  DEVDOCS_HOME_URL
+} from "@nodeforge/core";
 import { ProcessRunner } from "@nodeforge/runner";
 import { GitAdapter } from "@nodeforge/adapter-git";
 import type { EventBus, GitState, WorkspaceProfile, DatabaseSchema, DependencyReport } from "@nodeforge/contracts";
@@ -366,6 +373,25 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand("nodeforge.openChat", async () => {
       await vscode.commands.executeCommand("nodeforge-sidebar.focus");
       await vscode.commands.executeCommand("nodeforge.chat.focus");
+    }),
+    vscode.commands.registerCommand("nodeforge.openDevDocs", async () => {
+      await openDevDocs(DEVDOCS_HOME_URL);
+    }),
+    vscode.commands.registerCommand("nodeforge.openDevDocsForWorkspace", async () => {
+      const profile = manager.current();
+      if (!profile) {
+        void vscode.window.showWarningMessage("NodeForge: analyze the workspace first.");
+        return;
+      }
+      await openDevDocs(buildDevDocsUrl({ slug: devDocsDefaultSlug(profile) }));
+    }),
+    vscode.commands.registerCommand("nodeforge.searchDevDocs", async () => {
+      const query = readEditorSearchQuery();
+      if (!query) {
+        void vscode.window.showWarningMessage("NodeForge: select a symbol or word to search in DevDocs.");
+        return;
+      }
+      await openDevDocs(buildDevDocsUrl({ query }));
     })
   );
 
@@ -485,6 +511,7 @@ export function deactivate(): void {
   dependencyDiagnostics?.dispose();
   dependencyDiagnostics = undefined;
   chatWebviewProvider = undefined;
+  devDocsProvider = undefined;
   gitAdapter = undefined;
   eventBus = undefined;
   if (depAuditTimer) {
@@ -514,6 +541,30 @@ function isWorkspaceTrustedSync(): boolean {
   const ws = vscode.workspace as typeof vscode.workspace & { isWorkspaceTrusted?: boolean };
   if (typeof ws.isWorkspaceTrusted === "boolean") return ws.isWorkspaceTrusted;
   return true;
+}
+
+async function openDevDocs(url: string): Promise<void> {
+  const preferExternal = vscode.workspace
+    .getConfiguration("nodeforge.docs")
+    .get<boolean>("preferExternal", false);
+  if (preferExternal) {
+    await vscode.env.openExternal(vscode.Uri.parse(url));
+    return;
+  }
+  devDocsProvider?.navigate(url);
+  await vscode.commands.executeCommand("nodeforge-sidebar.focus");
+  await vscode.commands.executeCommand("nodeforge.docs.focus");
+}
+
+function readEditorSearchQuery(): string | undefined {
+  const editor = vscode.window.activeTextEditor;
+  if (!editor) return undefined;
+  const sel = editor.document.getText(editor.selection).trim();
+  if (sel) return sel;
+  const pos = editor.selection.active;
+  const range = editor.document.getWordRangeAtPosition(pos);
+  if (!range) return undefined;
+  return editor.document.getText(range).trim() || undefined;
 }
 
 function scheduleBackgroundDependencyAudit(

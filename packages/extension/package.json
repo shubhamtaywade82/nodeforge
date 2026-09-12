@@ -73,6 +73,11 @@
           "name": "Chat"
         },
         {
+          "id": "nodeforge.docs",
+          "type": "webview",
+          "name": "Docs"
+        },
+        {
           "id": "nodeforge.agent",
           "name": "Agent"
         }
@@ -119,6 +124,18 @@
           "command": "nodeforge.clearChat",
           "when": "view == nodeforge.chat",
           "group": "navigation"
+        },
+        {
+          "command": "nodeforge.openDevDocsForWorkspace",
+          "when": "view == nodeforge.docs",
+          "group": "navigation"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "nodeforge.searchDevDocs",
+          "when": "editorTextFocus",
+          "group": "navigation@95"
         }
       ]
     },
@@ -184,6 +201,22 @@
         "command": "nodeforge.openChat",
         "title": "NodeForge: Open Chat",
         "category": "NodeForge"
+      },
+      {
+        "command": "nodeforge.openDevDocs",
+        "title": "NodeForge: Open DevDocs Home",
+        "category": "NodeForge"
+      },
+      {
+        "command": "nodeforge.openDevDocsForWorkspace",
+        "title": "NodeForge: Open DevDocs for Workspace",
+        "category": "NodeForge",
+        "icon": "$(book)"
+      },
+      {
+        "command": "nodeforge.searchDevDocs",
+        "title": "NodeForge: Search DevDocs",
+        "category": "NodeForge"
       }
     ],
     "configuration": {
@@ -230,6 +263,11 @@
           "type": "boolean",
           "default": true,
           "description": "Analyze dependency graph (unused/circular/missing) on activation and when package.json changes (trusted workspaces)."
+        },
+        "nodeforge.docs.preferExternal": {
+          "type": "boolean",
+          "default": false,
+          "description": "Open DevDocs in the system browser instead of the embedded Docs sidebar view."
         }
       }
     }

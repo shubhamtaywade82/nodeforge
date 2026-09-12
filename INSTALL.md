@@ -21,10 +21,13 @@ configuring the MCP agent server for Cursor.
    `download/` directory.
 
 2. Install via command line:
+
    ```bash
    code --install-extension nodeforge-0.0.1.vsix
    ```
+
    Or in Cursor:
+
    ```bash
    cursor --install-extension nodeforge-0.0.1.vsix
    ```
@@ -48,17 +51,20 @@ pnpm build
 ```
 
 Then in VS Code / Cursor:
+
 1. Open the `packages/extension/` folder
 2. Press `F5` to launch an Extension Development Host
 3. The NodeForge sidebar will appear in the new window
 
 ## Part 2: Using the Extension
 
+For the full feature reference (commands, settings, chat, trust model, limitations), see **[docs/extension-user-guide.md](./docs/extension-user-guide.md)**.
+
 Once installed, open any Node.js/TypeScript project. The NodeForge sidebar
-will appear in the Activity Bar on the left with 9 views:
+will appear in the Activity Bar on the left with 10 views:
 
 | View | What it shows |
-|------|---------------|
+| ------ | --------------- |
 | **Workspace** | Detected runtime, package manager, linter, formatter, test runner, ORM, Docker, CI |
 | **Diagnostics** | Live TypeScript + ESLint/Biome findings (auto-refreshes on save) |
 | **Tests** | Test suite tree with pass/fail icons (run via `NodeForge: Run Tests` command) |
@@ -67,6 +73,7 @@ will appear in the Activity Bar on the left with 9 views:
 | **Database** | Schema tree (tables, columns, indexes, relations) — if Prisma or Drizzle is detected |
 | **Dependencies** | Vulnerabilities, outdated packages, unused/circular/missing deps |
 | **Chat** | Built-in NodeForge AI assistant (OpenAI-compatible API) |
+| **Docs** | DevDocs.io documentation (embedded; see [docs/devdocs.md](./docs/devdocs.md)) |
 | **Agent** | MCP server status + tool reference (optional external agents) |
 
 ### Built-in Chat (no Cursor/Copilot required)
@@ -99,11 +106,13 @@ On activation (trusted workspaces), NodeForge can automatically run a dependency
 - `NodeForge: Set Chat API Key` — store API key for built-in chat
 - `NodeForge: Open Chat` — focus the Chat sidebar
 - `NodeForge: Clear Chat` — reset chat history
+- `NodeForge: Open DevDocs Home` / **Search DevDocs** / **Open DevDocs for Workspace**
 - `NodeForge: Refresh` — refresh all views
 
 ### Workspace Trust
 
 NodeForge respects VS Code's Workspace Trust model:
+
 - **Restricted Mode**: workspace detection runs (read-only), but no adapters
   execute. The sidebar shows the profile but diagnostics are empty.
 - **Trusted Mode** (default for projects you own): full functionality —
@@ -156,6 +165,7 @@ NodeForge MCP server will appear in Cursor's MCP settings with a green
 ### Step 4: Use in agent conversations
 
 Now you can ask Cursor things like:
+
 - "What does this project use?"
 - "Run diagnostics and tell me what's broken"
 - "Run the tests and summarize failures"
@@ -171,6 +181,7 @@ JSON back.
 ### Available MCP Tools (17 total)
 
 **Read-only tools (13):**
+
 - `getProjectContext` — workspace profile
 - `getDiagnostics` — TS + ESLint/Biome findings
 - `runTypeCheck` — TypeScript compiler errors only
@@ -186,6 +197,7 @@ JSON back.
 - `getDependencyGraph` — unused + circular + missing deps
 
 **Action tools (4):**
+
 - `runScript` — run `npm run <script>` / `pnpm run <script>` / `yarn <script>`
 - `formatFiles` — run Prettier or Biome with `--write`
 - `applyEslintFix` — run ESLint with `--fix`
@@ -196,6 +208,7 @@ Dockerfile, etc.) are exposed as MCP resources — the agent can read them
 without running tools.
 
 **MCP Prompts (6):**
+
 - `fix-lint-errors` — auto-fix lint + suggest manual fixes
 - `audit-and-upgrade-deps` — vulnerability + outdated + unused dep audit
 - `validate-and-fix` — full validation + fix issues one by one
@@ -217,6 +230,7 @@ without running tools.
 ### MCP server verification
 
 Test the MCP server manually:
+
 ```bash
 echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' | \
   NODEFORGE_WORKSPACE_ROOT=/path/to/your/project \
@@ -226,6 +240,7 @@ echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' | \
 You should see a JSON response with `serverInfo.name = "nodeforge-mcp"`.
 
 Test tools/list:
+
 ```bash
 echo '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' | \
   NODEFORGE_WORKSPACE_ROOT=/path/to/your/project \
