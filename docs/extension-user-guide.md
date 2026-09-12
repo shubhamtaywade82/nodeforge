@@ -19,8 +19,8 @@ NodeForge is a **control plane** for Node.js, JavaScript, and TypeScript project
 
 1. Build or obtain `nodeforge-0.0.1.vsix` (see [INSTALL.md](../INSTALL.md)).
 2. Install via CLI or UI:
-   - In Cursor: `cursor --install-extension /path/to/nodeforge-0.0.1.vsix`
-   - In VS Code: `code --install-extension /path/to/nodeforge-0.0.1.vsix`
+   - In Cursor: `cursor --install-extension /home/nemesis/projects/developer-tools/nodeforge/packages/extension/nodeforge-0.0.1.vsix`
+   - In VS Code: `code --install-extension /home/nemesis/projects/developer-tools/nodeforge/packages/extension/nodeforge-0.0.1.vsix`
    - Or UI: **Extensions → … → Install from VSIX...**
 3. Reload the window (`Ctrl+Shift+P` → **Developer: Reload Window**).
 4. In your target project, ensure dev dependencies are installed (`npm install` / `pnpm install`) so local tools (`tsc`, `eslint`, etc.) resolve.
@@ -67,7 +67,7 @@ Full list: Command Palette → filter `NodeForge`.
 
 1. **NodeForge: Set Chat API Key** (Secret Storage).
 2. Open **Chat** in the sidebar.
-3. Ask in plain language or use chips / slash workflows:  
+3. Ask in plain language or use chips / slash workflows:
    `/audit-and-upgrade-deps`, `/validate-and-fix`, `/onboard-to-project`, `/explain-errors`
 
 The assistant calls the same engineering tools as the MCP server (diagnostics, tests, git, deps, format/fix when trusted).

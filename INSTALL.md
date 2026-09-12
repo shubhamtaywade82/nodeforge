@@ -37,12 +37,12 @@ This creates `packages/extension/nodeforge-0.0.1.vsix`.
 
 For **Cursor**:
 ```bash
-cursor --install-extension /path/to/nodeforge/packages/extension/nodeforge-0.0.1.vsix
+cursor --install-extension /home/nemesis/projects/developer-tools/nodeforge/packages/extension/nodeforge-0.0.1.vsix
 ```
 
 For **VS Code**:
 ```bash
-code --install-extension /path/to/nodeforge/packages/extension/nodeforge-0.0.1.vsix
+code --install-extension /home/nemesis/projects/developer-tools/nodeforge/packages/extension/nodeforge-0.0.1.vsix
 ```
 
 #### Via Editor UI
@@ -58,14 +58,15 @@ code --install-extension /path/to/nodeforge/packages/extension/nodeforge-0.0.1.v
 NodeForge executes your project's local tools (`tsc`, `eslint`, `vitest`, `jest`, etc.). Before testing or opening your target project, ensure its dependencies are installed:
 
 ```bash
-cd /path/to/your/project
-npm install   # or pnpm install / yarn
+# Example using the included all-in-one fixture:
+cd /home/nemesis/projects/developer-tools/nodeforge/packages/test-fixtures/node-ts-eslint
+npm install
 ```
 
 Then open it in your editor:
 ```bash
-cursor /path/to/your/project
-# or: code /path/to/your/project
+cursor /home/nemesis/projects/developer-tools/nodeforge/packages/test-fixtures/node-ts-eslint
+# or: code /home/nemesis/projects/developer-tools/nodeforge/packages/test-fixtures/node-ts-eslint
 ```
 
 When prompted by the editor, click **Trust Folder & Workspace** to allow NodeForge adapters to run.
@@ -75,12 +76,12 @@ When prompted by the editor, click **Trust Folder & Workspace** to allow NodeFor
 To develop or debug NodeForge itself without packaging:
 
 ```bash
-cd /path/to/nodeforge
+cd /home/nemesis/projects/developer-tools/nodeforge
 pnpm install
 pnpm build
 ```
 
-1. Open the `/path/to/nodeforge` folder in VS Code / Cursor.
+1. Open the `/home/nemesis/projects/developer-tools/nodeforge` folder in VS Code / Cursor.
 2. Open `packages/extension/src/extension.ts`.
 3. Press `F5` to launch an Extension Development Host window with NodeForge pre-loaded.
 
@@ -159,7 +160,7 @@ actions via 17 tools.
 ### Step 1: Build the MCP server
 
 ```bash
-cd /path/to/nodeforge/packages/agent
+cd /home/nemesis/projects/developer-tools/nodeforge/packages/agent
 pnpm build
 ```
 
@@ -174,16 +175,16 @@ Create or edit `.cursor/mcp.json` in your project root:
   "mcpServers": {
     "nodeforge": {
       "command": "node",
-      "args": ["/absolute/path/to/nodeforge/packages/agent/dist/cli.js"],
+      "args": ["/home/nemesis/projects/developer-tools/nodeforge/packages/agent/dist/cli.js"],
       "env": {
-        "NODEFORGE_WORKSPACE_ROOT": "/absolute/path/to/your/project"
+        "NODEFORGE_WORKSPACE_ROOT": "/home/nemesis/projects/developer-tools/nodeforge/packages/test-fixtures/node-ts-eslint"
       }
     }
   }
 }
 ```
 
-Replace the paths with your actual locations.
+Replace `NODEFORGE_WORKSPACE_ROOT` with your target project's path if testing another repository.
 
 ### Step 3: Restart Cursor
 
@@ -262,8 +263,8 @@ Test the MCP server manually:
 
 ```bash
 echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' | \
-  NODEFORGE_WORKSPACE_ROOT=/path/to/your/project \
-  node /path/to/nodeforge/packages/agent/dist/cli.js
+  NODEFORGE_WORKSPACE_ROOT=/home/nemesis/projects/developer-tools/nodeforge/packages/test-fixtures/node-ts-eslint \
+  node /home/nemesis/projects/developer-tools/nodeforge/packages/agent/dist/cli.js
 ```
 
 You should see a JSON response with `serverInfo.name = "nodeforge-mcp"`.
@@ -272,8 +273,8 @@ Test tools/list:
 
 ```bash
 echo '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' | \
-  NODEFORGE_WORKSPACE_ROOT=/path/to/your/project \
-  node /path/to/nodeforge/packages/agent/dist/cli.js
+  NODEFORGE_WORKSPACE_ROOT=/home/nemesis/projects/developer-tools/nodeforge/packages/test-fixtures/node-ts-eslint \
+  node /home/nemesis/projects/developer-tools/nodeforge/packages/agent/dist/cli.js
 ```
 
 You should see 17 tools listed.

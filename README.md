@@ -207,8 +207,8 @@ Quick MCP config (`.cursor/mcp.json`):
   "mcpServers": {
     "nodeforge": {
       "command": "node",
-      "args": ["/path/to/nodeforge/packages/agent/dist/cli.js"],
-      "env": { "NODEFORGE_WORKSPACE_ROOT": "/path/to/your/project" }
+      "args": ["~/projects/developer-tools/nodeforge/packages/agent/dist/cli.js"],
+      "env": { "NODEFORGE_WORKSPACE_ROOT": "~/projects/developer-tools/nodeforge" }
     }
   }
 }
