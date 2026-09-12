@@ -41,6 +41,8 @@ import { NodeForgeCodeLensProvider } from "./core/NodeForgeCodeLensProvider.js";
 import { NodeForgeDebugConfigurationProvider } from "./core/NodeForgeDebugConfigurationProvider.js";
 import { NodeForgeHoverProvider } from "./core/NodeForgeHoverProvider.js";
 import { RuntimeTerminalManager } from "./core/RuntimeTerminalManager.js";
+import { DependencyGraphPanel } from "./core/DependencyGraphPanel.js";
+import { DatabaseSchemaPanel } from "./core/DatabaseSchemaPanel.js";
 import { logger } from "./core/Logger.js";
 
 let workspaceManager: WorkspaceManager | undefined;
@@ -512,6 +514,33 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         cwd: r
       });
       logger.info(`Started dev server: ${pm} run ${scriptName}`);
+    }),
+
+    // Webview: show dependency graph as interactive SVG diagram.
+    vscode.commands.registerCommand("nodeforge.showDependencyGraph", async () => {
+      const r = resolveWorkspaceRoot();
+      if (!r) {
+        void vscode.window.showWarningMessage("NodeForge: open a workspace folder first.");
+        return;
+      }
+      await DependencyGraphPanel.createOrShow(context, r);
+    }),
+
+    // Webview: show database schema as ER diagram.
+    vscode.commands.registerCommand("nodeforge.showDatabaseSchema", async () => {
+      const r = resolveWorkspaceRoot();
+      if (!r) return;
+      if (!manager.current()) await manager.analyze(r);
+      if (!dbManager.isEnabled()) {
+        void vscode.window.showInformationMessage("NodeForge: no ORM detected (expected Prisma or Drizzle).");
+        return;
+      }
+      const schema = await dbManager.detect();
+      if (schema) {
+        await DatabaseSchemaPanel.createOrShow(context, schema);
+      } else {
+        void vscode.window.showWarningMessage("NodeForge: could not detect database schema.");
+      }
     })
   );
 
@@ -571,6 +600,28 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(watcher.onDidChange(onConfigChange));
   context.subscriptions.push(watcher.onDidCreate(onConfigChange));
   context.subscriptions.push(watcher.onDidDelete(onConfigChange));
+
+  // Multi-root workspace support: re-analyze when folders are added/removed.
+  context.subscriptions.push(
+    vscode.workspace.onDidChangeWorkspaceFolders((e) => {
+      if (e.added.length > 0) {
+        logger.info(`Workspace folder(s) added: ${e.added.map((f) => f.name).join(", ")}`);
+        const newRoot = e.added[0]?.uri.fsPath;
+        if (newRoot) {
+          void manager.analyze(newRoot).then(
+            (profile) => {
+              workspaceView.render(profile);
+              treeViews.workspace!.message = undefined;
+            },
+            (err) => logger.error("Re-analysis after folder add failed", err)
+          );
+        }
+      }
+      if (e.removed.length > 0) {
+        logger.info(`Workspace folder(s) removed: ${e.removed.map((f) => f.name).join(", ")}`);
+      }
+    })
+  );
 
   // Dispose managers when the extension is deactivated.
   context.subscriptions.push(
