@@ -37,6 +37,10 @@ import { StatusBarController } from "./core/StatusBarController.js";
 import { NodeForgeTaskProvider } from "./core/NodeForgeTaskProvider.js";
 import { NodeForgeTestController } from "./core/NodeForgeTestController.js";
 import { NodeForgeCodeActionProvider } from "./core/NodeForgeCodeActionProvider.js";
+import { NodeForgeCodeLensProvider } from "./core/NodeForgeCodeLensProvider.js";
+import { NodeForgeDebugConfigurationProvider } from "./core/NodeForgeDebugConfigurationProvider.js";
+import { NodeForgeHoverProvider } from "./core/NodeForgeHoverProvider.js";
+import { RuntimeTerminalManager } from "./core/RuntimeTerminalManager.js";
 import { logger } from "./core/Logger.js";
 
 let workspaceManager: WorkspaceManager | undefined;
@@ -82,6 +86,15 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // Quick Fix lightbulbs for ESLint/Biome diagnostics.
   const codeActionProvider = new NodeForgeCodeActionProvider();
 
+  // Code Lens: "Run Test" above it() calls, "Audit Deps" above package.json.
+  const codeLensProvider = new NodeForgeCodeLensProvider();
+
+  // Hover provider: shows rule docs + advisory URLs on hover.
+  const hoverProvider = new NodeForgeHoverProvider(diagManager.getStore());
+
+  // Runtime terminal manager: real interactive terminals for dev processes.
+  const runtimeTerminalMgr = new RuntimeTerminalManager();
+
   // Register all sidebar views using createTreeView (not registerTreeDataProvider)
   // so we get reveal(), message, onDidChangeSelection, and visible.
   const workspaceView = new WorkspaceViewProvider(context, manager);
@@ -115,6 +128,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     diagnosticsBridge,
     statusBar,
     testController,
+    runtimeTerminalMgr,
     vscode.languages.registerCodeActionsProvider(
       { scheme: "file", language: "typescript" },
       codeActionProvider,
@@ -124,6 +138,22 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       { scheme: "file", language: "javascript" },
       codeActionProvider,
       { providedCodeActionKinds: NodeForgeCodeActionProvider.providedCodeActionKinds }
+    ),
+    vscode.languages.registerCodeLensProvider(
+      { scheme: "file", language: "typescript" },
+      codeLensProvider
+    ),
+    vscode.languages.registerCodeLensProvider(
+      { scheme: "file", language: "javascript" },
+      codeLensProvider
+    ),
+    vscode.languages.registerHoverProvider(
+      { scheme: "file", language: "typescript" },
+      hoverProvider
+    ),
+    vscode.languages.registerHoverProvider(
+      { scheme: "file", language: "javascript" },
+      hoverProvider
     ),
     { dispose: () => logger.dispose() }
   );
@@ -411,6 +441,77 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       const editor = vscode.window.activeTextEditor;
       if (!editor) return;
       await vscode.commands.executeCommand("editor.action.formatDocument");
+    }),
+
+    // CodeLens: run tests from the current file.
+    vscode.commands.registerCommand("nodeforge.runTestFromFile", async (filePath: string, _line: number) => {
+      const r = resolveWorkspaceRoot();
+      if (!r || !isTrusted()) return;
+      if (!manager.current()) await manager.analyze(r);
+      if (!tests.isEnabled()) {
+        void vscode.window.showWarningMessage("NodeForge: no test runner detected.");
+        return;
+      }
+      await vscode.window.withProgress(
+        { location: vscode.ProgressLocation.Window, title: "NodeForge: running tests" },
+        async () => {
+          await tests.run().catch((err) => logger.error("Test run from CodeLens failed", err));
+        }
+      );
+      logger.info(`Test run triggered from ${filePath}`);
+    }),
+
+    // CodeLens: debug a test from the current file.
+    vscode.commands.registerCommand("nodeforge.debugTestFromFile", async (filePath: string, line: number) => {
+      const r = resolveWorkspaceRoot();
+      if (!r || !isTrusted()) return;
+      if (!manager.current()) await manager.analyze(r);
+
+      // Start a debug session with the test file.
+      const config: vscode.DebugConfiguration = {
+        name: "Debug Test",
+        type: "node",
+        request: "launch",
+        runtimeExecutable: "npx",
+        runtimeArgs: ["vitest", "run", filePath],
+        cwd: r,
+        console: "integratedTerminal",
+        skipFiles: ["<node_internals>/**", "${workspaceFolder}/node_modules/**"],
+        env: {}
+      };
+      await vscode.debug.startDebugging(vscode.workspace.workspaceFolders?.[0], config);
+      logger.info(`Debug test triggered for ${filePath}:${line}`);
+    }),
+
+    // Runtime terminal: start a dev server in a real terminal.
+    vscode.commands.registerCommand("nodeforge.startDevServer", async () => {
+      const r = resolveWorkspaceRoot();
+      if (!r || !isTrusted()) return;
+      if (!manager.current()) await manager.analyze(r);
+
+      const profile = manager.current();
+      if (!profile) return;
+
+      const pm = profile.packageManager === "pnpm" ? "pnpm" : profile.packageManager === "yarn" ? "yarn" : "npm";
+
+      // Check if there's a "dev" script in package.json.
+      const pkg = await import("node:fs/promises").then((fs) =>
+        fs.readFile(`${r}/package.json`, "utf8").then((raw) => JSON.parse(raw))
+      ).catch(() => null);
+
+      const scriptName = pkg?.scripts?.["dev"] ? "dev" : pkg?.scripts?.["start"] ? "start" : null;
+      if (!scriptName) {
+        void vscode.window.showWarningMessage("NodeForge: no 'dev' or 'start' script found in package.json.");
+        return;
+      }
+
+      runtimeTerminalMgr.start({
+        name: `dev: ${scriptName}`,
+        command: pm,
+        args: pm === "yarn" ? [scriptName] : ["run", scriptName],
+        cwd: r
+      });
+      logger.info(`Started dev server: ${pm} run ${scriptName}`);
     })
   );
 
@@ -490,6 +591,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       new NodeForgeTaskProvider(root, pm)
     );
     context.subscriptions.push(taskProvider);
+
+    // Register the Debug Configuration Provider for F5 debugging.
+    const debugProvider = new NodeForgeDebugConfigurationProvider(root, pm);
+    context.subscriptions.push(
+      vscode.debug.registerDebugConfigurationProvider("node", debugProvider)
+    );
 
     // Discover tests for the Test Explorer.
     void testController.discoverTests().catch((err) => {

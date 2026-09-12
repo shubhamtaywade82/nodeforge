@@ -10,7 +10,7 @@
   "engines": {
     "vscode": "^1.85.0"
   },
-  "categories": ["Other", "Programming Languages", "Testing"],
+  "categories": ["Other", "Programming Languages", "Testing", "Debuggers"],
   "keywords": ["node", "typescript", "eslint", "biome", "vitest", "jest", "prisma", "drizzle", "ai", "cursor"],
   "activationEvents": [
     "onCommand:nodeforge.analyzeWorkspace",
@@ -215,6 +215,22 @@
         "title": "NodeForge: Format Current File",
         "category": "NodeForge",
         "icon": "$(align-left)"
+      },
+      {
+        "command": "nodeforge.runTestFromFile",
+        "title": "NodeForge: Run Tests from Current File",
+        "category": "NodeForge"
+      },
+      {
+        "command": "nodeforge.debugTestFromFile",
+        "title": "NodeForge: Debug Test at Cursor",
+        "category": "NodeForge"
+      },
+      {
+        "command": "nodeforge.startDevServer",
+        "title": "NodeForge: Start Dev Server",
+        "category": "NodeForge",
+        "icon": "$(play)"
       }
     ],
     "configuration": {
