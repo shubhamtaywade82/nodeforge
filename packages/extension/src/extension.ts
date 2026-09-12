@@ -45,6 +45,8 @@ import { DependencyDiagnosticPublisher } from "./diagnostics/DependencyDiagnosti
 import { ChatController } from "./chat/ChatController.js";
 import { ChatWebviewProvider } from "./chat/ChatWebviewProvider.js";
 import { DevDocsWebviewProvider } from "./docs/DevDocsWebviewProvider.js";
+import { DevDocsOfflineManager } from "./docs/DevDocsOfflineManager.js";
+import { openOfflineDocPanel } from "./docs/DevDocsOfflinePanel.js";
 
 let workspaceManager: WorkspaceManager | undefined;
 let diagnosticManager: DiagnosticManager | undefined;
@@ -57,6 +59,7 @@ let workspaceSession: ExtensionWorkspaceSession | undefined;
 let dependencyDiagnostics: DependencyDiagnosticPublisher | undefined;
 let chatWebviewProvider: ChatWebviewProvider | undefined;
 let devDocsProvider: DevDocsWebviewProvider | undefined;
+let devDocsOffline: DevDocsOfflineManager | undefined;
 let gitAdapter: GitAdapter | undefined;
 let eventBus: EventBus | undefined;
 
@@ -113,6 +116,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const agentView = new AgentViewProvider(context);
   const devDocs = new DevDocsWebviewProvider(context.extensionUri);
   devDocsProvider = devDocs;
+  const devDocsOfflineMgr = new DevDocsOfflineManager(context);
+  devDocsOffline = devDocsOfflineMgr;
 
   context.subscriptions.push(
     vscode.window.registerTreeDataProvider("nodeforge.workspace", workspaceView),
@@ -391,7 +396,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         void vscode.window.showWarningMessage("NodeForge: select a symbol or word to search in DevDocs.");
         return;
       }
-      await openDevDocs(buildDevDocsUrl({ query }));
+      await searchDevDocsWithOffline(context, query);
+    }),
+    vscode.commands.registerCommand("nodeforge.syncDevDocsOffline", async () => {
+      const profile = manager.current();
+      const slugs = devDocsOfflineMgr.slugsToSync(profile);
+      await devDocsOfflineMgr.sync(slugs);
     })
   );
 
@@ -467,6 +477,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         devDocs.setProfile(profile);
         scheduleBackgroundDependencyAudit(root, depManager, session);
         scheduleBackgroundDependencyGraph(root, graphManager, session, dependencyView, depDiagPublisher);
+        scheduleBackgroundDevDocsSync(profile, devDocsOfflineMgr);
         // Kick off an initial diagnostic run so the sidebar is populated.
         void diagManager.refresh().catch((err) => {
           // eslint-disable-next-line no-console
@@ -512,6 +523,7 @@ export function deactivate(): void {
   dependencyDiagnostics = undefined;
   chatWebviewProvider = undefined;
   devDocsProvider = undefined;
+  devDocsOffline = undefined;
   gitAdapter = undefined;
   eventBus = undefined;
   if (depAuditTimer) {
@@ -521,6 +533,10 @@ export function deactivate(): void {
   if (depGraphTimer) {
     clearTimeout(depGraphTimer);
     depGraphTimer = undefined;
+  }
+  if (devDocsSyncTimer) {
+    clearTimeout(devDocsSyncTimer);
+    devDocsSyncTimer = undefined;
   }
 }
 
@@ -554,6 +570,43 @@ async function openDevDocs(url: string): Promise<void> {
   devDocsProvider?.navigate(url);
   await vscode.commands.executeCommand("nodeforge-sidebar.focus");
   await vscode.commands.executeCommand("nodeforge.docs.focus");
+}
+
+async function searchDevDocsWithOffline(context: vscode.ExtensionContext, query: string): Promise<void> {
+  const offlineCfg = vscode.workspace.getConfiguration("nodeforge.docs.offline");
+  const preferOffline = offlineCfg.get<boolean>("preferOfflineSearch", true);
+  const mgr = devDocsOffline;
+  if (preferOffline && mgr) {
+    const hits = await mgr.search(query);
+    if (hits.length > 0) {
+      const pick = await vscode.window.showQuickPick(
+        hits.map((h) => ({
+          label: `${h.slug}: ${h.title}`,
+          description: h.snippet,
+          hit: h
+        })),
+        { placeHolder: `Offline DevDocs results for “${query}”` }
+      );
+      if (pick) {
+        openOfflineDocPanel(context, mgr.htmlPath(pick.hit.slug, pick.hit.htmlFile), pick.hit.title);
+        return;
+      }
+    }
+  }
+  await openDevDocs(buildDevDocsUrl({ query }));
+}
+
+let devDocsSyncTimer: ReturnType<typeof setTimeout> | undefined;
+
+function scheduleBackgroundDevDocsSync(profile: WorkspaceProfile, mgr: DevDocsOfflineManager): void {
+  const cfg = vscode.workspace.getConfiguration("nodeforge.docs.offline");
+  if (!cfg.get<boolean>("autoSync", false)) return;
+
+  if (devDocsSyncTimer) clearTimeout(devDocsSyncTimer);
+  devDocsSyncTimer = setTimeout(() => {
+    const slugs = mgr.slugsToSync(profile);
+    void mgr.sync(slugs);
+  }, 4000);
 }
 
 function readEditorSearchQuery(): string | undefined {

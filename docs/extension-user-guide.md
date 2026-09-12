@@ -87,8 +87,10 @@ The assistant calls the same engineering tools as the MCP server (diagnostics, t
 See [devdocs.md](./devdocs.md). Summary:
 
 - **Docs** view embeds DevDocs.io (network required).
-- Right-click in editor → **Search DevDocs** for the selected symbol.
-- `nodeforge.docs.preferExternal` opens docs in the browser instead.
+- **NodeForge: Sync DevDocs Offline** downloads docsets for your stack (+ `extraSlugs`) into extension storage.
+- **Search DevDocs** prefers offline results when synced; opens local HTML or falls back to online search.
+- `nodeforge.docs.offline.autoSync` optionally syncs after workspace analyze (off by default).
+- `nodeforge.docs.preferExternal` opens online docs in the browser instead of the sidebar.
 
 ---
 

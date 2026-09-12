@@ -1,61 +1,74 @@
 # DevDocs.io integration
 
-NodeForge embeds **[DevDocs.io](https://devdocs.io)** documentation in the sidebar **Docs** view and exposes commands to search docs from the editor.
+NodeForge integrates **[DevDocs.io](https://devdocs.io)** in two modes:
 
-DevDocs is a third-party documentation aggregator (MIT-licensed app by Thibaut Courouble). NodeForge does **not** host or mirror docsets; content is loaded from `https://devdocs.io` at runtime.
+1. **Online** — embedded sidebar (iframe) and browser deep-links  
+2. **Offline** — download docsets into extension storage, search locally, open HTML in-editor
 
-## What NodeForge provides
+DevDocs is a third-party documentation aggregator. NodeForge downloads official archives from `downloads.devdocs.io` and does not republish or scrape arbitrary sites.
+
+## Online (default)
 
 | Feature | Description |
 |---------|-------------|
-| **Docs sidebar** | Webview with an embedded DevDocs frame (default) |
-| **Workspace-aware entry** | After workspace analyze, opens a sensible docset (e.g. TypeScript, Node, npm) |
-| **Search selection** | Right-click → **NodeForge: Search DevDocs**, or command palette |
-| **Open in browser** | Toolbar in the Docs view, or `nodeforge.docs.preferExternal` |
+| **Docs sidebar** | Webview iframe to `https://devdocs.io` |
+| **Workspace-aware entry** | Opens a docset matching the detected stack |
+| **Search selection** | **NodeForge: Search DevDocs** (context menu or palette) |
 
-### Commands
+Setting `nodeforge.docs.preferExternal` opens links in the system browser instead of the sidebar.
 
-- `NodeForge: Open DevDocs Home`
-- `NodeForge: Open DevDocs for Workspace` — uses detected stack
-- `NodeForge: Search DevDocs` — uses editor selection or word under cursor
+## Offline docset sync
+
+| Feature | Description |
+|---------|-------------|
+| **Sync command** | **NodeForge: Sync DevDocs Offline** (Docs view toolbar or palette) |
+| **Storage** | `globalStorage/devdocs/{slug}/` — HTML + `db.json` from official `.tar.gz` |
+| **Updates** | Skips download when local `mtime` matches [docs.json](https://devdocs.io/docs.json) |
+| **Search** | **Search DevDocs** uses offline index first when `preferOfflineSearch` is true |
+| **Open results** | Quick Pick → local HTML in a side panel (no network) |
 
 ### Settings
 
-| Setting | Default | Meaning |
-|---------|---------|---------|
-| `nodeforge.docs.preferExternal` | `false` | If `true`, commands open the system browser instead of the sidebar |
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `nodeforge.docs.offline.autoSync` | `false` | After workspace analyze, sync docsets for detected stack (can use significant bandwidth/disk) |
+| `nodeforge.docs.offline.preferOfflineSearch` | `true` | Prefer local search before online `#q=` search |
+| `nodeforge.docs.offline.extraSlugs` | `[]` | Extra slugs to sync (e.g. `react`, `express`) |
 
-## How docsets are chosen
+### Which docsets sync?
 
-`@nodeforge/core` maps the [workspace profile](../packages/contracts/src/workspace.ts) to DevDocs slugs (e.g. `javascript`, `typescript`, `node`, `npm`, `eslint`, `jest`, `vitest`, `docker`). See `suggestDevDocsSlugs()` in `packages/core/src/devdocs/suggestDevDocs.ts`.
+`@nodeforge/core` → `suggestDevDocsSlugs(profile)` (JavaScript, TypeScript, Node, npm/pnpm/yarn, ESLint, Jest/Vitest, Docker, …) plus `extraSlugs`. Slugs not in the DevDocs catalog are reported as failed in the sync summary.
 
-Not every detected tool has a DevDocs docset. Missing slugs are skipped; the default landing docset is TypeScript when TS is enabled, otherwise Node or JavaScript.
+### Disk and network
 
-## Can we “fully integrate” DevDocs?
+Each docset is typically **1–10+ MB** compressed. Syncing the full suggested set for a TS monorepo may download tens of megabytes. Use manual sync first; enable `autoSync` only if you want always-fresh offline docs.
 
-| Approach | Feasible? | Notes |
-|----------|-----------|-------|
-| **Embedded webview (current)** | Yes | No public DevDocs API; iframe to `devdocs.io`. Requires network. Offline mode inside the iframe follows DevDocs’ own UI (user configures docsets on devdocs.io). |
-| **Bundled offline docsets** | Possible, separate project | Extensions like [devdocs-adapter](https://github.com/mihnea-s/devdocs-adapter) download docsets locally and search via command palette. Heavy (storage, updates, maintenance). Not shipped inside NodeForge today. |
-| **Scraping / republishing** | Not recommended | Violates DevDocs’ role as single host; licensing and ToS concerns. |
-| **Companion extension** | Yes | Install **DevDocs Tab** or **devdocs-adapter** alongside NodeForge if you want offline search or palette-only UX. |
+## Architecture
 
-### Recommendation
+```
+extension (DevDocsOfflineManager)
+    → @nodeforge/adapter-devdocs (DevDocsSyncAdapter)
+        → fetch downloads.devdocs.io
+        → ProcessRunner: tar -xzf
+        → searchDb.ts (pure search over db.json)
+```
 
-- **Daily use:** NodeForge **Docs** view + **Search DevDocs** on selection.
-- **Offline / airplane:** Use DevDocs’ built-in offline install inside the embedded view, or install a dedicated DevDocs VS Code extension.
-- **Future NodeForge work:** Optional docset sync (devdocs-adapter style) behind a setting, or deep-link chat answers to DevDocs URLs.
+## Commands
 
-## Security and privacy
-
-- Embedded view only loads `https://devdocs.io` (CSP `frame-src`).
-- Queries are sent to DevDocs as normal website traffic (see DevDocs privacy policy).
-- NodeForge does not send workspace source code to DevDocs—only search terms you explicitly select.
+- `NodeForge: Open DevDocs Home`
+- `NodeForge: Open DevDocs for Workspace`
+- `NodeForge: Search DevDocs`
+- `NodeForge: Sync DevDocs Offline`
 
 ## Troubleshooting
 
 | Issue | Fix |
 |-------|-----|
-| Blank Docs view | Check network; try **Open in browser** or set `preferExternal` |
-| Wrong docset | Run **NodeForge: Analyze Workspace**, then **Open DevDocs for Workspace** |
-| Docset missing on DevDocs | DevDocs may not list that tool; search by keyword instead |
+| Sync fails for a slug | Slug may be missing from DevDocs; remove from `extraSlugs` |
+| `tar` not found | Install GNU tar (required for extract on Linux/macOS/WSL) |
+| Offline search empty | Run **Sync DevDocs Offline** first |
+| Blank online Docs view | Network / iframe; use **preferExternal** or offline sync |
+
+## Privacy
+
+Online mode loads DevDocs like a normal browser tab. Offline mode only fetches public docset archives; your source code is not sent to DevDocs.

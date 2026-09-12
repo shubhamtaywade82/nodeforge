@@ -129,6 +129,11 @@
           "command": "nodeforge.openDevDocsForWorkspace",
           "when": "view == nodeforge.docs",
           "group": "navigation"
+        },
+        {
+          "command": "nodeforge.syncDevDocsOffline",
+          "when": "view == nodeforge.docs",
+          "group": "navigation"
         }
       ],
       "editor/context": [
@@ -217,6 +222,12 @@
         "command": "nodeforge.searchDevDocs",
         "title": "NodeForge: Search DevDocs",
         "category": "NodeForge"
+      },
+      {
+        "command": "nodeforge.syncDevDocsOffline",
+        "title": "NodeForge: Sync DevDocs Offline",
+        "category": "NodeForge",
+        "icon": "$(cloud-download)"
       }
     ],
     "configuration": {
@@ -268,6 +279,22 @@
           "type": "boolean",
           "default": false,
           "description": "Open DevDocs in the system browser instead of the embedded Docs sidebar view."
+        },
+        "nodeforge.docs.offline.autoSync": {
+          "type": "boolean",
+          "default": false,
+          "description": "Download DevDocs docsets for the detected workspace stack after activation (network required)."
+        },
+        "nodeforge.docs.offline.preferOfflineSearch": {
+          "type": "boolean",
+          "default": true,
+          "description": "When synced docsets exist, search offline first and open local HTML pages."
+        },
+        "nodeforge.docs.offline.extraSlugs": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [],
+          "description": "Additional DevDocs slugs to include when syncing (e.g. react, express)."
         }
       }
     }
@@ -295,6 +322,7 @@
     "@nodeforge/adapter-drizzle": "workspace:*",
     "@nodeforge/adapter-dependencies": "workspace:*",
     "@nodeforge/adapter-dependency-graph": "workspace:*",
+    "@nodeforge/adapter-devdocs": "workspace:*",
     "@nodeforge/agent": "workspace:*"
   },
   "devDependencies": {

@@ -107,6 +107,7 @@ On activation (trusted workspaces), NodeForge can automatically run a dependency
 - `NodeForge: Open Chat` — focus the Chat sidebar
 - `NodeForge: Clear Chat` — reset chat history
 - `NodeForge: Open DevDocs Home` / **Search DevDocs** / **Open DevDocs for Workspace**
+- `NodeForge: Sync DevDocs Offline` — download docsets for offline search (see [docs/devdocs.md](./docs/devdocs.md))
 - `NodeForge: Refresh` — refresh all views
 
 ### Workspace Trust

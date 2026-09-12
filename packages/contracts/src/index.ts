@@ -21,6 +21,7 @@ export * from "./kubernetes.js";
 export * from "./github-actions.js";
 export * from "./dependency-graph.js";
 export * from "./chat.js";
+export * from "./devdocs.js";
 
 /**
  * Build a stable diagnostic id from its parts. Used by every adapter so
