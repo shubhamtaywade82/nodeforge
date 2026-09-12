@@ -16,6 +16,7 @@
     "test": "pnpm -r --filter \"./packages/**\" run test",
     "test:unit": "pnpm -r --filter \"./packages/**\" run test:unit",
     "clean": "pnpm -r --filter \"./packages/**\" exec rm -rf dist *.tsbuildinfo .turbo",
+    "package": "pnpm -C packages/extension run package",
     "lint": "echo \"[nodeforge] root lint placeholder — install @biomejs/biome or eslint per workspace\" && exit 0"
   },
   "devDependencies": {
