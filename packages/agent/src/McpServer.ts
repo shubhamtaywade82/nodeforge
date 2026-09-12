@@ -21,6 +21,7 @@
 
 import { createContextFromEnv, NodeForgeContext } from "./NodeForgeContext.js";
 import { findTool, listToolDefinitions } from "./tools.js";
+import { executeTool, UnknownToolError } from "./toolRunner.js";
 import { PROMPTS } from "./prompts.js";
 
 // JSON-RPC 2.0 types
@@ -164,8 +165,7 @@ export class McpServer {
       };
     }
 
-    const tool = findTool(p.name);
-    if (!tool) {
+    if (!findTool(p.name)) {
       return {
         jsonrpc: "2.0",
         id,
@@ -177,7 +177,19 @@ export class McpServer {
     }
 
     const args = p.arguments ?? {};
-    const resultText = await tool.handler(args, this.context);
+    let resultText: string;
+    try {
+      resultText = await executeTool(p.name, args, this.context);
+    } catch (err) {
+      if (err instanceof UnknownToolError) {
+        return {
+          jsonrpc: "2.0",
+          id,
+          error: { code: -32602, message: err.message }
+        };
+      }
+      throw err;
+    }
 
     return {
       jsonrpc: "2.0",

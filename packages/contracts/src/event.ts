@@ -13,6 +13,8 @@ import type { WorkspaceProfile } from "./workspace.js";
 import type { TestRunResult } from "./test.js";
 import type { RuntimeEvent } from "./runtime.js";
 import type { GitState } from "./git.js";
+import type { DependencyReport } from "./dependency.js";
+import type { DependencyGraphAnalysis } from "./dependency-graph.js";
 
 export type NodeForgeEvent =
   | { type: "workspace.profiled"; profile: WorkspaceProfile }
@@ -24,7 +26,9 @@ export type NodeForgeEvent =
   | { type: "runtime.processStarted"; pid: number; name: string }
   | { type: "runtime.processExited"; pid: number; exitCode: number | null; cancelled: boolean }
   | { type: "git.stateChanged"; state: GitState }
-  | { type: "trust.changed"; trusted: boolean };
+  | { type: "trust.changed"; trusted: boolean }
+  | { type: "dependencies.reported"; report: DependencyReport }
+  | { type: "dependencyGraph.analyzed"; analysis: DependencyGraphAnalysis };
 
 export type NodeForgeEventHandler<E extends NodeForgeEvent = NodeForgeEvent> = (event: E) => void | Promise<void>;
 

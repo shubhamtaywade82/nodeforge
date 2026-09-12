@@ -123,3 +123,7 @@ Then present a structured onboarding document covering:
 4. If there are auto-fixable issues, mention that the "applyEslintFix" tool can fix them automatically.`
   }
 ];
+
+export function findPromptByName(name: string): McpPrompt | undefined {
+  return PROMPTS.find((p) => p.name === name);
+}

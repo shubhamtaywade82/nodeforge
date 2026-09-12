@@ -14,7 +14,7 @@
 
 import * as vscode from "vscode";
 
-import { InMemoryEventBus, NodeFilesystemReader, ProcessManager } from "@nodeforge/core";
+import { InMemoryEventBus, NodeFilesystemReader, ProcessManager, buildDevDocsUrl, DEVDOCS_HOME_URL } from "@nodeforge/core";
 import { ProcessRunner } from "@nodeforge/runner";
 import { GitAdapter } from "@nodeforge/adapter-git";
 import type { EventBus, GitState, WorkspaceProfile, DatabaseSchema, DependencyReport } from "@nodeforge/contracts";
@@ -32,6 +32,12 @@ import { DiagnosticManager } from "./core/DiagnosticManager.js";
 import { TestManager } from "./core/TestManager.js";
 import { DatabaseManager } from "./core/DatabaseManager.js";
 import { DependencyManager } from "./core/DependencyManager.js";
+import { DependencyGraphManager } from "./core/DependencyGraphManager.js";
+import { ExtensionWorkspaceSession } from "./core/ExtensionWorkspaceSession.js";
+import { DependencyDiagnosticPublisher } from "./diagnostics/DependencyDiagnosticPublisher.js";
+import { ChatController } from "./chat/ChatController.js";
+import { ChatWebviewProvider } from "./chat/ChatWebviewProvider.js";
+import { DevDocsWebviewProvider } from "./docs/DevDocsWebviewProvider.js";
 
 let workspaceManager: WorkspaceManager | undefined;
 let diagnosticManager: DiagnosticManager | undefined;
@@ -39,8 +45,17 @@ let testManager: TestManager | undefined;
 let processManager: ProcessManager | undefined;
 let databaseManager: DatabaseManager | undefined;
 let dependencyManager: DependencyManager | undefined;
+let dependencyGraphManager: DependencyGraphManager | undefined;
+let workspaceSession: ExtensionWorkspaceSession | undefined;
+let dependencyDiagnostics: DependencyDiagnosticPublisher | undefined;
+let chatWebviewProvider: ChatWebviewProvider | undefined;
+let devDocsProvider: DevDocsWebviewProvider | undefined;
 let gitAdapter: GitAdapter | undefined;
 let eventBus: EventBus | undefined;
+
+const CHAT_API_KEY_SECRET = "nodeforge.chat.apiKey";
+let depAuditTimer: ReturnType<typeof setTimeout> | undefined;
+let depGraphTimer: ReturnType<typeof setTimeout> | undefined;
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const bus: EventBus = new InMemoryEventBus();
@@ -59,8 +74,26 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   databaseManager = dbManager;
   const depManager = new DependencyManager(runner, bus);
   dependencyManager = depManager;
+  const graphManager = new DependencyGraphManager(bus);
+  dependencyGraphManager = graphManager;
+  const session = new ExtensionWorkspaceSession(bus);
+  workspaceSession = session;
+  const depDiagPublisher = new DependencyDiagnosticPublisher();
+  dependencyDiagnostics = depDiagPublisher;
+  const chatController = new ChatController(
+    session,
+    async () => context.secrets.get(CHAT_API_KEY_SECRET),
+    isWorkspaceTrustedSync
+  );
+  const chatProvider = new ChatWebviewProvider(context, session, chatController, isWorkspaceTrustedSync);
+  chatWebviewProvider = chatProvider;
   const git = new GitAdapter(runner);
   gitAdapter = git;
+
+  const rootOnActivate = resolveWorkspaceRoot();
+  if (rootOnActivate) {
+    session.bindRoot(rootOnActivate);
+  }
 
   // Wire sidebar views.
   const workspaceView = new WorkspaceViewProvider(context, manager);
@@ -71,6 +104,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const databaseView = new DatabaseViewProvider();
   const dependencyView = new DependencyViewProvider();
   const agentView = new AgentViewProvider(context);
+  const devDocs = new DevDocsWebviewProvider(context.extensionUri);
+  devDocsProvider = devDocs;
 
   context.subscriptions.push(
     vscode.window.registerTreeDataProvider("nodeforge.workspace", workspaceView),
@@ -80,7 +115,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.window.registerTreeDataProvider("nodeforge.git", gitView),
     vscode.window.registerTreeDataProvider("nodeforge.database", databaseView),
     vscode.window.registerTreeDataProvider("nodeforge.dependencies", dependencyView),
-    vscode.window.registerTreeDataProvider("nodeforge.agent", agentView)
+    vscode.window.registerTreeDataProvider("nodeforge.agent", agentView),
+    vscode.window.registerWebviewViewProvider("nodeforge.chat", chatProvider, {
+      webviewOptions: { retainContextWhenHidden: true }
+    }),
+    vscode.window.registerWebviewViewProvider("nodeforge.docs", devDocs, {
+      webviewOptions: { retainContextWhenHidden: true }
+    }),
+    { dispose: () => depDiagPublisher.dispose() }
   );
 
   // Internal command — opens a file at a line/col. Used by diagnostic + test
@@ -111,8 +153,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         return;
       }
       try {
+        session.bindRoot(root);
         const profile = await manager.analyze(root);
         workspaceView.render(profile);
+        devDocs.setProfile(profile);
         void vscode.window.showInformationMessage(formatProfileSummary(profile));
       } catch (err) {
         void vscode.window.showErrorMessage(
@@ -252,6 +296,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         async () => {
           const report = await depManager.audit();
           dependencyView.setReport(report);
+          session.setDependencyReport(report);
+          depDiagPublisher.publishReport(report);
           if (report) {
             const parts: string[] = [];
             if (report.findings.length > 0) {
@@ -270,8 +316,70 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
           }
         }
       );
+    }),
+    vscode.commands.registerCommand("nodeforge.analyzeDependencyGraph", async () => {
+      const root = resolveWorkspaceRoot();
+      if (!root) return;
+      if (!(await isWorkspaceTrusted())) {
+        void vscode.window.showWarningMessage("NodeForge: graph analysis requires Workspace Trust.");
+        return;
+      }
+      if (!manager.current()) {
+        await manager.analyze(root);
+      }
+      await vscode.window.withProgress(
+        { location: vscode.ProgressLocation.Window, title: "NodeForge: analyzing dependency graph" },
+        async () => {
+          const analysis = await graphManager.analyze();
+          dependencyView.setGraphAnalysis(analysis);
+          session.setGraphAnalysis(analysis);
+          if (analysis && root) {
+            depDiagPublisher.publishGraph(analysis, root);
+          }
+          if (analysis) {
+            void vscode.window.showInformationMessage(
+              `NodeForge: ${analysis.unused.length} unused, ${analysis.circular.length} circular, ${analysis.missing.length} missing`
+            );
+          }
+        }
+      );
+    }),
+    vscode.commands.registerCommand("nodeforge.setChatApiKey", async () => {
+      const key = await vscode.window.showInputBox({
+        title: "NodeForge Chat API Key",
+        password: true,
+        ignoreFocusOut: true,
+        prompt: "OpenAI-compatible API key (stored in VS Code Secret Storage)"
+      });
+      if (key === undefined) return;
+      if (!key.trim()) {
+        await context.secrets.delete(CHAT_API_KEY_SECRET);
+        void vscode.window.showInformationMessage("NodeForge: chat API key cleared.");
+        return;
+      }
+      await context.secrets.store(CHAT_API_KEY_SECRET, key.trim());
+      void vscode.window.showInformationMessage("NodeForge: chat API key saved.");
+    }),
+    vscode.commands.registerCommand("nodeforge.clearChat", () => {
+      chatProvider.clearChat();
+    }),
+    vscode.commands.registerCommand("nodeforge.openChat", async () => {
+      await vscode.commands.executeCommand("nodeforge-sidebar.focus");
+      await vscode.commands.executeCommand("nodeforge.chat.focus");
     })
   );
+
+  bus.subscribe("dependencies.reported", (e) => {
+    dependencyView.setReport(e.report);
+    depDiagPublisher.publishReport(e.report);
+  });
+  bus.subscribe("dependencyGraph.analyzed", (e) => {
+    dependencyView.setGraphAnalysis(e.analysis);
+    const root = resolveWorkspaceRoot();
+    if (root) {
+      depDiagPublisher.publishGraph(e.analysis, root);
+    }
+  });
 
   // Save listener → debounced diagnostic refresh. Only fires in Trusted Mode.
   context.subscriptions.push(
@@ -300,12 +408,15 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     if (!root) return;
     const rel = vscode.workspace.asRelativePath(uri, false);
     if (rel.includes("/")) {
-      // Only re-analyze if the file is at the workspace root.
       return;
     }
+    session.bindRoot(root);
     try {
       const profile = await manager.analyze(root);
       workspaceView.render(profile);
+      devDocs.setProfile(profile);
+      scheduleBackgroundDependencyAudit(root, depManager, session);
+      scheduleBackgroundDependencyGraph(root, graphManager, session, dependencyView, depDiagPublisher);
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error("[nodeforge] refresh on config change failed", err);
@@ -323,9 +434,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // Auto-run once on activation if a folder is open and trusted.
   const root = resolveWorkspaceRoot();
   if (root && (await isWorkspaceTrusted())) {
+    session.bindRoot(root);
     void manager.analyze(root).then(
       (profile) => {
         workspaceView.render(profile);
+        devDocs.setProfile(profile);
+        scheduleBackgroundDependencyAudit(root, depManager, session);
+        scheduleBackgroundDependencyGraph(root, graphManager, session, dependencyView, depDiagPublisher);
         // Kick off an initial diagnostic run so the sidebar is populated.
         void diagManager.refresh().catch((err) => {
           // eslint-disable-next-line no-console
@@ -365,8 +480,21 @@ export function deactivate(): void {
   processManager = undefined;
   databaseManager = undefined;
   dependencyManager = undefined;
+  dependencyGraphManager = undefined;
+  workspaceSession = undefined;
+  dependencyDiagnostics?.dispose();
+  dependencyDiagnostics = undefined;
+  chatWebviewProvider = undefined;
   gitAdapter = undefined;
   eventBus = undefined;
+  if (depAuditTimer) {
+    clearTimeout(depAuditTimer);
+    depAuditTimer = undefined;
+  }
+  if (depGraphTimer) {
+    clearTimeout(depGraphTimer);
+    depGraphTimer = undefined;
+  }
 }
 
 function resolveWorkspaceRoot(): string | undefined {
@@ -386,6 +514,47 @@ function isWorkspaceTrustedSync(): boolean {
   const ws = vscode.workspace as typeof vscode.workspace & { isWorkspaceTrusted?: boolean };
   if (typeof ws.isWorkspaceTrusted === "boolean") return ws.isWorkspaceTrusted;
   return true;
+}
+
+function scheduleBackgroundDependencyAudit(
+  root: string,
+  depManager: DependencyManager,
+  session: ExtensionWorkspaceSession
+): void {
+  const enabled = vscode.workspace.getConfiguration("nodeforge.dependencies").get<boolean>("backgroundAudit", true);
+  if (!enabled || !isWorkspaceTrustedSync()) return;
+
+  if (depAuditTimer) clearTimeout(depAuditTimer);
+  depAuditTimer = setTimeout(() => {
+    void depManager.audit().then((report) => {
+      if (report) {
+        session.setDependencyReport(report);
+      }
+    });
+  }, 1500);
+}
+
+function scheduleBackgroundDependencyGraph(
+  root: string,
+  graphManager: DependencyGraphManager,
+  session: ExtensionWorkspaceSession,
+  dependencyView: DependencyViewProvider,
+  depDiagPublisher: DependencyDiagnosticPublisher
+): void {
+  const enabled = vscode.workspace
+    .getConfiguration("nodeforge.dependencies")
+    .get<boolean>("backgroundGraphAnalysis", true);
+  if (!enabled || !isWorkspaceTrustedSync()) return;
+
+  if (depGraphTimer) clearTimeout(depGraphTimer);
+  depGraphTimer = setTimeout(() => {
+    void graphManager.analyze().then((analysis) => {
+      if (!analysis) return;
+      dependencyView.setGraphAnalysis(analysis);
+      session.setGraphAnalysis(analysis);
+      depDiagPublisher.publishGraph(analysis, root);
+    });
+  }, 2500);
 }
 
 function formatProfileSummary(p: WorkspaceProfile): string {

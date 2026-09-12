@@ -59,6 +59,7 @@ export class DependencyManager {
         ...result.report,
         outdated
       };
+      this.bus.publish({ type: "dependencies.reported", report: this.currentReport });
       return this.currentReport;
     } catch (err) {
       // eslint-disable-next-line no-console

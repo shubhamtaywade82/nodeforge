@@ -1,6 +1,13 @@
 export { McpServer, runStdioServer } from "./McpServer.js";
 export { NodeForgeContext, createContextFromEnv } from "./NodeForgeContext.js";
 export { TOOLS, findTool, listToolDefinitions } from "./tools.js";
-export { PROMPTS } from "./prompts.js";
+export { executeTool, UnknownToolError } from "./toolRunner.js";
+export { isWriteTool, WRITE_TOOL_NAMES } from "./toolPolicy.js";
+export { AgentLoop, ChatCancelledError } from "./AgentLoop.js";
+export { OpenAICompatibleClient } from "./llm/OpenAICompatibleClient.js";
+export { buildWorkspaceSnapshot, formatSnapshotForPrompt } from "./WorkspaceSnapshot.js";
+export type { WorkspaceSnapshot } from "./WorkspaceSnapshot.js";
+export { PROMPTS, findPromptByName } from "./prompts.js";
 export type { McpTool, McpToolDefinition, McpToolHandler } from "./tools.js";
 export type { McpPrompt } from "./prompts.js";
+export type { LlmClient, LlmClientConfig } from "./llm/types.js";

@@ -55,7 +55,7 @@ Then in VS Code / Cursor:
 ## Part 2: Using the Extension
 
 Once installed, open any Node.js/TypeScript project. The NodeForge sidebar
-will appear in the Activity Bar on the left with 8 views:
+will appear in the Activity Bar on the left with 9 views:
 
 | View | What it shows |
 |------|---------------|
@@ -65,8 +65,27 @@ will appear in the Activity Bar on the left with 8 views:
 | **Runtime** | Running dev/watch processes with recent output |
 | **Git** | Branch, dirty status, changed/staged files |
 | **Database** | Schema tree (tables, columns, indexes, relations) — if Prisma or Drizzle is detected |
-| **Dependencies** | Vulnerabilities + outdated packages |
-| **Agent** | MCP server status + tool reference |
+| **Dependencies** | Vulnerabilities, outdated packages, unused/circular/missing deps |
+| **Chat** | Built-in NodeForge AI assistant (OpenAI-compatible API) |
+| **Agent** | MCP server status + tool reference (optional external agents) |
+
+### Built-in Chat (no Cursor/Copilot required)
+
+1. Run **`NodeForge: Set Chat API Key`** and paste an OpenAI-compatible API key
+   (stored in VS Code Secret Storage).
+2. Open the **Chat** view in the NodeForge sidebar (or **`NodeForge: Open Chat`**).
+3. Ask questions or use workflow chips / slash commands:
+   - `/audit-and-upgrade-deps`, `/validate-and-fix`, `/onboard-to-project`, `/explain-errors`
+
+The chat uses the same 17 engineering tools as the MCP server. Write tools
+(`formatFiles`, `applyEslintFix`, `runScript`, `validateWorkspace`) run automatically
+when the workspace is **Trusted**; they are blocked in Restricted Mode.
+
+Configure the model and API base URL under **Settings → NodeForge → Chat**.
+
+On activation (trusted workspaces), NodeForge can automatically run a dependency
+**audit** and **graph analysis** — toggle under **Settings → NodeForge → Dependencies**
+(`backgroundAudit`, `backgroundGraphAnalysis`).
 
 ### Commands (`Ctrl+Shift+P` / `Cmd+Shift+P`)
 
@@ -76,6 +95,10 @@ will appear in the Activity Bar on the left with 8 views:
 - `NodeForge: Refresh Git State` — re-detect git state
 - `NodeForge: Detect Database Schema` — parse Prisma or Drizzle schema
 - `NodeForge: Audit Dependencies` — run `npm audit` + `outdated`
+- `NodeForge: Analyze Dependency Graph` — unused, circular, and missing dependencies
+- `NodeForge: Set Chat API Key` — store API key for built-in chat
+- `NodeForge: Open Chat` — focus the Chat sidebar
+- `NodeForge: Clear Chat` — reset chat history
 - `NodeForge: Refresh` — refresh all views
 
 ### Workspace Trust
@@ -86,10 +109,14 @@ NodeForge respects VS Code's Workspace Trust model:
 - **Trusted Mode** (default for projects you own): full functionality —
   adapters run on save, tests run on demand, runtime processes can start.
 
-## Part 3: Configure the MCP Agent Server (for Cursor / Claude Code)
+## Part 3: Configure the MCP Agent Server (optional)
 
-The MCP server lets AI agents (Cursor's built-in agent, Claude Code, etc.)
-read your workspace's structured state and take actions via 17 tools.
+The built-in **Chat** view does not require MCP. Use this section only if you
+want **external** agents (Claude Code, another Cursor MCP client, etc.) to call
+the same tools.
+
+The MCP server lets those agents read your workspace's structured state and take
+actions via 17 tools.
 
 ### Step 1: Build the MCP server
 

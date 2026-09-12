@@ -122,6 +122,7 @@ cursor /home/nemesis/projects/developer-tools/nodeforge/packages/test-fixtures/n
 | **Git** | Branch name + dirty/clean status | ☐ |
 | **Database** | Prisma tables after auto-detect | ☐ |
 | **Dependencies** | Empty until audit is run | ☐ |
+| **Chat** | Welcome + chips (API key optional for display) | ☐ |
 | **Agent** | MCP Server status "ready", tool list visible | ☐ |
 
 ---
@@ -356,8 +357,29 @@ git reset HEAD README.md && rm -f README.md   # cleanup
 | Toast | Vulnerability/outdated counts or "up to date" | ☐ |
 | Dependencies view | Vulnerabilities grouped by severity | ☐ |
 | Dependencies view | Outdated packages listed | ☐ |
+| **NodeForge: Analyze Dependency Graph** | Unused / circular / missing sections | ☐ |
+| Problems panel | `nodeforge-dependencies` on `package.json` for vulns | ☐ |
+| Background audit | Changing root `package.json` refreshes report (trusted) | ☐ |
+| Background graph | On activation, graph sections populate without manual command | ☐ |
 
 For `node-ts-deps` specifically: expect findings related to old `lodash@4.17.20`.
+Use `node-ts-depgraph` for graph sections.
+
+---
+
+## 9b. Built-in Chat
+
+**Prerequisite:** `NodeForge: Set Chat API Key` with a valid OpenAI-compatible key.
+
+| Step | Expected | Pass |
+|------|----------|------|
+| Chat view | Header pills (model, trust, API key) + welcome markdown | ☐ |
+| Tool steps | Expandable tool cards with output preview | ☐ |
+| Ask "What package manager?" | Tool step + answer from profile | ☐ |
+| `/audit-and-upgrade-deps` | Uses dependency tools | ☐ |
+| Restricted workspace | Write tools blocked in chat | ☐ |
+| **NodeForge: Clear Chat** | History cleared | ☐ |
+| Stop button | Cancels in-flight request | ☐ |
 
 ---
 

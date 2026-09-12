@@ -11,17 +11,31 @@
  */
 
 import * as vscode from "vscode";
-import type { DependencyReport, DependencyFinding, OutdatedEntry } from "@nodeforge/contracts";
+import type {
+  DependencyGraphAnalysis,
+  DependencyReport,
+  DependencyFinding,
+  OutdatedEntry,
+  UnusedDependency
+} from "@nodeforge/contracts";
 
-type NodeKind = "root" | "section" | "finding" | "outdated" | "detail" | "empty";
+type NodeKind =
+  | "root"
+  | "section"
+  | "finding"
+  | "outdated"
+  | "unused"
+  | "circular"
+  | "missing"
+  | "detail"
+  | "empty";
 
 interface TreeNode {
   kind: NodeKind;
   label: string;
   description?: string;
   tooltip?: string;
-  /** Section identifier ("vulns" or "outdated"). */
-  section?: "vulns" | "outdated";
+  section?: "vulns" | "outdated" | "unused" | "circular" | "missing";
   /** Index within the section's array. */
   index?: number;
   /** Detail key (for child nodes like "advisory:"). */
@@ -35,9 +49,15 @@ export class DependencyViewProvider implements vscode.TreeDataProvider<TreeNode>
   readonly onDidChangeTreeData = this.emitter.event;
 
   private report: DependencyReport | undefined;
+  private graph: DependencyGraphAnalysis | undefined;
 
   setReport(report: DependencyReport | undefined): void {
     this.report = report;
+    this.emitter.fire(undefined);
+  }
+
+  setGraphAnalysis(analysis: DependencyGraphAnalysis | undefined): void {
+    this.graph = analysis;
     this.emitter.fire(undefined);
   }
 
@@ -51,9 +71,12 @@ export class DependencyViewProvider implements vscode.TreeDataProvider<TreeNode>
     } else if (element.kind === "finding") {
       item.collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
       item.iconPath = new vscode.ThemeIcon("warning");
-    } else if (element.kind === "outdated") {
+    } else if (element.kind === "outdated" || element.kind === "unused" || element.kind === "missing") {
       item.collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
       item.iconPath = new vscode.ThemeIcon("arrow-circle-up");
+    } else if (element.kind === "circular") {
+      item.collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
+      item.iconPath = new vscode.ThemeIcon("sync");
     } else if (element.kind === "detail") {
       item.collapsibleState = vscode.TreeItemCollapsibleState.None;
       item.iconPath = new vscode.ThemeIcon("info");
@@ -65,17 +88,24 @@ export class DependencyViewProvider implements vscode.TreeDataProvider<TreeNode>
   }
 
   getChildren(element?: TreeNode): TreeNode[] {
-    if (!this.report) {
-      if (!element) {
+    if (!element) {
+      if (!this.report && !this.graph) {
         return [
           {
             kind: "empty",
-            label: "No dependency report",
-            description: "Run 'NodeForge: Audit Dependencies' to populate"
+            label: "No dependency data",
+            description: "Run audit or analyze graph"
           }
         ];
       }
-      return [];
+    }
+
+    if (!this.report && element) {
+      return this.graphChildren(element);
+    }
+
+    if (!this.report) {
+      return element ? this.graphChildren(element) : this.graphRootSections();
     }
 
     const r = this.report;
@@ -116,7 +146,7 @@ export class DependencyViewProvider implements vscode.TreeDataProvider<TreeNode>
           section: "outdated"
         });
       }
-      return children;
+      return [...children, ...this.graphRootSections()];
     }
 
     if (element.kind === "section" && element.section === "vulns") {
@@ -131,8 +161,82 @@ export class DependencyViewProvider implements vscode.TreeDataProvider<TreeNode>
     if (element.kind === "outdated" && element.index !== undefined) {
       return outdatedDetails(r.outdated[element.index]!);
     }
+    const graphChildren = this.graphChildren(element);
+    if (graphChildren.length > 0) return graphChildren;
     return [];
   }
+
+  private graphRootSections(): TreeNode[] {
+    if (!this.graph) return [];
+    const g = this.graph;
+    const sections: TreeNode[] = [];
+    sections.push({
+      kind: "section",
+      label: "Unused",
+      description: String(g.unused.length),
+      section: "unused"
+    });
+    sections.push({
+      kind: "section",
+      label: "Circular",
+      description: String(g.circular.length),
+      section: "circular"
+    });
+    sections.push({
+      kind: "section",
+      label: "Missing",
+      description: String(g.missing.length),
+      section: "missing"
+    });
+    return sections;
+  }
+
+  private graphChildren(element: TreeNode): TreeNode[] {
+    if (!this.graph) return [];
+    const g = this.graph;
+
+    if (element.kind === "section" && element.section === "unused") {
+      return g.unused.map((u, i) => toUnusedNode(u, i));
+    }
+    if (element.kind === "section" && element.section === "circular") {
+      return g.circular.map((c, i) => ({
+        kind: "circular" as const,
+        label: `Cycle ${i + 1}`,
+        description: c.chain.join(" → "),
+        tooltip: c.chain.join(" → "),
+        index: i
+      }));
+    }
+    if (element.kind === "section" && element.section === "missing") {
+      return g.missing.map((m, i) => ({
+        kind: "missing" as const,
+        label: m.packageName,
+        description: `${m.importedBy.length} file(s)`,
+        tooltip: `Imported by:\n${m.importedBy.join("\n")}`,
+        index: i
+      }));
+    }
+    if (element.kind === "unused" && element.index !== undefined) {
+      const u = g.unused[element.index]!;
+      return [
+        detail("Version", u.version),
+        detail("Type", u.dependencyType),
+        detail("False positive", u.likelyFalsePositive ? "likely" : "no"),
+        detail("Reason", u.falsePositiveReason ?? "—")
+      ];
+    }
+    return [];
+  }
+}
+
+function toUnusedNode(u: UnusedDependency, index: number): TreeNode {
+  return {
+    kind: "unused",
+    label: u.packageName,
+    description: u.likelyFalsePositive ? "likely tooling" : "unused",
+    tooltip: `${u.packageName}@${u.version} (${u.dependencyType})`,
+    index
+  };
 }
 
 function toFindingNode(f: DependencyFinding, index: number): TreeNode {

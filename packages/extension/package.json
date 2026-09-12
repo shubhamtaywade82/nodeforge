@@ -16,7 +16,9 @@
     "onCommand:nodeforge.analyzeWorkspace",
     "onCommand:nodeforge.runDiagnostics",
     "onCommand:nodeforge.runTests",
-    "onView:nodeforge.workspace"
+    "onView:nodeforge.workspace",
+    "onView:nodeforge.chat",
+    "onView:nodeforge.docs"
   ],
   "main": "./dist/extension.cjs",
   "capabilities": {
@@ -66,6 +68,11 @@
           "name": "Dependencies"
         },
         {
+          "id": "nodeforge.chat",
+          "type": "webview",
+          "name": "Chat"
+        },
+        {
           "id": "nodeforge.agent",
           "name": "Agent"
         }
@@ -101,6 +108,16 @@
         {
           "command": "nodeforge.auditDependencies",
           "when": "view == nodeforge.dependencies",
+          "group": "navigation"
+        },
+        {
+          "command": "nodeforge.analyzeDependencyGraph",
+          "when": "view == nodeforge.dependencies",
+          "group": "navigation"
+        },
+        {
+          "command": "nodeforge.clearChat",
+          "when": "view == nodeforge.chat",
           "group": "navigation"
         }
       ]
@@ -145,6 +162,28 @@
         "title": "NodeForge: Audit Dependencies",
         "category": "NodeForge",
         "icon": "$(shield)"
+      },
+      {
+        "command": "nodeforge.analyzeDependencyGraph",
+        "title": "NodeForge: Analyze Dependency Graph",
+        "category": "NodeForge",
+        "icon": "$(type-hierarchy)"
+      },
+      {
+        "command": "nodeforge.setChatApiKey",
+        "title": "NodeForge: Set Chat API Key",
+        "category": "NodeForge"
+      },
+      {
+        "command": "nodeforge.clearChat",
+        "title": "NodeForge: Clear Chat",
+        "category": "NodeForge",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "nodeforge.openChat",
+        "title": "NodeForge: Open Chat",
+        "category": "NodeForge"
       }
     ],
     "configuration": {
@@ -159,6 +198,38 @@
           "type": "boolean",
           "default": false,
           "description": "If true, refresh diagnostics on every file save instead of debouncing."
+        },
+        "nodeforge.chat.baseUrl": {
+          "type": "string",
+          "default": "https://api.openai.com/v1",
+          "description": "OpenAI-compatible API base URL for NodeForge chat."
+        },
+        "nodeforge.chat.model": {
+          "type": "string",
+          "default": "gpt-4o-mini",
+          "description": "Model id for NodeForge chat."
+        },
+        "nodeforge.chat.maxToolRounds": {
+          "type": "number",
+          "default": 8,
+          "minimum": 1,
+          "maximum": 24,
+          "description": "Maximum tool-call rounds per chat message."
+        },
+        "nodeforge.chat.injectWorkspaceSnapshot": {
+          "type": "boolean",
+          "default": true,
+          "description": "Inject workspace profile and dependency summaries into each chat turn."
+        },
+        "nodeforge.dependencies.backgroundAudit": {
+          "type": "boolean",
+          "default": true,
+          "description": "Run dependency audit when package.json or lockfiles change (trusted workspaces)."
+        },
+        "nodeforge.dependencies.backgroundGraphAnalysis": {
+          "type": "boolean",
+          "default": true,
+          "description": "Analyze dependency graph (unused/circular/missing) on activation and when package.json changes (trusted workspaces)."
         }
       }
     }
@@ -185,6 +256,7 @@
     "@nodeforge/adapter-prisma": "workspace:*",
     "@nodeforge/adapter-drizzle": "workspace:*",
     "@nodeforge/adapter-dependencies": "workspace:*",
+    "@nodeforge/adapter-dependency-graph": "workspace:*",
     "@nodeforge/agent": "workspace:*"
   },
   "devDependencies": {

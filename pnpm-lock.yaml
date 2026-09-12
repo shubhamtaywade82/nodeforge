@@ -366,6 +366,9 @@ importers:
       '@nodeforge/adapter-dependencies':
         specifier: workspace:*
         version: link:../adapters/dependencies
+      '@nodeforge/adapter-dependency-graph':
+        specifier: workspace:*
+        version: link:../adapters/dependency-graph
       '@nodeforge/adapter-drizzle':
         specifier: workspace:*
         version: link:../adapters/drizzle
