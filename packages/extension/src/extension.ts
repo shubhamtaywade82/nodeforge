@@ -33,6 +33,10 @@ import { TestManager } from "./core/TestManager.js";
 import { DatabaseManager } from "./core/DatabaseManager.js";
 import { DependencyManager } from "./core/DependencyManager.js";
 import { DiagnosticsBridge } from "./core/DiagnosticsBridge.js";
+import { StatusBarController } from "./core/StatusBarController.js";
+import { NodeForgeTaskProvider } from "./core/NodeForgeTaskProvider.js";
+import { NodeForgeTestController } from "./core/NodeForgeTestController.js";
+import { NodeForgeCodeActionProvider } from "./core/NodeForgeCodeActionProvider.js";
 import { logger } from "./core/Logger.js";
 
 let workspaceManager: WorkspaceManager | undefined;
@@ -67,9 +71,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   gitAdapter = git;
 
   // Bridge diagnostics from the DiagnosticStore to VS Code's Problems panel.
-  // This is the key integration that makes findings appear as squigglies in
-  // the editor and entries in the Problems panel.
   const diagnosticsBridge = new DiagnosticsBridge(bus);
+
+  // Status bar with diagnostic counts + git branch.
+  const statusBar = new StatusBarController(bus);
+
+  // Native Test Explorer integration.
+  const testController = new NodeForgeTestController(tests, bus);
+
+  // Quick Fix lightbulbs for ESLint/Biome diagnostics.
+  const codeActionProvider = new NodeForgeCodeActionProvider();
 
   // Register all sidebar views using createTreeView (not registerTreeDataProvider)
   // so we get reveal(), message, onDidChangeSelection, and visible.
@@ -102,6 +113,18 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(
     ...Object.values(treeViews),
     diagnosticsBridge,
+    statusBar,
+    testController,
+    vscode.languages.registerCodeActionsProvider(
+      { scheme: "file", language: "typescript" },
+      codeActionProvider,
+      { providedCodeActionKinds: NodeForgeCodeActionProvider.providedCodeActionKinds }
+    ),
+    vscode.languages.registerCodeActionsProvider(
+      { scheme: "file", language: "javascript" },
+      codeActionProvider,
+      { providedCodeActionKinds: NodeForgeCodeActionProvider.providedCodeActionKinds }
+    ),
     { dispose: () => logger.dispose() }
   );
 
@@ -327,6 +350,67 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
     vscode.commands.registerCommand("nodeforge.showOutput", () => {
       logger.show();
+    }),
+
+    // Quick Fix: apply ESLint --fix to the current file.
+    vscode.commands.registerCommand("nodeforge.applyEslintFix", async () => {
+      const r = resolveWorkspaceRoot();
+      if (!r || !isTrusted()) return;
+      if (!manager.current()) await manager.analyze(r);
+      const profile = manager.current();
+      if (profile?.linter !== "eslint") {
+        void vscode.window.showWarningMessage("NodeForge: ESLint is not the detected linter.");
+        return;
+      }
+      await vscode.window.withProgress(
+        { location: vscode.ProgressLocation.Window, title: "NodeForge: applying ESLint fixes" },
+        async () => {
+          const { EslintAdapter } = await import("@nodeforge/adapter-eslint");
+          const adapter = new EslintAdapter(runner);
+          try {
+            const result = await adapter.fix(r);
+            logger.info(`ESLint --fix: ${result.diagnostics.length} remaining diagnostics`);
+            await diagManager.refresh();
+          } catch (err) {
+            logger.error("ESLint --fix failed", err);
+          }
+        }
+      );
+    }),
+
+    // Quick Fix: apply Biome safe fixes to the current file.
+    vscode.commands.registerCommand("nodeforge.applyBiomeFix", async () => {
+      const r = resolveWorkspaceRoot();
+      if (!r || !isTrusted()) return;
+      if (!manager.current()) await manager.analyze(r);
+      const profile = manager.current();
+      if (profile?.linter !== "biome") {
+        void vscode.window.showWarningMessage("NodeForge: Biome is not the detected linter.");
+        return;
+      }
+      await vscode.window.withProgress(
+        { location: vscode.ProgressLocation.Window, title: "NodeForge: applying Biome fixes" },
+        async () => {
+          const { BiomeAdapter } = await import("@nodeforge/adapter-biome");
+          const adapter = new BiomeAdapter(runner);
+          try {
+            await adapter.format(r);
+            logger.info("Biome format applied");
+            await diagManager.refresh();
+          } catch (err) {
+            logger.error("Biome fix failed", err);
+          }
+        }
+      );
+    }),
+
+    // Quick Fix: format the current file.
+    vscode.commands.registerCommand("nodeforge.formatCurrentFile", async () => {
+      const r = resolveWorkspaceRoot();
+      if (!r || !isTrusted()) return;
+      const editor = vscode.window.activeTextEditor;
+      if (!editor) return;
+      await vscode.commands.executeCommand("editor.action.formatDocument");
     })
   );
 
@@ -398,6 +482,20 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   if (root && isTrusted()) {
     logger.info(`Auto-running for workspace: ${root}`);
+
+    // Register the Task Provider after we have a workspace root.
+    const pm: "npm" | "pnpm" | "yarn" = "npm"; // default; will be updated after analyze
+    const taskProvider = vscode.tasks.registerTaskProvider(
+      NodeForgeTaskProvider.taskType,
+      new NodeForgeTaskProvider(root, pm)
+    );
+    context.subscriptions.push(taskProvider);
+
+    // Discover tests for the Test Explorer.
+    void testController.discoverTests().catch((err) => {
+      logger.error("Initial test discovery failed", err);
+    });
+
     void manager.analyze(root).then(
       (profile) => {
         workspaceView.render(profile);
@@ -406,7 +504,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
           logger.error("Initial diagnostic run failed", err);
         });
         void git.detect(root).then(
-          (state) => gitView.setState(state),
+          (state) => {
+            gitView.setState(state);
+            statusBar.setGitState(state);
+          },
           (err) => logger.error("Initial git detect failed", err)
         );
         if (dbManager.isEnabled()) {

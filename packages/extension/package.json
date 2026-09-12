@@ -26,6 +26,18 @@
     }
   },
   "contributes": {
+    "taskDefinitions": [
+      {
+        "type": "nodeforge",
+        "required": ["script"],
+        "properties": {
+          "script": {
+            "type": "string",
+            "description": "The package.json script to run"
+          }
+        }
+      }
+    ],
     "viewsContainers": {
       "activitybar": [
         {
@@ -185,6 +197,24 @@
         "title": "Open Advisory URL",
         "category": "NodeForge",
         "icon": "$(link-external)"
+      },
+      {
+        "command": "nodeforge.applyEslintFix",
+        "title": "NodeForge: Apply ESLint --fix",
+        "category": "NodeForge",
+        "icon": "$(wand)"
+      },
+      {
+        "command": "nodeforge.applyBiomeFix",
+        "title": "NodeForge: Apply Biome Safe Fixes",
+        "category": "NodeForge",
+        "icon": "$(wand)"
+      },
+      {
+        "command": "nodeforge.formatCurrentFile",
+        "title": "NodeForge: Format Current File",
+        "category": "NodeForge",
+        "icon": "$(align-left)"
       }
     ],
     "configuration": {
