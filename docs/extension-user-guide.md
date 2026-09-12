@@ -18,10 +18,13 @@ NodeForge is a **control plane** for Node.js, JavaScript, and TypeScript project
 ## Installation
 
 1. Build or obtain `nodeforge-0.0.1.vsix` (see [INSTALL.md](../INSTALL.md)).
-2. Install: **Extensions → … → Install from VSIX**, or  
-   `cursor --install-extension nodeforge-0.0.1.vsix`
-3. Reload the window.
-4. Open a Node/TS project folder and **Trust** the workspace when prompted.
+2. Install via CLI or UI:
+   - In Cursor: `cursor --install-extension /path/to/nodeforge-0.0.1.vsix`
+   - In VS Code: `code --install-extension /path/to/nodeforge-0.0.1.vsix`
+   - Or UI: **Extensions → … → Install from VSIX...**
+3. Reload the window (`Ctrl+Shift+P` → **Developer: Reload Window**).
+4. In your target project, ensure dev dependencies are installed (`npm install` / `pnpm install`) so local tools (`tsc`, `eslint`, etc.) resolve.
+5. Open the project folder and click **Trust Folder & Workspace** when prompted.
 
 ---
 

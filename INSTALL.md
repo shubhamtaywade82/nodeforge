@@ -15,34 +15,64 @@ configuring the MCP agent server for Cursor.
 
 ## Part 1: Install the VS Code Extension
 
-### Option A: Install from the .vsix file
+### Step 1: Build and Package the VSIX (from source)
 
-1. Get the `nodeforge-0.0.1.vsix` file from `packages/extension/` or the
-   `download/` directory.
+If you are building the extension from the repository:
 
-2. Install via command line:
+```bash
+# 1. Install dependencies and build all packages
+pnpm install
+pnpm build
 
-   ```bash
-   code --install-extension nodeforge-0.0.1.vsix
-   ```
+# 2. Package the extension VSIX
+cd packages/extension
+npx @vscode/vsce package --no-dependencies --no-git-tag-version --allow-missing-repository --baseContentUrl https://github.com/shubhamtaywade82/nodeforge/blob/main/packages/extension
+```
 
-   Or in Cursor:
+This creates `packages/extension/nodeforge-0.0.1.vsix`.
 
-   ```bash
-   cursor --install-extension nodeforge-0.0.1.vsix
-   ```
+### Step 2: Install into Cursor or VS Code
 
-3. Or install via the UI:
-   - Open VS Code / Cursor
-   - Go to Extensions (`Ctrl+Shift+X` / `Cmd+Shift+X`)
-   - Click the "..." menu → "Install from VSIX..."
-   - Select the `nodeforge-0.0.1.vsix` file
+#### Via Command Line
 
-4. Reload the window (`Ctrl+Shift+P` → "Developer: Reload Window")
+For **Cursor**:
+```bash
+cursor --install-extension /path/to/nodeforge/packages/extension/nodeforge-0.0.1.vsix
+```
 
-### Option B: Run from source (development mode)
+For **VS Code**:
+```bash
+code --install-extension /path/to/nodeforge/packages/extension/nodeforge-0.0.1.vsix
+```
 
-If you want to modify NodeForge itself:
+#### Via Editor UI
+1. Open VS Code or Cursor.
+2. Open Extensions (`Ctrl+Shift+X` / `Cmd+Shift+X`).
+3. Click the Views & More Actions menu (`...`) at the top of the Extensions view.
+4. Select **Install from VSIX...**
+5. Select `nodeforge-0.0.1.vsix`.
+6. Reload the window: press `Ctrl+Shift+P` → run **Developer: Reload Window**.
+
+### Step 3: Prepare Your Target Project
+
+NodeForge executes your project's local tools (`tsc`, `eslint`, `vitest`, `jest`, etc.). Before testing or opening your target project, ensure its dependencies are installed:
+
+```bash
+cd /path/to/your/project
+npm install   # or pnpm install / yarn
+```
+
+Then open it in your editor:
+```bash
+cursor /path/to/your/project
+# or: code /path/to/your/project
+```
+
+When prompted by the editor, click **Trust Folder & Workspace** to allow NodeForge adapters to run.
+
+### Alternative: Run in Development Mode (F5)
+
+To develop or debug NodeForge itself without packaging:
 
 ```bash
 cd /path/to/nodeforge
@@ -50,11 +80,9 @@ pnpm install
 pnpm build
 ```
 
-Then in VS Code / Cursor:
-
-1. Open the `packages/extension/` folder
-2. Press `F5` to launch an Extension Development Host
-3. The NodeForge sidebar will appear in the new window
+1. Open the `/path/to/nodeforge` folder in VS Code / Cursor.
+2. Open `packages/extension/src/extension.ts`.
+3. Press `F5` to launch an Extension Development Host window with NodeForge pre-loaded.
 
 ## Part 2: Using the Extension
 
