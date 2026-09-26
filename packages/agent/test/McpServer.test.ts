@@ -65,7 +65,7 @@ describe("McpServer protocol", () => {
       method: "tools/list"
     });
     const result = response!.result as { tools: Array<{ name: string; description: string; inputSchema: unknown }> };
-    expect(result.tools.length).toBeGreaterThanOrEqual(17);
+    expect(result.tools.length).toBe(19);
     const names = result.tools.map((t) => t.name);
     expect(names).toEqual(
       expect.arrayContaining([
@@ -82,6 +82,7 @@ describe("McpServer protocol", () => {
         "getKubernetesManifests",
         "getGitHubWorkflows",
         "getDependencyGraph",
+        "getChangeImpact",
         "runScript",
         "formatFiles",
         "applyEslintFix",
