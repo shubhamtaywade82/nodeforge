@@ -631,6 +631,33 @@
         }
       },
       {
+        "name": "nodeforge_get_change_impact",
+        "displayName": "NodeForge: Change Impact",
+        "modelDescription": "Analyze direct and transitive source-file dependencies and dependents for changed files, plus affected external packages and touched circular dependencies. Uses the current working Git diff when files are omitted. Read-only.",
+        "userDescription": "Inspect which code is affected by a change.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "nodeforgeChangeImpact",
+        "icon": "$(type-hierarchy-subset)",
+        "tags": [
+          "nodeforge",
+          "read-only",
+          "architecture",
+          "impact"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "files": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Optional workspace-relative or absolute-in-workspace source files. Omit to analyze the current working Git diff."
+            }
+          }
+        }
+      },
+      {
         "name": "nodeforge_get_dependency_report",
         "displayName": "NodeForge: Dependency Report",
         "modelDescription": "Run package-manager audit and outdated checks and return dependency vulnerability and version findings. Read-only.",
