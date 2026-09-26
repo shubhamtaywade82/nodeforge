@@ -11,3 +11,5 @@ export { PROMPTS, findPromptByName } from "./prompts.js";
 export type { McpTool, McpToolDefinition, McpToolHandler } from "./tools.js";
 export type { McpPrompt } from "./prompts.js";
 export type {\n  LlmClient,\n  LlmClientConfig,\n  LlmCompletionRequest,\n  LlmCompletionResult,\n  LlmMessage,\n  LlmToolDefinition\n} from "./llm/types.js";
+
+export { analyzeChangeImpact } from "./changeImpact.js";
