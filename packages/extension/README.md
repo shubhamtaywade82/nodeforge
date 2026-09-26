@@ -27,3 +27,7 @@ pnpm --filter nodeforge package
 ```
 
 Produces `nodeforge-0.1.0.vsix` in this directory.
+
+## Native Ollama provider
+
+NodeForge registers **NodeForge Ollama** as a native VS Code language-model provider. With Ollama running locally (default `http://localhost:11434`), available models are discovered from the Ollama API and advertised to VS Code with tool-calling/vision capability metadata. Configure `nodeforge.ollama.baseUrl` for a different server.
