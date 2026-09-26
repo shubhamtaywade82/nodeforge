@@ -81,22 +81,31 @@ export class TestManager {
 
   /** Run the enabled test adapter. Cancels any in-flight run. */
   async run(testId?: string, externalSignal?: AbortSignal): Promise<TestRunOutcome | undefined> {
+    const target = testId ? this.findTestCase(this.lastOutcome?.suite, testId) : undefined;
+    return this.runTarget(target, externalSignal);
+  }
+
+  private async runTarget(
+    target: TestCase | undefined,
+    externalSignal?: AbortSignal
+  ): Promise<TestRunOutcome | undefined> {
     if (!this.profile || !this.adapter) {
       return undefined;
     }
     if (this.currentRun) {
       this.currentRun.abort();
     }
+
     const controller = new AbortController();
     this.currentRun = controller;
     const onExternalAbort = (): void => controller.abort();
+
     if (externalSignal) {
       if (externalSignal.aborted) controller.abort();
       else externalSignal.addEventListener("abort", onExternalAbort, { once: true });
     }
 
     try {
-      const target = testId ? this.findTestCase(this.lastOutcome?.suite, testId) : undefined;
       const outcome = await this.adapter.run(this.profile.root, controller.signal, target);
       this.lastOutcome = outcome;
       this.bus.publish({ type: "test.runCompleted", result: outcome.result });
@@ -119,6 +128,17 @@ export class TestManager {
       if (found) return found;
     }
     return undefined;
+  }
+
+  /** Run all tests contained in a single test file. */
+  async runFile(filePath: string, externalSignal?: AbortSignal): Promise<TestRunOutcome | undefined> {
+    const target: TestCase = {
+      id: "file:" + filePath,
+      name: filePath,
+      file: filePath,
+      status: "running"
+    };
+    return this.runTarget(target, externalSignal);
   }
 
   /** Cancel any in-flight run. */
