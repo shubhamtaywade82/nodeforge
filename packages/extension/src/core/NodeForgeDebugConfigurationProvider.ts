@@ -31,8 +31,12 @@ interface PackageJson {
 export class NodeForgeDebugConfigurationProvider implements vscode.DebugConfigurationProvider {
   constructor(
     private readonly workspaceRoot: string,
-    private readonly packageManager: "npm" | "pnpm" | "yarn"
+    private packageManager: "npm" | "pnpm" | "yarn"
   ) {}
+
+  setPackageManager(packageManager: "npm" | "pnpm" | "yarn"): void {
+    this.packageManager = packageManager;
+  }
 
   /**
    * Called by VS Code when the user presses F5 without a launch.json.
@@ -103,19 +107,16 @@ export class NodeForgeDebugConfigurationProvider implements vscode.DebugConfigur
    * Called by VS Code to resolve a debug configuration before launching.
    * Allows us to inject env vars from .env, set the correct Node binary, etc.
    */
-  resolveDebugConfiguration?(
+  async resolveDebugConfiguration?(
     _folder: vscode.WorkspaceFolder | undefined,
     debugConfiguration: vscode.DebugConfiguration,
     _token?: vscode.CancellationToken
-  ): vscode.ProviderResult<vscode.DebugConfiguration> {
-    // Load .env vars into the debug environment if the file exists.
-    // We don't block the launch — best-effort only.
-    void this.loadEnvFile().then((env) => {
-      if (Object.keys(env).length > 0) {
-        debugConfiguration.env = { ...env, ...debugConfiguration.env };
-        logger.info(`Loaded ${Object.keys(env).length} env vars from .env for debug session`);
-      }
-    });
+  ): Promise<vscode.DebugConfiguration> {
+    const env = await this.loadEnvFile();
+    if (Object.keys(env).length > 0) {
+      debugConfiguration.env = { ...env, ...debugConfiguration.env };
+      logger.info(`Loaded ${Object.keys(env).length} env vars from .env for debug session`);
+    }
 
     return debugConfiguration;
   }
