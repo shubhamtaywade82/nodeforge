@@ -35,9 +35,10 @@ export class OllamaLanguageModelChatProvider implements vscode.LanguageModelChat
     const cancellation = createAbortController(token);
     try {
       const config = this.getConfig();
+      const authHeaders = authorizationHeaders(config.apiKey);
       const tags = await this.fetchJson<OllamaTagsResponse>(
         toOllamaApiBaseUrl(config.baseUrl) + "/tags",
-        { method: "GET", signal: cancellation.signal }
+        { method: "GET", headers: authHeaders, signal: cancellation.signal }
       );
       const models = tags.models ?? [];
 
@@ -48,7 +49,10 @@ export class OllamaLanguageModelChatProvider implements vscode.LanguageModelChat
               toOllamaApiBaseUrl(config.baseUrl) + "/show",
               {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                  ...authHeaders,
+                  "Content-Type": "application/json"
+                },
                 body: JSON.stringify({ model: model.name }),
                 signal: cancellation.signal
               }
@@ -179,6 +183,10 @@ export function registerOllamaLanguageModelChatProvider(): vscode.Disposable {
   });
 
   return vscode.lm.registerLanguageModelChatProvider(OLLAMA_LANGUAGE_MODEL_VENDOR, provider);
+}
+
+function authorizationHeaders(apiKey: string): Record<string, string> {
+  return apiKey ? { Authorization: "Bearer " + apiKey } : {};
 }
 
 function toLlmMessages(
