@@ -30,7 +30,9 @@ import { KubernetesAdapter } from "@nodeforge/adapter-kubernetes";
 import { GitHubActionsAdapter } from "@nodeforge/adapter-github-actions";
 import { DependencyGraphAdapter } from "@nodeforge/adapter-dependency-graph";
 import { PrettierAdapter } from "@nodeforge/adapter-prettier";
+import { analyzeChangeImpact } from "./changeImpact.js";
 import type {
+  ChangeImpact,
   DatabaseSchema,
   DependencyGraphAnalysis,
   DependencyReport,
@@ -247,6 +249,27 @@ export class NodeForgeContext {
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error("[nodeforge:mcp] dependency graph analysis failed", err);
+      return undefined;
+    }
+  }
+
+  /** Analyze downstream/upstream source-file impact for changed files. */
+  async getChangeImpact(files?: readonly string[]): Promise<ChangeImpact | undefined> {
+    try {
+      const graph = await this.getDependencyGraph();
+      if (!graph) return undefined;
+
+      let changedFiles = files ?? [];
+      if (changedFiles.length === 0) {
+        const diff = await this.getGitDiff("working");
+        changedFiles = diff?.files ?? [];
+      }
+
+      if (changedFiles.length === 0) return undefined;
+      return analyzeChangeImpact(this.workspaceRoot, graph.graph, changedFiles);
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error("[nodeforge:mcp] change impact analysis failed", err);
       return undefined;
     }
   }
