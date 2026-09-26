@@ -20,7 +20,6 @@
  */
 
 import * as vscode from "vscode";
-import * as path from "node:path";
 import type { EventBus, TestCase, TestRunResult, TestSuite } from "@nodeforge/contracts";
 import type { TestManager } from "./TestManager.js";
 import { logger } from "./Logger.js";
@@ -46,11 +45,6 @@ export class NodeForgeTestController {
       true // isDefault
     );
 
-    // Refresh test tree when a test run completes.
-    bus.subscribe("test.runCompleted", (e) => {
-      this.applyResults(e.result);
-    });
-
     // Discover tests on controller creation (lazy — VS Code calls refresh).
     this.controller.refreshHandler = async () => {
       await this.discoverTests();
@@ -70,7 +64,6 @@ export class NodeForgeTestController {
       if (!outcome) return;
 
       this.buildTestTree(outcome.suite);
-      this.applyResults(outcome.result);
     } catch (err) {
       logger.error("Test discovery failed", err);
     }
@@ -213,29 +206,6 @@ export class NodeForgeTestController {
 
       this.controller.items.add(fileItem);
     }
-  }
-
-  /** Apply test results to the existing TestItems. */
-  private applyResults(_result: TestRunResult): void {
-    // Native TestRun owns transient state; do not mutate TestItem labels.
-  }
-
-  /** Build a map of testId → TestCase from a TestRunResult. */
-  private buildResultMap(result: TestRunResult): Map<string, TestCase> {
-    return new Map((result.cases ?? []).map((test) => [test.id, test]));
-  }
-
-  /** Recursively collect all TestItems from a TestItemCollection. */
-  private collectAllTestItems(collection: vscode.TestItemCollection): vscode.TestItem[] {
-    const items: vscode.TestItem[] = [];
-    const visit = (coll: vscode.TestItemCollection): void => {
-      coll.forEach((item) => {
-        items.push(item);
-        visit(item.children);
-      });
-    };
-    visit(collection);
-    return items;
   }
 
   dispose(): void {
