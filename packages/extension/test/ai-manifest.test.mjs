@@ -51,3 +51,12 @@ test("language model tool contribution names are unique", async () => {
     assert.match(name, /^nodeforge_[a-z0-9_]+$/);
   }
 });
+
+test("Ollama language model provider is declared exactly once", async () => {
+  const manifest = await readJson(packagePath);
+  const providers = manifest.contributes?.languageModelChatProviders ?? [];
+  const matches = providers.filter(({ vendor }) => vendor === "nodeforge-ollama");
+
+  assert.equal(matches.length, 1);
+  assert.equal(matches[0]?.displayName, "NodeForge Ollama");
+});
