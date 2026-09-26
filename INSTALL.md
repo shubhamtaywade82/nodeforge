@@ -7,7 +7,7 @@ configuring the MCP agent server for Cursor.
 
 - **Node.js** 20+ (check with `node --version`)
 - **pnpm** 9+ (install with `npm install -g pnpm` or `corepack enable`)
-- **VS Code** 1.85+ or **Cursor** (any recent version)
+- **VS Code** 1.138+ or **Cursor** (any recent version)
 - **git** (for the Git adapter)
 - **Your project's dev dependencies installed** (`npm install` or `pnpm install`
   in your project root — NodeForge runs your project's own `tsc`, `eslint`,
@@ -29,7 +29,7 @@ cd packages/extension
 npx @vscode/vsce package --no-dependencies --no-git-tag-version --allow-missing-repository --baseContentUrl https://github.com/shubhamtaywade82/nodeforge/blob/main/packages/extension
 ```
 
-This creates `packages/extension/nodeforge-0.0.1.vsix`.
+This creates `packages/extension/nodeforge-0.1.0.vsix`.
 
 ### Step 2: Install into Cursor or VS Code
 
@@ -37,12 +37,12 @@ This creates `packages/extension/nodeforge-0.0.1.vsix`.
 
 For **Cursor**:
 ```bash
-cursor --install-extension /home/nemesis/projects/developer-tools/nodeforge/packages/extension/nodeforge-0.0.1.vsix
+cursor --install-extension /home/nemesis/projects/developer-tools/nodeforge/packages/extension/nodeforge-0.1.0.vsix
 ```
 
 For **VS Code**:
 ```bash
-code --install-extension /home/nemesis/projects/developer-tools/nodeforge/packages/extension/nodeforge-0.0.1.vsix
+code --install-extension /home/nemesis/projects/developer-tools/nodeforge/packages/extension/nodeforge-0.1.0.vsix
 ```
 
 #### Via Editor UI
@@ -50,7 +50,7 @@ code --install-extension /home/nemesis/projects/developer-tools/nodeforge/packag
 2. Open Extensions (`Ctrl+Shift+X` / `Cmd+Shift+X`).
 3. Click the Views & More Actions menu (`...`) at the top of the Extensions view.
 4. Select **Install from VSIX...**
-5. Select `nodeforge-0.0.1.vsix`.
+5. Select `nodeforge-0.1.0.vsix`.
 6. Reload the window: press `Ctrl+Shift+P` → run **Developer: Reload Window**.
 
 ### Step 3: Prepare Your Target Project
@@ -113,7 +113,7 @@ will appear in the Activity Bar on the left with 10 views:
 3. Ask questions or use workflow chips / slash commands:
    - `/audit-and-upgrade-deps`, `/validate-and-fix`, `/onboard-to-project`, `/explain-errors`
 
-The chat uses the same 17 engineering tools as the MCP server. Write tools
+The chat uses the the same 18 engineering tools as the MCP server. Write tools
 (`formatFiles`, `applyEslintFix`, `runScript`, `validateWorkspace`) run automatically
 when the workspace is **Trusted**; they are blocked in Restricted Mode.
 
