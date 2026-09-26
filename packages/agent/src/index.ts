@@ -10,4 +10,4 @@ export type { WorkspaceSnapshot } from "./WorkspaceSnapshot.js";
 export { PROMPTS, findPromptByName } from "./prompts.js";
 export type { McpTool, McpToolDefinition, McpToolHandler } from "./tools.js";
 export type { McpPrompt } from "./prompts.js";
-export type { LlmClient, LlmClientConfig } from "./llm/types.js";
+export type {\n  LlmClient,\n  LlmClientConfig,\n  LlmCompletionRequest,\n  LlmCompletionResult,\n  LlmMessage,\n  LlmToolDefinition\n} from "./llm/types.js";
