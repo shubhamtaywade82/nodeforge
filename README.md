@@ -145,7 +145,7 @@ Phase 8:
 - [x] Handles `.js` → `.ts` extension mapping (standard ESM convention)
 - [x] False-positive detection for CLI tools / config plugins / `@types/*` packages
 - [x] DFS-based circular dependency detection among file nodes
-- [x] 1 new MCP tool: `getDependencyGraph, `getChangeImpact`` (13 total)
+- [x] 1 new MCP tool: `getChangeImpact` (19 total)
 - [x] Real fixture with deliberate unused dep (`lodash`) and circular chain (`a → b → c → a`)
 - [x] 235 tests passing across the workspace
 
