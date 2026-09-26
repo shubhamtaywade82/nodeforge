@@ -815,25 +815,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         workspaceView.render(profile);
         treeViews.workspace!.message = undefined;
         devDocs.setProfile(profile);
-        scheduleBackgroundDependencyAudit(root, depManager, session);
-        scheduleBackgroundDependencyGraph(root, graphManager, session, dependencyView, depDiagPublisher);
-        scheduleBackgroundDevDocsSync(profile, devDocsOfflineMgr);
-        void diagManager.refresh().catch((err) => {
-          logger.error("Initial diagnostic run failed", err);
-        });
-        void git.detect(root).then(
-          (state) => {
-            gitView.setState(state);
-            statusBar.setGitState(state);
-          },
-          (err) => logger.error("Initial git detect failed", err)
-        );
-        if (dbManager.isEnabled()) {
-          void dbManager.detect().then(
-            (schema) => databaseView.setSchema(schema),
-            (err) => logger.error("Initial database detect failed", err)
-          );
-        }
+        // Activation stays cheap: detect the workspace and render its profile.
+        // Diagnostics, tests, Git, database, dependency, and docs scans run
+        // on demand or from their existing file-change triggers.
       },
       (err) => {
         logger.error("Initial analyze failed", err);
