@@ -15,6 +15,7 @@ import { TOOLS, findTool, listToolDefinitions } from "../src/tools.js";
 import { PROMPTS } from "../src/prompts.js";
 
 const FIXTURE = path.resolve(__dirname, "../../test-fixtures/node-ts-docker");
+const DEPGRAPH_FIXTURE = path.resolve(__dirname, "../../test-fixtures/node-ts-depgraph");
 
 function makeServer(): McpServer {
   const ctx = new NodeForgeContext(FIXTURE);
@@ -244,6 +245,31 @@ describe("McpServer protocol", () => {
 });
 
 describe("McpServer tool dispatch (real adapter runs)", () => {
+  it("getChangeImpact returns graph-based impact for explicit files", async () => {
+    const server = new McpServer(new NodeForgeContext(DEPGRAPH_FIXTURE));
+    const response = await server.handleMessage({
+      jsonrpc: "2.0",
+      id: 19,
+      method: "tools/call",
+      params: {
+        name: "getChangeImpact",
+        arguments: { files: ["src/a.ts"] }
+      }
+    });
+
+    const result = response!.result as {
+      content: Array<{ type: string; text: string }>;
+    };
+    const impact = JSON.parse(result.content[0]!.text) as {
+      files: string[];
+      directDependents: string[];
+    };
+
+    expect(impact.files).toEqual(["src/a.ts"]);
+    expect(impact.directDependents.length).toBeGreaterThan(0);
+  });
+
+
   it("getProjectContext returns the workspace profile", async () => {
     const server = makeServer();
     const response = await server.handleMessage({
