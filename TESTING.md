@@ -13,7 +13,7 @@ extension or before a release. Check off each item as you go.
 | ------------- | ------- |
 | Node.js 20+ (`node --version`) | ☐ |
 | pnpm 9+ (`pnpm --version`) | ☐ |
-| VS Code 1.85+ or Cursor | ☐ |
+| VS Code 1.138+ or Cursor | ☐ |
 | git installed | ☐ |
 | Extension built and installed (see below) | ☐ |
 
@@ -28,7 +28,7 @@ pnpm install
 pnpm build
 cd packages/extension
 npx @vscode/vsce package --no-dependencies --no-git-tag-version
-cursor --install-extension ./nodeforge-0.0.1.vsix   # or: code --install-extension ...
+cursor --install-extension ./nodeforge-0.1.0.vsix   # or: code --install-extension ...
 ```
 
 Reload the editor: **Ctrl+Shift+P** → **Developer: Reload Window**.
@@ -409,7 +409,7 @@ internals or future commands.
 | ------ | ---------- | ------ |
 | MCP Server → Status | `ready` | ☐ |
 | MCP Server → Workspace | Current folder path | ☐ |
-| Available Tools | Lists all MCP tools (17) | ☐ |
+| Available Tools | Lists all MCP tools (18) | ☐ |
 | Setup section | Cursor + Claude Code config hints | ☐ |
 
 ---
@@ -596,7 +596,7 @@ Use this for release or PR verification.
 
 **Tester:** _______________
 **Date:** _______________
-**Extension version:** 0.0.1
+**Extension version:** 0.1.0
 **Editor:** VS Code / Cursor _______________
 
 ---
