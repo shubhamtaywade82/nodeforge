@@ -80,6 +80,7 @@ The assistant calls the same engineering tools as the MCP server (diagnostics, t
 | `nodeforge.chat.model` | `gpt-4o-mini` | Model id |
 | `nodeforge.chat.maxToolRounds` | `8` | Tool loop limit per message |
 | `nodeforge.chat.injectWorkspaceSnapshot` | `true` | Profile + dep summary each turn |
+| `nodeforge.ollama.baseUrl` | `http://localhost:11434` | Native Ollama server base URL |
 
 **Trust:** Write tools (`formatFiles`, `applyEslintFix`, `runScript`, `validateWorkspace`) run only in **Trusted** workspaces.
 
