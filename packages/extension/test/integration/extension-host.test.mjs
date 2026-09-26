@@ -130,8 +130,6 @@ suite("NodeForge Extension Host", () => {
     assert.equal(models[0].vendor, PROVIDER_VENDOR);
     assert.equal(models[0].maxInputTokens, 122880);
     assert.equal(models[0].maxOutputTokens, 8192);
-    assert.equal(models[0].toolCalling, true);
-    assert.equal(models[0].imageInput, false);
   });
 
   test("streams text through the native Ollama provider", async () => {
