@@ -60,7 +60,7 @@ export class TestManager {
       const adapter = new VitestAdapter(this.runner);
       this.adapter = {
         kind: "vitest",
-        run: async (root, signal) => {
+        run: async (root, signal, test) => {
           const result = await adapter.run(root, signal, test);
           return { suite: result.suite, result: result.result };
         }
@@ -69,8 +69,8 @@ export class TestManager {
       const adapter = new JestAdapter(this.runner);
       this.adapter = {
         kind: "jest",
-        run: async (root, signal) => {
-          const result = await adapter.run(root, signal);
+        run: async (root, signal, test) => {
+          const result = await adapter.run(root, signal, test);
           return { suite: result.suite, result: result.result };
         }
       };
