@@ -11,7 +11,7 @@
  * `TestsViewProvider` (and any other subscriber) can refresh.
  */
 
-import type { EventBus, TestRunResult, TestSuite, WorkspaceProfile } from "@nodeforge/contracts";
+import type { EventBus, TestCase, TestRunResult, TestSuite, WorkspaceProfile } from "@nodeforge/contracts";
 import { ProcessRunner } from "@nodeforge/runner";
 import { VitestAdapter } from "@nodeforge/adapter-vitest";
 import { JestAdapter } from "@nodeforge/adapter-jest";
@@ -25,7 +25,7 @@ interface EnabledTestAdapter {
   kind: "vitest" | "jest";
   // We keep both adapters around as one-of; only the active one is invoked.
   // The shape makes it explicit that we run one type at a time.
-  run: (root: string, signal?: AbortSignal) => Promise<TestRunOutcome>;
+  run: (root: string, signal?: AbortSignal, test?: TestCase) => Promise<TestRunOutcome>;
 }
 
 export class TestManager {
@@ -61,7 +61,7 @@ export class TestManager {
       this.adapter = {
         kind: "vitest",
         run: async (root, signal) => {
-          const result = await adapter.run(root, signal);
+          const result = await adapter.run(root, signal, test);
           return { suite: result.suite, result: result.result };
         }
       };
@@ -80,7 +80,7 @@ export class TestManager {
   }
 
   /** Run the enabled test adapter. Cancels any in-flight run. */
-  async run(): Promise<TestRunOutcome | undefined> {
+  async run(testId?: string, externalSignal?: AbortSignal): Promise<TestRunOutcome | undefined> {
     if (!this.profile || !this.adapter) {
       return undefined;
     }
@@ -89,17 +89,36 @@ export class TestManager {
     }
     const controller = new AbortController();
     this.currentRun = controller;
+    const onExternalAbort = (): void => controller.abort();
+    if (externalSignal) {
+      if (externalSignal.aborted) controller.abort();
+      else externalSignal.addEventListener("abort", onExternalAbort, { once: true });
+    }
 
     try {
-      const outcome = await this.adapter.run(this.profile.root, controller.signal);
+      const target = testId ? this.findTestCase(this.lastOutcome?.suite, testId) : undefined;
+      const outcome = await this.adapter.run(this.profile.root, controller.signal, target);
       this.lastOutcome = outcome;
       this.bus.publish({ type: "test.runCompleted", result: outcome.result });
       return outcome;
     } finally {
+      if (externalSignal) externalSignal.removeEventListener("abort", onExternalAbort);
       if (this.currentRun === controller) {
         this.currentRun = undefined;
       }
     }
+  }
+
+  private findTestCase(suite: TestSuite | undefined, testId: string): TestCase | undefined {
+    if (!suite) return undefined;
+    for (const test of suite.tests) {
+      if (test.id === testId) return test;
+    }
+    for (const child of suite.suites) {
+      const found = this.findTestCase(child, testId);
+      if (found) return found;
+    }
+    return undefined;
   }
 
   /** Cancel any in-flight run. */
