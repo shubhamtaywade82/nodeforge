@@ -155,7 +155,7 @@ want **external** agents (Claude Code, another Cursor MCP client, etc.) to call
 the same tools.
 
 The MCP server lets those agents read your workspace's structured state and take
-actions via 17 tools.
+actions via 18 tools.
 
 ### Step 1: Build the MCP server
 
@@ -208,7 +208,7 @@ Now you can ask Cursor things like:
 The agent will call the appropriate NodeForge MCP tools and get structured
 JSON back.
 
-### Available MCP Tools (17 total)
+### Available MCP Tools (18 total)
 
 **Read-only tools (13):**
 
@@ -277,7 +277,7 @@ echo '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' | \
   node /home/nemesis/projects/developer-tools/nodeforge/packages/agent/dist/cli.js
 ```
 
-You should see 17 tools listed.
+You should see 18 tools listed.
 
 ## Troubleshooting
 
