@@ -170,6 +170,7 @@ interface NormalizedPackageJson {
   devDependencies?: Record<string, string>;
   workspaces?: string[] | { packages?: string[] };
   private?: boolean;
+  type?: "module" | "commonjs";
 }
 
 /**
@@ -207,6 +208,8 @@ export async function detectWorkspaceProfile(
   const packageManager = await detectPackageManager(absoluteRoot, reader, signals);
   const runtime = detectRuntime(pkg, packageManager, signals);
   const typescript = await detectTypeScript(absoluteRoot, pkg, reader, signals);
+  const typescriptVersion = detectTypeScriptVersion(pkg);
+  const moduleSystem = detectModuleSystem(pkg);
 
   // 2. Linter / formatter.
   const linter = await detectLinter(absoluteRoot, reader, signals);
@@ -231,6 +234,8 @@ export async function detectWorkspaceProfile(
     runtime,
     packageManager,
     typescript,
+    typescriptVersion,
+    moduleSystem,
     linter,
     formatter,
     testRunner,
@@ -314,6 +319,20 @@ function detectRuntime(
   }
   // If package.json exists at all, default to node.
   return pkg ? "node" : "unknown";
+}
+
+
+function detectTypeScriptVersion(
+  pkg: NormalizedPackageJson | undefined
+): string | undefined {
+  return pkg?.devDependencies?.["typescript"] ?? pkg?.dependencies?.["typescript"];
+}
+
+function detectModuleSystem(
+  pkg: NormalizedPackageJson | undefined
+): "esm" | "commonjs" | "unknown" {
+  if (!pkg) return "unknown";
+  return pkg.type === "commonjs" ? "commonjs" : "esm";
 }
 
 async function detectTypeScript(
