@@ -126,6 +126,36 @@ export const TOOLS: McpTool[] = [
   },
   {
     definition: {
+      name: "getGitDiff",
+      description:
+        "Read a bounded Git diff for the workspace. Scope may be working (unstaged), staged, or head-vs-upstream. Use this before reviewing or changing existing work.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          scope: {
+            type: "string",
+            enum: ["working", "staged", "head-vs-upstream"],
+            description: "Which Git diff to inspect."
+          }
+        }
+      }
+    },
+    handler: async (args, ctx) => {
+      const rawScope = String(args["scope"] ?? "working");
+      const scope =
+        rawScope === "staged" || rawScope === "head-vs-upstream"
+          ? rawScope
+          : "working";
+      const diff = await ctx.getGitDiff(scope);
+      return JSON.stringify(
+        diff ?? { error: "Git diff unavailable for this workspace." },
+        null,
+        2
+      );
+    }
+  },
+  {
+    definition: {
       name: "getDependencyReport",
       description:
         "Run npm/pnpm/yarn audit + outdated and return the combined report. Includes vulnerabilities (with severity, advisory IDs, recommended fixes) and outdated packages (with current/wanted/latest versions).",
