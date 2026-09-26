@@ -113,6 +113,7 @@ suite("NodeForge Extension Host", () => {
       "nodeforge_run_linter",
       "nodeforge_get_tests",
       "nodeforge_get_git_diff",
+      "nodeforge_get_change_impact",
       "nodeforge_run_script",
       "nodeforge_format_workspace",
       "nodeforge_validate_workspace"
