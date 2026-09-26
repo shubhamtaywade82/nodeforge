@@ -579,6 +579,35 @@
         }
       },
       {
+        "name": "nodeforge_get_git_diff",
+        "displayName": "NodeForge: Git Diff",
+        "modelDescription": "Read the current Git diff so changes can be reviewed with their real patch context. Scope can be working, staged, or head-vs-upstream. Read-only.",
+        "userDescription": "Inspect actual code changes before reviewing or modifying them.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "nodeforgeGitDiff",
+        "icon": "$(diff)",
+        "tags": [
+          "nodeforge",
+          "read-only",
+          "git",
+          "review"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "scope": {
+              "type": "string",
+              "enum": [
+                "working",
+                "staged",
+                "head-vs-upstream"
+              ],
+              "description": "Which Git diff to inspect."
+            }
+          }
+        }
+      },
+      {
         "name": "nodeforge_get_dependency_graph",
         "displayName": "NodeForge: Dependency Graph",
         "modelDescription": "Analyze imports and declared dependencies, reporting unused, circular, and missing dependencies. Read-only.",
