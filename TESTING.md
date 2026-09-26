@@ -481,7 +481,7 @@ echo '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' | \
 | Step | Expected | Pass |
 |------|----------|------|
 | initialize response | `serverInfo.name` = `nodeforge-mcp` | ☐ |
-| tools/list | 17 tools returned | ☐ |
+| tools/list | 18 tools returned | ☐ |
 
 ### 15.2 Tool smoke tests (read-only)
 
@@ -591,7 +591,7 @@ Use this for release or PR verification.
 | Dependency audit | ☐ |
 | Agent view | ☐ |
 | Workspace Trust gating | ☐ |
-| MCP server (17 tools, 6 prompts) | ☐ |
+| MCP server (18 tools, 6 prompts) | ☐ |
 | `pnpm test` green | ☐ |
 
 **Tester:** _______________
