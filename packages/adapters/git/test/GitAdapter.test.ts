@@ -149,6 +149,24 @@ describe("GitAdapter (integration against real git repo)", () => {
     await fs.rm(repo, { recursive: true, force: true });
   });
 
+  it("returns the unstaged working diff", async () => {
+    const runner = new ProcessRunner();
+    const adapter = new GitAdapter(runner);
+    const repo = await mkRepo();
+    await writeFile(repo, "file1.txt", "hello\n");
+    await runRaw(repo, "git", ["add", "."]);
+    await commit(repo, "first");
+
+    await writeFile(repo, "file1.txt", "hello world\n");
+
+    const diff = await adapter.getDiff(repo, "working");
+    expect(diff).toBeDefined();
+    expect(diff!.files).toEqual(["file1.txt"]);
+    expect(diff!.patch).toContain("+hello world");
+
+    await fs.rm(repo, { recursive: true, force: true });
+  });
+
   it("detects detached HEAD state", async () => {
     const runner = new ProcessRunner();
     const adapter = new GitAdapter(runner);
