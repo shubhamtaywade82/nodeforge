@@ -586,40 +586,51 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       if (!r || !isTrusted()) return;
       if (!manager.current()) await manager.analyze(r);
       if (!tests.isEnabled()) {
-        void vscode.window.showWarningMessage("NodeForge: no test runner detected.");
+        void vscode.window.showWarningMessage("NodeForge: no supported test runner detected.");
         return;
       }
+
       await vscode.window.withProgress(
-        { location: vscode.ProgressLocation.Window, title: "NodeForge: running tests" },
+        { location: vscode.ProgressLocation.Window, title: "NodeForge: running file tests" },
         async () => {
-          await tests.run().catch((err) => logger.error("Test run from CodeLens failed", err));
+          await tests.runFile(filePath);
         }
       );
-      logger.info(`Test run triggered from ${filePath}`);
+      logger.info("File test run triggered from " + filePath);
     }),
 
-    // CodeLens: debug a test from the current file.
+    // CodeLens: debug the tests contained in the current file.
     vscode.commands.registerCommand("nodeforge.debugTestFromFile", async (filePath: string, line: number) => {
       const r = resolveWorkspaceRoot();
       if (!r || !isTrusted()) return;
       if (!manager.current()) await manager.analyze(r);
 
-      // Start a debug session with the test file.
+      const profile = manager.current();
+      if (!profile?.testRunner || (profile.testRunner !== "vitest" && profile.testRunner !== "jest")) {
+        void vscode.window.showWarningMessage("NodeForge: no supported test runner detected.");
+        return;
+      }
+
+      const runner = profile.testRunner;
+      const runtimeArgs = runner === "vitest"
+        ? ["vitest", "run", filePath]
+        : ["jest", filePath];
+
       const config: vscode.DebugConfiguration = {
-        name: "Debug Test",
+        name: "Debug " + runner + " file",
         type: "node",
         request: "launch",
         runtimeExecutable: "npx",
-        runtimeArgs: ["vitest", "run", filePath],
+        runtimeArgs,
         cwd: r,
         console: "integratedTerminal",
-        skipFiles: ["<node_internals>/**", "${workspaceFolder}/node_modules/**"],
+        skipFiles: ["<node_internals>/**"],
         env: {}
       };
-      await vscode.debug.startDebugging(vscode.workspace.workspaceFolders?.[0], config);
-      logger.info(`Debug test triggered for ${filePath}:${line}`);
-    }),
 
+      await vscode.debug.startDebugging(vscode.workspace.workspaceFolders?.[0], config);
+      logger.info("Debug test file triggered for " + filePath + ":" + line);
+    }),
     // Runtime terminal: start a dev server in a real terminal.
     vscode.commands.registerCommand("nodeforge.startDevServer", async () => {
       const r = resolveWorkspaceRoot();
