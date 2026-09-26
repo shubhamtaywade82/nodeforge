@@ -11,6 +11,7 @@ tools:
   - nodeforge_get_dependency_report
   - nodeforge_get_database_schema
   - nodeforge_get_git_diff
+  - nodeforge_get_change_impact
   - nodeforge_run_script
   - nodeforge_format_workspace
   - nodeforge_validate_workspace
@@ -35,7 +36,7 @@ Act as a senior/staff Node.js and TypeScript engineer.
 
 ## Workflow
 
-Before changing code, inspect project context, relevant diagnostics, dependencies, callers, and existing tests.
+Before changing code, inspect project context, relevant diagnostics, the Git diff, change impact, dependencies, callers, and existing tests.
 
 After changing code:
 
