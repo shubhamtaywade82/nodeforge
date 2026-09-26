@@ -409,7 +409,7 @@ internals or future commands.
 | ------ | ---------- | ------ |
 | MCP Server → Status | `ready` | ☐ |
 | MCP Server → Workspace | Current folder path | ☐ |
-| Available Tools | Lists all MCP tools (18) | ☐ |
+| Available Tools | Lists all MCP tools (19) | ☐ |
 | Setup section | Cursor + Claude Code config hints | ☐ |
 
 ---
@@ -481,7 +481,7 @@ echo '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' | \
 | Step | Expected | Pass |
 |------|----------|------|
 | initialize response | `serverInfo.name` = `nodeforge-mcp` | ☐ |
-| tools/list | 18 tools returned | ☐ |
+| tools/list | 19 tools returned | ☐ |
 
 ### 15.2 Tool smoke tests (read-only)
 
@@ -591,7 +591,7 @@ Use this for release or PR verification.
 | Dependency audit | ☐ |
 | Agent view | ☐ |
 | Workspace Trust gating | ☐ |
-| MCP server (18 tools, 6 prompts) | ☐ |
+| MCP server (19 tools, 6 prompts) | ☐ |
 | `pnpm test` green | ☐ |
 
 **Tester:** _______________
