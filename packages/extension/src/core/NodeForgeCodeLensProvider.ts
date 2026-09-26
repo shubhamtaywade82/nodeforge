@@ -29,17 +29,18 @@ export class NodeForgeCodeLensProvider implements vscode.CodeLensProvider {
     const lenses: vscode.CodeLens[] = [];
     const fileName = vscode.workspace.asRelativePath(document.uri);
 
-    // Test files: show "Run Test" / "Debug Test" above it() and describe()
+    // Test files: native Test Explorer owns individual test execution. Keep
+  // one lightweight file-level CodeLens so the editor does not run the whole
+  // suite when the user expects a single test action.
     if (this.isTestFile(fileName, document)) {
       for (let i = 0; i < document.lineCount; i++) {
         const line = document.lineAt(i);
         const text = line.text;
 
-        if (TEST_FUNCTION_REGEX.test(text)) {
-          lenses.push(this.createTestCodeLens(document, i, "Run Test", "nodeforge.runTestFromFile"));
-          lenses.push(this.createTestCodeLens(document, i, "Debug Test", "nodeforge.debugTestFromFile"));
-        } else if (DESCRIBE_REGEX.test(text)) {
-          lenses.push(this.createTestCodeLens(document, i, "Run Suite", "nodeforge.runTestFromFile"));
+        if (TEST_FUNCTION_REGEX.test(text) || DESCRIBE_REGEX.test(text)) {
+          lenses.push(this.createTestCodeLens(document, i, "Run File Tests", "nodeforge.runTestFromFile"));
+          lenses.push(this.createTestCodeLens(document, i, "Debug File Tests", "nodeforge.debugTestFromFile"));
+          break;
         }
       }
     }
