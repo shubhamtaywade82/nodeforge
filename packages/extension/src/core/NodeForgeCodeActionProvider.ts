@@ -1,22 +1,14 @@
 /**
- * NodeForgeCodeActionProvider — Quick Fix lightbulbs for NodeForge diagnostics.
+ * Safe Quick Fix provider for NodeForge diagnostics.
  *
- * When the cursor is on a line with a NodeForge diagnostic, VS Code shows
- * a lightbulb. Clicking it offers Quick Fixes:
- *
- *   - "Apply ESLint --fix" (if the diagnostic is from ESLint and fixable)
- *   - "Apply Biome Safe Fixes" (if the diagnostic is from Biome and fixable)
- *   - "Disable rule on this line" (adds an inline disable comment)
- *   - "Show NodeForge Output" (opens the output channel for debugging)
- *
- * The provider reads diagnostics from VS Code's DiagnosticCollection (which
- * we populated via DiagnosticsBridge) and generates CodeActions for each.
+ * Fix actions are offered only when the normalized NodeForge diagnostic reports
+ * that the finding is auto-fixable. TypeScript errors are never hidden with
+ * blanket suppression comments.
  */
 
 import * as vscode from "vscode";
-import { logger } from "./Logger.js";
-
-const NODEFORGE_COLLECTION = "nodeforge";
+import type { Diagnostic as NFDiagnostic } from "@nodeforge/contracts";
+import type { DiagnosticStore } from "@nodeforge/core";
 
 export class NodeForgeCodeActionProvider implements vscode.CodeActionProvider {
   public static readonly providedCodeActionKinds = [
@@ -24,86 +16,116 @@ export class NodeForgeCodeActionProvider implements vscode.CodeActionProvider {
     vscode.CodeActionKind.Source
   ];
 
+  constructor(private readonly store: DiagnosticStore) {}
+
   provideCodeActions(
     document: vscode.TextDocument,
-    range: vscode.Range | vscode.Selection,
-    context: vscode.CodeActionContext
+    range: vscode.Range
   ): vscode.CodeAction[] {
+    const diagnostics = this.store.all().filter(
+      (diagnostic) =>
+        diagnostic.file === document.uri.fsPath &&
+        overlaps(diagnostic, range)
+    );
+
     const actions: vscode.CodeAction[] = [];
 
-    // Get NodeForge diagnostics that overlap the cursor range.
-    const nodeforgeDiags = vscode.languages.getDiagnostics(document.uri).filter(
-      (d) => d.source === "typescript" || d.source === "eslint" || d.source === "biome"
-    );
+    for (const diagnostic of diagnostics) {
+      actions.push(...this.actionsForDiagnostic(document, diagnostic));
+    }
 
-    const overlappingDiags = nodeforgeDiags.filter((d) => d.range.intersection(range));
-
-    if (overlappingDiags.length === 0) return actions;
-
-    // Check if we have fixable ESLint diagnostics.
-    const eslintDiags = overlappingDiags.filter((d) => d.source === "eslint");
-    if (eslintDiags.length > 0) {
-      const fixAction = new vscode.CodeAction(
-        "Apply ESLint --fix",
-        vscode.CodeActionKind.QuickFix
+    if (diagnostics.length > 0) {
+      const format = new vscode.CodeAction(
+        "Format with NodeForge",
+        vscode.CodeActionKind.Source
       );
-      fixAction.command = {
-        command: "nodeforge.applyEslintFix",
-        title: "Apply ESLint --fix"
+      format.command = {
+        command: "nodeforge.formatCurrentFile",
+        title: "Format with NodeForge"
       };
-      fixAction.isPreferred = true;
-      actions.push(fixAction);
+      actions.push(format);
     }
-
-    // Check if we have fixable Biome diagnostics.
-    const biomeDiags = overlappingDiags.filter((d) => d.source === "biome");
-    if (biomeDiags.length > 0) {
-      const fixAction = new vscode.CodeAction(
-        "Apply Biome Safe Fixes",
-        vscode.CodeActionKind.QuickFix
-      );
-      fixAction.command = {
-        command: "nodeforge.applyBiomeFix",
-        title: "Apply Biome Safe Fixes"
-      };
-      actions.push(fixAction);
-    }
-
-    // "Disable rule on this line" — adds an inline disable comment.
-    for (const diag of overlappingDiags) {
-      if (diag.code) {
-        const ruleCode = String(diag.code);
-        const disableAction = new vscode.CodeAction(
-          `Disable ${diag.source}/${ruleCode} on this line`,
-          vscode.CodeActionKind.QuickFix
-        );
-        disableAction.edit = new vscode.WorkspaceEdit();
-        const line = document.lineAt(diag.range.start.line);
-        const disableComment = diag.source === "eslint"
-          ? `// eslint-disable-next-line ${ruleCode}`
-          : diag.source === "biome"
-            ? `// biome-ignore lint/${ruleCode}: temporarily disabled`
-            : `// @ts-ignore`;
-        disableAction.edit.insert(
-          document.uri,
-          new vscode.Position(line.range.start.line, 0),
-          disableComment + "\n"
-        );
-        actions.push(disableAction);
-      }
-    }
-
-    // "Format file" action.
-    const formatAction = new vscode.CodeAction(
-      "Format with NodeForge",
-      vscode.CodeActionKind.QuickFix
-    );
-    formatAction.command = {
-      command: "nodeforge.formatCurrentFile",
-      title: "Format with NodeForge"
-    };
-    actions.push(formatAction);
 
     return actions;
   }
+
+  private actionsForDiagnostic(
+    document: vscode.TextDocument,
+    diagnostic: NFDiagnostic
+  ): vscode.CodeAction[] {
+    const actions: vscode.CodeAction[] = [];
+
+    if (diagnostic.fixable && diagnostic.source === "eslint") {
+      const action = new vscode.CodeAction(
+        "Apply ESLint auto-fixes",
+        vscode.CodeActionKind.QuickFix
+      );
+      action.command = {
+        command: "nodeforge.applyEslintFix",
+        title: "Apply ESLint auto-fixes"
+      };
+      action.isPreferred = true;
+      actions.push(action);
+    }
+
+    if (diagnostic.fixable && diagnostic.source === "biome") {
+      const action = new vscode.CodeAction(
+        "Apply Biome safe fixes",
+        vscode.CodeActionKind.QuickFix
+      );
+      action.command = {
+        command: "nodeforge.applyBiomeFix",
+        title: "Apply Biome safe fixes"
+      };
+      actions.push(action);
+    }
+
+    if (
+      (diagnostic.source === "eslint" || diagnostic.source === "biome") &&
+      diagnostic.rule
+    ) {
+      const action = new vscode.CodeAction(
+        `Disable ${diagnostic.source}/${diagnostic.rule} on this line`,
+        vscode.CodeActionKind.QuickFix
+      );
+      action.edit = new vscode.WorkspaceEdit();
+
+      const lineIndex = Math.max(0, diagnostic.range.line - 1);
+      const line = document.lineAt(lineIndex);
+      const comment =
+        diagnostic.source === "eslint"
+          ? "// eslint-disable-next-line " + diagnostic.rule
+          : "// biome-ignore lint/" +
+            diagnostic.rule +
+            ": intentional exception";
+
+      action.edit.insert(
+        document.uri,
+        new vscode.Position(line.range.start.line, 0),
+        comment + "\n"
+      );
+      actions.push(action);
+    }
+
+    return actions;
+  }
+}
+
+function overlaps(
+  diagnostic: NFDiagnostic,
+  range: vscode.Range
+): boolean {
+  const start = new vscode.Position(
+    Math.max(0, diagnostic.range.line - 1),
+    Math.max(0, diagnostic.range.column - 1)
+  );
+  const end = new vscode.Position(
+    Math.max(0, (diagnostic.range.endLine ?? diagnostic.range.line) - 1),
+    Math.max(
+      0,
+      (diagnostic.range.endColumn ?? diagnostic.range.column + 1) - 1
+    )
+  );
+
+  return new vscode.Range(start, end).intersection(range) !== undefined;
 }
