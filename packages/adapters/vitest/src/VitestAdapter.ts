@@ -92,7 +92,7 @@ export class VitestAdapter {
    * Vitest exits 0 if all tests pass, 1 if any test fails. We treat exit 1
    * as "tests ran, here are the failures".
    */
-  async run(workspaceRoot: string, signal?: AbortSignal): Promise<VitestRunResult> {
+  async run(workspaceRoot: string, signal?: AbortSignal, test?: TestCase): Promise<VitestRunResult> {
     const vitestBin = this.options.vitestPath ?? (await resolveVitestBinary(workspaceRoot));
     if (!vitestBin) {
       throw new FileNotFoundError("vitest");
@@ -101,6 +101,9 @@ export class VitestAdapter {
     const args = ["run", "--reporter=json"];
     if (this.options.patterns && this.options.patterns.length > 0) {
       args.push(...this.options.patterns);
+    }
+    if (test) {
+      args.push(test.file, "-t", test.fullName ?? test.name);
     }
     if (this.options.extraArgs) {
       args.push(...this.options.extraArgs);
@@ -122,8 +125,9 @@ export class VitestAdapter {
 
     const { suite, summary } = parseVitestJsonOutput(stdout, workspaceRoot);
 
+    const cases = collectTestCases(suite);
     const runResult: TestRunResult = {
-      id: "vitest:all",
+      id: test?.id ?? "vitest:all",
       status: summary.numFailedTests > 0 ? "failed" : "passed",
       durationMs: result.durationMs,
       counts: {
@@ -134,7 +138,8 @@ export class VitestAdapter {
         running: 0,
         errored: 0
       },
-      failures: [],
+      cases,
+      failures: cases.flatMap((testCase) => testCase.error ? [testCase.error] : []),
       stdout,
       stderr
     };
@@ -333,6 +338,7 @@ function fileResultToSuite(fileResult: VitestFileResult, workspaceRoot: string):
     const test: TestCase = {
       id: `vitest:${absFile}:${fullName}`,
       name: title,
+      fullName,
       file: absFile,
       line: a.location?.line,
       status: mapStatus(a.status),
@@ -384,4 +390,13 @@ function mapStatus(s: string): TestStatus {
     default:
       return "errored";
   }
+}
+
+
+function collectTestCases(suite: TestSuite): TestCase[] {
+  const cases = [...suite.tests];
+  for (const child of suite.suites) {
+    cases.push(...collectTestCases(child));
+  }
+  return cases;
 }
