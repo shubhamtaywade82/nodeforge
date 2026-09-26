@@ -119,6 +119,12 @@ when the workspace is **Trusted**; they are blocked in Restricted Mode.
 
 Configure the model and API base URL under **Settings → NodeForge → Chat**.
 
+### Native Ollama provider
+
+NodeForge also registers **NodeForge Ollama** as a native VS Code language-model provider. Set `nodeforge.ollama.baseUrl` (default: `http://localhost:11434`) and start Ollama. Models available from the server are discovered through Ollama's model APIs; capability metadata is used to advertise tool calling and vision support to VS Code.
+
+For local Ollama, no account key is required. Ollama's OpenAI-compatible interface accepts the placeholder API key `ollama`. Cloud or authenticated custom endpoints can use `OLLAMA_API_KEY` in the extension host environment.
+
 On activation (trusted workspaces), NodeForge can automatically run a dependency
 **audit** and **graph analysis** — toggle under **Settings → NodeForge → Dependencies**
 (`backgroundAudit`, `backgroundGraphAnalysis`).
@@ -225,6 +231,7 @@ JSON back.
 - `getKubernetesManifests` — k8s resources
 - `getGitHubWorkflows` — CI/CD workflows
 - `getDependencyGraph` — unused + circular + missing deps
+- `getGitDiff` — working, staged, or HEAD-vs-upstream patch
 
 **Action tools (4):**
 
