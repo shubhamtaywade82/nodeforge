@@ -60,6 +60,7 @@ import { DependencyGraphPanel } from "./core/DependencyGraphPanel.js";
 import { DatabaseSchemaPanel } from "./core/DatabaseSchemaPanel.js";
 import { logger } from "./core/Logger.js";
 import { registerNodeForgeLanguageModelTools } from "./ai/LanguageModelTools.js";
+import { registerOllamaLanguageModelChatProvider } from "./ai/OllamaLanguageModelChatProvider.js";
 
 let workspaceManager: WorkspaceManager | undefined;
 let diagnosticManager: DiagnosticManager | undefined;
@@ -103,6 +104,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   dependencyGraphManager = graphManager;
   const session = new ExtensionWorkspaceSession(bus);
   registerNodeForgeLanguageModelTools(context, session);
+  context.subscriptions.push(registerOllamaLanguageModelChatProvider());
   workspaceSession = session;
   const depDiagPublisher = new DependencyDiagnosticPublisher();
   dependencyDiagnostics = depDiagPublisher;
