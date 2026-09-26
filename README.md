@@ -145,7 +145,7 @@ Phase 8:
 - [x] Handles `.js` → `.ts` extension mapping (standard ESM convention)
 - [x] False-positive detection for CLI tools / config plugins / `@types/*` packages
 - [x] DFS-based circular dependency detection among file nodes
-- [x] 1 new MCP tool: `getDependencyGraph` (13 total)
+- [x] 1 new MCP tool: `getDependencyGraph, `getChangeImpact`` (13 total)
 - [x] Real fixture with deliberate unused dep (`lodash`) and circular chain (`a → b → c → a`)
 - [x] 235 tests passing across the workspace
 
@@ -154,7 +154,7 @@ Phase 9:
 - [x] `packages/adapters/prettier` — wraps `prettier --write` for file formatting
 - [x] ESLint adapter gains `fix()` method (runs `eslint --fix`)
 - [x] Biome adapter gains `format()` method (runs `biome format --write`)
-- [x] 4 new MCP action tools (18 total):
+- [x] 4 new MCP action tools (19 total):
   - `runScript` — runs `npm/pnpm/yarn run <script>` from package.json
   - `formatFiles` — runs Prettier or Biome formatter with `--write`
   - `applyEslintFix` — runs ESLint with `--fix` to auto-fix lint issues
@@ -192,7 +192,7 @@ See **[INSTALL.md](./INSTALL.md)** for step-by-step instructions on:
 
 - Installing the VS Code / Cursor extension from .vsix
 - Configuring the MCP agent server in Cursor
-- Using all 18 MCP tools, 6 prompts, and config file resources
+- Using all 19 MCP tools, 6 prompts, and config file resources
 
 Quick install:
 
