@@ -23,8 +23,12 @@ export class NodeForgeTaskProvider implements vscode.TaskProvider {
 
   constructor(
     private readonly workspaceRoot: string,
-    private readonly packageManager: "npm" | "pnpm" | "yarn"
+    private packageManager: "npm" | "pnpm" | "yarn"
   ) {}
+
+  setPackageManager(packageManager: "npm" | "pnpm" | "yarn"): void {
+    this.packageManager = packageManager;
+  }
 
   async provideTasks(): Promise<vscode.Task[]> {
     try {
@@ -45,7 +49,11 @@ export class NodeForgeTaskProvider implements vscode.TaskProvider {
           vscode.TaskScope.Workspace,
           `${pm}: ${scriptName}`,
           "NodeForge",
-          new vscode.ShellExecution(fullCommand, { cwd: this.workspaceRoot }),
+          new vscode.ProcessExecution(
+            pm,
+            pm === "yarn" ? [scriptName] : ["run", scriptName],
+            { cwd: this.workspaceRoot }
+          ),
           undefined // problemMatchers — will be auto-detected by VS Code
         );
 
@@ -77,7 +85,11 @@ export class NodeForgeTaskProvider implements vscode.TaskProvider {
       vscode.TaskScope.Workspace,
       `${pm}: ${definition.script}`,
       "NodeForge",
-      new vscode.ShellExecution(fullCommand, { cwd: this.workspaceRoot }),
+      new vscode.ProcessExecution(
+        pm,
+        pm === "yarn" ? [definition.script] : ["run", definition.script],
+        { cwd: this.workspaceRoot }
+      ),
       undefined
     );
   }
