@@ -481,10 +481,10 @@
     ],
     "chatSkills": [
       {
-        "path": "./skills/clean-node-typescript"
+        "path": "./skills/clean-node-typescript/SKILL.md"
       },
       {
-        "path": "./skills/safe-refactor"
+        "path": "./skills/safe-refactor/SKILL.md"
       }
     ],
     "languageModelTools": [
@@ -750,7 +750,7 @@
     "build": "node esbuild.mjs --production",
     "dev": "node esbuild.mjs --watch",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "echo \"[extension] integration tests live in packages/extension-vscode-tests — TBD\" && exit 0",
+    "test": "node --test test/*.test.mjs",
     "package": "node esbuild.mjs --production && echo y | npx @vscode/vsce package --no-dependencies --no-git-tag-version --allow-missing-repository --baseContentUrl https://github.com/shubhamtaywade82/nodeforge/blob/main/packages/extension",
     "clean": "rm -rf dist *.tsbuildinfo"
   },
