@@ -34,8 +34,14 @@ export interface WorkspaceProfile {
   /** Detected package manager from lockfiles. */
   packageManager: PackageManager;
 
-  /** Whether TypeScript is present (tsconfig.json or @types/node in deps). */
+  /** Whether TypeScript is present (tsconfig.json or a TypeScript dependency). */
   typescript: boolean;
+
+  /** Declared TypeScript version/range, when present in dependencies. */
+  typescriptVersion?: string;
+
+  /** Effective package module convention inferred from package.json. */
+  moduleSystem: "esm" | "commonjs" | "unknown";
 
   /** Detected linter, if any. */
   linter?: Linter;
