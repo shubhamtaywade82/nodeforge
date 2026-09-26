@@ -5,7 +5,7 @@
  *   ├─ MCP Server
  *   │   ├─ Status: not running
  *   │   └─ Setup: Configure in Cursor MCP settings
- *   ├─ Available Tools (18)
+ *   ├─ Available Tools (19)
  *   │   ├─ getProjectContext — Get workspace profile...
  *   │   ├─ getDiagnostics — Run TS + ESLint/Biome...
  *   │   └─ ...
@@ -83,7 +83,7 @@ export class AgentViewProvider implements vscode.TreeDataProvider<TreeNode> {
           kind: "field",
           label: "Capabilities",
           description: "tools + resources + prompts",
-          tooltip: "The server exposes 18 tools, 22 resource types, and 6 prompts."
+          tooltip: "The server exposes 19 tools, 22 resource types, and 6 prompts."
         }
       ];
     }
