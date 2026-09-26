@@ -27,3 +27,9 @@ export interface GitState {
 
 /** Diff scope for `getDiff` operations. */
 export type GitDiffScope = "working" | "staged" | "head-vs-upstream";
+
+export interface GitDiff {
+  scope: GitDiffScope;
+  files: string[];
+  patch: string;
+}
