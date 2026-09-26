@@ -154,7 +154,7 @@ Phase 9:
 - [x] `packages/adapters/prettier` — wraps `prettier --write` for file formatting
 - [x] ESLint adapter gains `fix()` method (runs `eslint --fix`)
 - [x] Biome adapter gains `format()` method (runs `biome format --write`)
-- [x] 4 new MCP action tools (17 total):
+- [x] 4 new MCP action tools (18 total):
   - `runScript` — runs `npm/pnpm/yarn run <script>` from package.json
   - `formatFiles` — runs Prettier or Biome formatter with `--write`
   - `applyEslintFix` — runs ESLint with `--fix` to auto-fix lint issues
