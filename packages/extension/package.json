@@ -2,23 +2,43 @@
   "name": "nodeforge",
   "displayName": "NodeForge",
   "description": "Autonomous Node.js/TypeScript engineering workspace — orchestration core for VS Code and Cursor.",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "publisher": "nodeforge",
   "license": "MIT",
   "private": true,
   "type": "module",
   "engines": {
-    "vscode": "^1.85.0"
+    "vscode": "^1.138.0"
   },
-  "categories": ["Other", "Programming Languages", "Testing", "Debuggers"],
-  "keywords": ["node", "typescript", "eslint", "biome", "vitest", "jest", "prisma", "drizzle", "ai", "cursor"],
+  "categories": [
+    "Other",
+    "Programming Languages",
+    "Testing",
+    "Debuggers"
+  ],
+  "keywords": [
+    "node",
+    "typescript",
+    "eslint",
+    "biome",
+    "vitest",
+    "jest",
+    "prisma",
+    "drizzle",
+    "ai",
+    "cursor"
+  ],
   "activationEvents": [
     "onCommand:nodeforge.analyzeWorkspace",
     "onCommand:nodeforge.runDiagnostics",
     "onCommand:nodeforge.runTests",
     "onView:nodeforge.workspace",
     "onView:nodeforge.chat",
-    "onView:nodeforge.docs"
+    "onView:nodeforge.docs",
+    "onLanguage:typescript",
+    "onLanguage:typescriptreact",
+    "onLanguage:javascript",
+    "onLanguage:javascriptreact"
   ],
   "main": "./dist/extension.cjs",
   "capabilities": {
@@ -31,7 +51,9 @@
     "taskDefinitions": [
       {
         "type": "nodeforge",
-        "required": ["script"],
+        "required": [
+          "script"
+        ],
         "properties": {
           "script": {
             "type": "string",
@@ -390,7 +412,9 @@
         },
         "nodeforge.docs.offline.extraSlugs": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "default": [],
           "description": "Additional DevDocs slugs to include when syncing (e.g. react, express)."
         }
@@ -443,6 +467,239 @@
             }
           }
         ]
+      }
+    ],
+    "chatAgents": [
+      {
+        "path": "./agents/nodeforge-engineer.agent.md"
+      }
+    ],
+    "chatInstructions": [
+      {
+        "path": "./instructions/nodeforge-node-typescript.instructions.md"
+      }
+    ],
+    "chatSkills": [
+      {
+        "path": "./skills/clean-node-typescript/SKILL.md"
+      },
+      {
+        "path": "./skills/safe-refactor/SKILL.md"
+      }
+    ],
+    "languageModelTools": [
+      {
+        "name": "nodeforge_get_project_context",
+        "displayName": "NodeForge: Project Context",
+        "modelDescription": "Read the detected Node.js and TypeScript workspace profile, including runtime, package manager, compiler, linting, formatting, tests, ORM, infrastructure, and monorepo signals. Read-only.",
+        "userDescription": "Inspect the project's engineering stack.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "nodeforgeProjectContext",
+        "icon": "$(symbol-namespace)",
+        "tags": [
+          "nodeforge",
+          "read-only",
+          "project"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
+      },
+      {
+        "name": "nodeforge_get_diagnostics",
+        "displayName": "NodeForge: Diagnostics",
+        "modelDescription": "Run TypeScript plus the detected ESLint or Biome checks and return normalized diagnostics. Read-only.",
+        "userDescription": "Inspect current compiler and lint findings.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "nodeforgeDiagnostics",
+        "icon": "$(error)",
+        "tags": [
+          "nodeforge",
+          "read-only",
+          "diagnostics"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
+      },
+      {
+        "name": "nodeforge_run_typecheck",
+        "displayName": "NodeForge: Typecheck",
+        "modelDescription": "Run the workspace TypeScript compiler with no emit and return normalized type errors. Read-only.",
+        "userDescription": "Run TypeScript type checking.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "nodeforgeTypecheck",
+        "icon": "$(symbol-type-parameter)",
+        "tags": [
+          "nodeforge",
+          "read-only",
+          "typescript"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
+      },
+      {
+        "name": "nodeforge_run_linter",
+        "displayName": "NodeForge: Lint",
+        "modelDescription": "Run the detected project linter and return normalized findings. Read-only.",
+        "userDescription": "Run project lint checks.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "nodeforgeLint",
+        "icon": "$(checklist)",
+        "tags": [
+          "nodeforge",
+          "read-only",
+          "lint"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
+      },
+      {
+        "name": "nodeforge_get_tests",
+        "displayName": "NodeForge: Test Results",
+        "modelDescription": "Run the detected Vitest or Jest suite and return per-test results, failures, locations, and durations. Read-only from NodeForge's perspective.",
+        "userDescription": "Run tests and inspect per-test outcomes.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "nodeforgeTests",
+        "icon": "$(beaker)",
+        "tags": [
+          "nodeforge",
+          "read-only",
+          "testing"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
+      },
+      {
+        "name": "nodeforge_get_dependency_graph",
+        "displayName": "NodeForge: Dependency Graph",
+        "modelDescription": "Analyze imports and declared dependencies, reporting unused, circular, and missing dependencies. Read-only.",
+        "userDescription": "Inspect module dependency health.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "nodeforgeDependencyGraph",
+        "icon": "$(type-hierarchy)",
+        "tags": [
+          "nodeforge",
+          "read-only",
+          "architecture"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
+      },
+      {
+        "name": "nodeforge_get_dependency_report",
+        "displayName": "NodeForge: Dependency Report",
+        "modelDescription": "Run package-manager audit and outdated checks and return dependency vulnerability and version findings. Read-only.",
+        "userDescription": "Inspect dependency vulnerabilities and drift.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "nodeforgeDependencyReport",
+        "icon": "$(shield)",
+        "tags": [
+          "nodeforge",
+          "read-only",
+          "dependencies"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
+      },
+      {
+        "name": "nodeforge_get_database_schema",
+        "displayName": "NodeForge: Database Schema",
+        "modelDescription": "Read the detected Prisma or Drizzle schema and return tables, columns, indexes, and relations. Read-only.",
+        "userDescription": "Inspect the database schema.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "nodeforgeDatabaseSchema",
+        "icon": "$(database)",
+        "tags": [
+          "nodeforge",
+          "read-only",
+          "database"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
+      },
+      {
+        "name": "nodeforge_run_script",
+        "displayName": "NodeForge: Run Script",
+        "modelDescription": "Run one existing package.json script using the detected package manager. This executes project code and may modify files or start processes; confirmation is required.",
+        "userDescription": "Execute a package.json script with confirmation.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "nodeforgeRunScript",
+        "icon": "$(terminal)",
+        "tags": [
+          "nodeforge",
+          "execute",
+          "confirmation"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "script": {
+              "type": "string",
+              "description": "Existing package.json script name."
+            },
+            "args": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Optional arguments passed to the script."
+            }
+          },
+          "required": [
+            "script"
+          ]
+        }
+      },
+      {
+        "name": "nodeforge_format_workspace",
+        "displayName": "NodeForge: Format Workspace",
+        "modelDescription": "Format workspace files using the detected Prettier or Biome configuration. This changes files; confirmation is required.",
+        "userDescription": "Format workspace files with the project's formatter.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "nodeforgeFormatWorkspace",
+        "icon": "$(wand)",
+        "tags": [
+          "nodeforge",
+          "write",
+          "format",
+          "confirmation"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
+      },
+      {
+        "name": "nodeforge_validate_workspace",
+        "displayName": "NodeForge: Validate Workspace",
+        "modelDescription": "Run TypeScript, linting, tests, and dependency audit as an engineering verification pass. Prefer this after changes before declaring a task complete.",
+        "userDescription": "Run the full engineering verification pass.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "nodeforgeValidateWorkspace",
+        "icon": "$(verified)",
+        "tags": [
+          "nodeforge",
+          "verification"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
       }
     ]
   },
