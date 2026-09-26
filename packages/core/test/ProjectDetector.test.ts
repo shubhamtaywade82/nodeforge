@@ -21,7 +21,7 @@ describe("detectWorkspaceProfile", () => {
     expect(profile.packageManager).toBe("npm"); // package-lock.json absent, but engines.node present
     expect(profile.typescript).toBe(true);
     expect(profile.typescriptVersion).toBeDefined();
-    expect(profile.moduleSystem).toBe("commonjs");
+    expect(profile.moduleSystem).toBe("esm");
     expect(profile.linter).toBe("eslint");
     expect(profile.formatter).toBe("prettier");
     expect(profile.testRunner).toBe("jest");
