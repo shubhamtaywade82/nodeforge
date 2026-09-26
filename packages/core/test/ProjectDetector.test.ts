@@ -36,7 +36,7 @@ describe("detectWorkspaceProfile", () => {
 
     expect(profile.runtime).toBe("node");
     expect(profile.typescriptVersion).toBeDefined();
-    expect(profile.moduleSystem).toBe("commonjs");
+    expect(profile.moduleSystem).toBe("esm");
     expect(profile.typescript).toBe(true);
     expect(profile.linter).toBe("biome");
     expect(profile.formatter).toBe("biome");
