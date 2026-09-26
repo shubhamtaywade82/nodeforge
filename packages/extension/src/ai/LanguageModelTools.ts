@@ -124,6 +124,11 @@ export function registerNodeForgeLanguageModelTools(
     execute: (nodeforge) => nodeforge.getDependencyGraph()
   });
 
+  register<{ files?: string[] }>("nodeforge_get_change_impact", {
+    invocationMessage: "Analyzing code change impact",
+    execute: (nodeforge, input) => nodeforge.getChangeImpact(input.files)
+  });
+
   register<EmptyInput>("nodeforge_get_dependency_report", {
     invocationMessage: "Auditing dependencies",
     execute: (nodeforge) => nodeforge.getDependencyReport()
