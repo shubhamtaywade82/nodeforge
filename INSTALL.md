@@ -285,7 +285,7 @@ echo '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' | \
   node /home/nemesis/projects/developer-tools/nodeforge/packages/agent/dist/cli.js
 ```
 
-You should see 18 tools listed.
+You should see 19 tools listed.
 
 ## Troubleshooting
 
