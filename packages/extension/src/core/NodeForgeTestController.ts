@@ -99,7 +99,13 @@ export class NodeForgeTestController {
       }
 
       const resultMap = this.buildResultMap(outcome.result);
-      for (const item of this.collectLeafTests(this.controller.items)) {
+      const selectedLeaves = request.include
+        ? request.include.flatMap((item) =>
+            item.children.size === 0 ? [item] : this.collectLeafTests(item.children)
+          )
+        : this.collectLeafTests(this.controller.items);
+
+      for (const item of selectedLeaves) {
         if (request.exclude?.includes(item)) continue;
         const test = resultMap.get(item.id);
         if (!test) continue;
