@@ -14,6 +14,8 @@ export interface TestCase {
   id: string;
   /** Human-readable name. */
   name: string;
+  /** Full hierarchical test name, when the runner provides it. */
+  fullName?: string;
   /** Absolute path to the test file. */
   file: string;
   /** Optional 1-based line where the test is declared. */
@@ -54,6 +56,8 @@ export interface TestRunResult {
   durationMs: number;
   /** Number of tests in each status bucket. */
   counts: Record<TestStatus, number>;
+  /** Per-test outcomes from the runner. */
+  cases?: readonly TestCase[];
   /** Failures, in order. */
   failures: TestFailure[];
   /** Stdout captured during this run (truncated to a bounded buffer). */
