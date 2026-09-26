@@ -59,6 +59,7 @@ import { RuntimeTerminalManager } from "./core/RuntimeTerminalManager.js";
 import { DependencyGraphPanel } from "./core/DependencyGraphPanel.js";
 import { DatabaseSchemaPanel } from "./core/DatabaseSchemaPanel.js";
 import { logger } from "./core/Logger.js";
+import { registerNodeForgeLanguageModelTools } from "./ai/LanguageModelTools.js";
 
 let workspaceManager: WorkspaceManager | undefined;
 let diagnosticManager: DiagnosticManager | undefined;
@@ -101,6 +102,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const graphManager = new DependencyGraphManager(bus);
   dependencyGraphManager = graphManager;
   const session = new ExtensionWorkspaceSession(bus);
+  registerNodeForgeLanguageModelTools(context, session);
   workspaceSession = session;
   const depDiagPublisher = new DependencyDiagnosticPublisher();
   dependencyDiagnostics = depDiagPublisher;
@@ -129,7 +131,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const testController = new NodeForgeTestController(tests, bus);
 
   // Quick Fix lightbulbs for ESLint/Biome diagnostics.
-  const codeActionProvider = new NodeForgeCodeActionProvider();
+  const codeActionProvider = new NodeForgeCodeActionProvider(diagManager.getStore());
 
   // Code Lens: "Run Test" above it() calls, "Audit Deps" above package.json.
   const codeLensProvider = new NodeForgeCodeLensProvider();
@@ -786,27 +788,30 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     logger.info(`Auto-running for workspace: ${root}`);
 
     // Register the Task Provider after we have a workspace root.
-    const pm: "npm" | "pnpm" | "yarn" = "npm"; // default; will be updated after analyze
+    const taskProviderImpl = new NodeForgeTaskProvider(root, "npm");
     const taskProvider = vscode.tasks.registerTaskProvider(
       NodeForgeTaskProvider.taskType,
-      new NodeForgeTaskProvider(root, pm)
+      taskProviderImpl
     );
     context.subscriptions.push(taskProvider);
 
     // Register the Debug Configuration Provider for F5 debugging.
-    const debugProvider = new NodeForgeDebugConfigurationProvider(root, pm);
+    const debugProvider = new NodeForgeDebugConfigurationProvider(root, "npm");
     context.subscriptions.push(
       vscode.debug.registerDebugConfigurationProvider("node", debugProvider)
     );
 
-    // Discover tests for the Test Explorer.
-    void testController.discoverTests().catch((err) => {
-      logger.error("Initial test discovery failed", err);
-    });
-
+    // Test discovery is demand-driven. Do not execute the entire suite during activation.
     session.bindRoot(root);
     void manager.analyze(root).then(
       (profile) => {
+        const packageManager =
+          profile.packageManager === "pnpm" || profile.packageManager === "yarn"
+            ? profile.packageManager
+            : "npm";
+        taskProviderImpl.setPackageManager(packageManager);
+        debugProvider.setPackageManager(packageManager);
+
         workspaceView.render(profile);
         treeViews.workspace!.message = undefined;
         devDocs.setProfile(profile);
