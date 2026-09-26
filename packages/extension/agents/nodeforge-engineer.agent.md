@@ -10,6 +10,7 @@ tools:
   - nodeforge_get_dependency_graph
   - nodeforge_get_dependency_report
   - nodeforge_get_database_schema
+  - nodeforge_get_git_diff
   - nodeforge_run_script
   - nodeforge_format_workspace
   - nodeforge_validate_workspace
