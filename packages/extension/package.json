@@ -417,6 +417,11 @@
           },
           "default": [],
           "description": "Additional DevDocs slugs to include when syncing (e.g. react, express)."
+        },
+        "nodeforge.ollama.baseUrl": {
+          "type": "string",
+          "default": "http://localhost:11434",
+          "description": "Ollama server base URL. Use a URL such as http://localhost:11434 for a local server."
         }
       }
     },
@@ -744,13 +749,19 @@
       {
         "path": "./prompts/nodeforge-test.prompt.md"
       }
+    ],
+    "languageModelChatProviders": [
+      {
+        "vendor": "nodeforge-ollama",
+        "displayName": "NodeForge Ollama"
+      }
     ]
   },
   "scripts": {
     "build": "node esbuild.mjs --production",
     "dev": "node esbuild.mjs --watch",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --test test/*.test.mjs",
+    "test": "node --test \"test/*.test.mjs\" \"test/*.test.ts\"",
     "package": "node esbuild.mjs --production && echo y | npx @vscode/vsce package --no-dependencies --no-git-tag-version --allow-missing-repository --baseContentUrl https://github.com/shubhamtaywade82/nodeforge/blob/main/packages/extension",
     "clean": "rm -rf dist *.tsbuildinfo"
   },
