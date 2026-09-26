@@ -147,6 +147,10 @@ export class NodeForgeTestController {
     }
   }
 
+  private buildResultMap(result: TestRunResult): Map<string, TestCase> {
+    return new Map((result.cases ?? []).map((test) => [test.id, test]));
+  }
+
   private collectLeafTests(collection: vscode.TestItemCollection): vscode.TestItem[] {
     const out: vscode.TestItem[] = [];
     const visit = (items: vscode.TestItemCollection): void => {
