@@ -103,7 +103,10 @@ export class VitestAdapter {
       args.push(...this.options.patterns);
     }
     if (test) {
-      args.push(test.file, "-t", test.fullName ?? test.name);
+      args.push(test.file);
+      if (test.fullName) {
+        args.push("-t", test.fullName);
+      }
     }
     if (this.options.extraArgs) {
       args.push(...this.options.extraArgs);
