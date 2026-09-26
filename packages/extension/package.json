@@ -730,6 +730,20 @@
           "properties": {}
         }
       }
+    ],
+    "chatPromptFiles": [
+      {
+        "path": "./prompts/nodeforge-review.prompt.md"
+      },
+      {
+        "path": "./prompts/nodeforge-fix.prompt.md"
+      },
+      {
+        "path": "./prompts/nodeforge-modernize.prompt.md"
+      },
+      {
+        "path": "./prompts/nodeforge-test.prompt.md"
+      }
     ]
   },
   "scripts": {
