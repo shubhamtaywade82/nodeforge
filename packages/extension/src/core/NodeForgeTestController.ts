@@ -21,7 +21,7 @@
 
 import * as vscode from "vscode";
 import * as path from "node:path";
-import type { EventBus, TestRunResult, TestSuite, TestCase } from "@nodeforge/contracts";
+import type { EventBus, TestCase, TestRunResult, TestSuite } from "@nodeforge/contracts";
 import type { TestManager } from "./TestManager.js";
 import { logger } from "./Logger.js";
 
@@ -79,50 +79,85 @@ export class NodeForgeTestController {
   /** Run handler called by VS Code when the user clicks Run Test. */
   private async runHandler(
     request: vscode.TestRunRequest,
-    _token: vscode.CancellationToken
+    token: vscode.CancellationToken
   ): Promise<void> {
     const run = this.controller.createTestRun(request);
+    const included = request.include ?? this.collectLeafTests(this.controller.items);
+    const targetTest =
+      request.include?.length === 1 &&
+      request.include[0] &&
+      request.include[0].children.size === 0
+        ? request.include[0]
+        : undefined;
+
+    for (const item of included) {
+      if (!request.exclude?.includes(item)) run.enqueued(item);
+    }
+
+    const controller = new AbortController();
+    const cancellation = token.onCancellationRequested(() => controller.abort());
 
     try {
-      // Mark tests as enqueued.
-      if (request.include) {
-        for (const t of request.include) {
-          run.enqueued(t);
-        }
-      }
-
-      // Run all tests (per-test run is future work — requires passing a
-      // test name filter to the adapter).
-      const outcome = await this.testManager.run();
+      const outcome = await this.testManager.run(targetTest?.id, controller.signal);
       if (!outcome) {
-        const firstTest = request.include?.[0];
-        if (firstTest) {
-          run.errored(firstTest, new vscode.TestMessage("No test runner detected"));
-        }
-        run.end();
+        const first = targetTest ?? included[0];
+        if (first) run.errored(first, new vscode.TestMessage("No test runner detected"));
         return;
       }
 
-      // Map results back to TestItems.
       const resultMap = this.buildResultMap(outcome.result);
-      const allTests = this.collectAllTestItems(this.controller.items);
+      for (const item of this.collectLeafTests(this.controller.items)) {
+        if (request.exclude?.includes(item)) continue;
+        const test = resultMap.get(item.id);
+        if (!test) continue;
 
-      for (const item of allTests) {
-        const result = resultMap.get(item.id);
-        if (result === "passed") {
-          run.passed(item);
-        } else if (result === "failed") {
-          run.failed(item, new vscode.TestMessage(this.getFailureMessage(item.id)));
-        } else if (result === "skipped") {
-          run.skipped(item);
+        switch (test.status) {
+          case "passed":
+            run.passed(item, test.durationMs);
+            break;
+          case "failed":
+            run.failed(
+              item,
+              new vscode.TestMessage(test.error?.message ?? "Test failed"),
+              test.durationMs
+            );
+            break;
+          case "skipped":
+          case "todo":
+            run.skipped(item);
+            break;
+          case "errored":
+            run.errored(item, new vscode.TestMessage(test.error?.message ?? "Test errored"));
+            break;
+          default:
+            break;
         }
       }
-
-      run.end();
     } catch (err) {
       logger.error("Test run failed", err);
+      const first = targetTest ?? included[0];
+      if (first) {
+        run.errored(
+          first,
+          new vscode.TestMessage(err instanceof Error ? err.message : String(err))
+        );
+      }
+    } finally {
+      cancellation.dispose();
       run.end();
     }
+  }
+
+  private collectLeafTests(collection: vscode.TestItemCollection): vscode.TestItem[] {
+    const out: vscode.TestItem[] = [];
+    const visit = (items: vscode.TestItemCollection): void => {
+      items.forEach((item) => {
+        if (item.children.size === 0) out.push(item);
+        else visit(item.children);
+      });
+    };
+    visit(collection);
+    return out;
   }
 
   /** Build the test tree from a TestSuite. */
@@ -181,34 +216,13 @@ export class NodeForgeTestController {
   }
 
   /** Apply test results to the existing TestItems. */
-  private applyResults(result: TestRunResult): void {
-    const resultMap = this.buildResultMap(result);
-    const allTests = this.collectAllTestItems(this.controller.items);
-
-    for (const item of allTests) {
-      const status = resultMap.get(item.id);
-      if (status === "passed") {
-        item.label = `$(check) ${item.label.replace(/^\$\([^)]+\)\s*/, "")}`;
-      } else if (status === "failed") {
-        item.label = `$(x) ${item.label.replace(/^\$\([^)]+\)\s*/, "")}`;
-      }
-    }
+  private applyResults(_result: TestRunResult): void {
+    // Native TestRun owns transient state; do not mutate TestItem labels.
   }
 
-  /** Build a map of testId → status from a TestRunResult. */
-  private buildResultMap(result: TestRunResult): Map<string, string> {
-    // The TestRunResult has counts but not per-test results in the current
-    // contract. We'd need to enhance the contract to include per-test
-    // outcomes. For now, we mark all tests as "passed" if the overall
-    // run passed, and "failed" if any failed.
-    //
-    // TODO: Enhance the TestRunResult contract to include per-test outcomes.
-    const map = new Map<string, string>();
-    const allTests = this.collectAllTestItems(this.controller.items);
-    for (const item of allTests) {
-      map.set(item.id, result.counts.failed > 0 ? "failed" : "passed");
-    }
-    return map;
+  /** Build a map of testId → TestCase from a TestRunResult. */
+  private buildResultMap(result: TestRunResult): Map<string, TestCase> {
+    return new Map((result.cases ?? []).map((test) => [test.id, test]));
   }
 
   /** Recursively collect all TestItems from a TestItemCollection. */
@@ -222,13 +236,6 @@ export class NodeForgeTestController {
     };
     visit(collection);
     return items;
-  }
-
-  /** Get the failure message for a test by id. */
-  private getFailureMessage(testId: string): string {
-    // TODO: Look up the actual failure message from the test result.
-    // For now, return a generic message.
-    return `Test failed: ${testId}`;
   }
 
   dispose(): void {
