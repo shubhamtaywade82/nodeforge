@@ -36,6 +36,8 @@ import type {
   DependencyReport,
   Diagnostic,
   DockerConfig,
+  GitDiff,
+  GitDiffScope,
   GitHubActionsConfig,
   GitState,
   KubernetesManifests,
@@ -119,6 +121,11 @@ export class NodeForgeContext {
   /** Detect Git state. Returns undefined if not a git repo. */
   async getGitState(): Promise<GitState | undefined> {
     return new GitAdapter(this.runner).detect(this.workspaceRoot);
+  }
+
+  /** Read a bounded Git diff for change review. */
+  async getGitDiff(scope: GitDiffScope = "working"): Promise<GitDiff | undefined> {
+    return new GitAdapter(this.runner).getDiff(this.workspaceRoot, scope);
   }
 
   /** Run dependency audit + outdated. */
@@ -252,7 +259,11 @@ export class NodeForgeContext {
    */
   async readConfigFile(filePath: string): Promise<string | undefined> {
     const fs = await import("node:fs/promises");
-    const abs = path.isAbsolute(filePath) ? filePath : path.join(this.workspaceRoot, filePath);
+    const abs = path.resolve(this.workspaceRoot, filePath);
+    const relative = path.relative(this.workspaceRoot, abs);
+    if (relative === "" || relative.startsWith(".." + path.sep) || path.isAbsolute(relative)) {
+      return undefined;
+    }
     try {
       return await fs.readFile(abs, "utf8");
     } catch {
@@ -284,8 +295,6 @@ export class NodeForgeContext {
       { name: "Dockerfile", description: "Docker build instructions" },
       { name: "docker-compose.yml", description: "Docker Compose service definitions" },
       { name: "docker-compose.yaml", description: "Docker Compose service definitions" },
-      { name: ".env", description: "Environment variables (may contain secrets)" },
-      { name: ".env.local", description: "Local environment variables (may contain secrets)" },
       { name: ".editorconfig", description: "Editor configuration for consistent formatting" },
       { name: ".gitignore", description: "Git ignore patterns" },
       { name: "README.md", description: "Project documentation" }
