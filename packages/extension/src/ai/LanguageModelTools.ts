@@ -111,6 +111,14 @@ export function registerNodeForgeLanguageModelTools(
     execute: (nodeforge) => nodeforge.getTestResults()
   });
 
+  register<{
+    scope?: "working" | "staged" | "head-vs-upstream";
+  }>("nodeforge_get_git_diff", {
+    invocationMessage: "Reading Git changes",
+    execute: (nodeforge, input) =>
+      nodeforge.getGitDiff(input.scope ?? "working")
+  });
+
   register<EmptyInput>("nodeforge_get_dependency_graph", {
     invocationMessage: "Analyzing dependency graph",
     execute: (nodeforge) => nodeforge.getDependencyGraph()
