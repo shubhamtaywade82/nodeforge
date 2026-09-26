@@ -332,7 +332,7 @@ function detectModuleSystem(
   pkg: NormalizedPackageJson | undefined
 ): "esm" | "commonjs" | "unknown" {
   if (!pkg) return "unknown";
-  return pkg.type === "commonjs" ? "commonjs" : "esm";
+  return pkg.type === "module" ? "esm" : "commonjs";
 }
 
 async function detectTypeScript(
