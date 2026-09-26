@@ -113,7 +113,7 @@ will appear in the Activity Bar on the left with 10 views:
 3. Ask questions or use workflow chips / slash commands:
    - `/audit-and-upgrade-deps`, `/validate-and-fix`, `/onboard-to-project`, `/explain-errors`
 
-The chat uses the the same 18 engineering tools as the MCP server. Write tools
+The chat uses the the same 19 engineering tools as the MCP server. Write tools
 (`formatFiles`, `applyEslintFix`, `runScript`, `validateWorkspace`) run automatically
 when the workspace is **Trusted**; they are blocked in Restricted Mode.
 
@@ -161,7 +161,7 @@ want **external** agents (Claude Code, another Cursor MCP client, etc.) to call
 the same tools.
 
 The MCP server lets those agents read your workspace's structured state and take
-actions via 18 tools.
+actions via 19 tools.
 
 ### Step 1: Build the MCP server
 
@@ -214,9 +214,9 @@ Now you can ask Cursor things like:
 The agent will call the appropriate NodeForge MCP tools and get structured
 JSON back.
 
-### Available MCP Tools (18 total)
+### Available MCP Tools (19 total)
 
-**Read-only tools (13):**
+**Read-only tools (14):**
 
 - `getProjectContext` — workspace profile
 - `getDiagnostics` — TS + ESLint/Biome findings
@@ -231,6 +231,7 @@ JSON back.
 - `getKubernetesManifests` — k8s resources
 - `getGitHubWorkflows` — CI/CD workflows
 - `getDependencyGraph` — unused + circular + missing deps
+- `getChangeImpact` — direct/transitive dependencies and dependents for changed files
 - `getGitDiff` — working, staged, or HEAD-vs-upstream patch
 
 **Action tools (4):**
