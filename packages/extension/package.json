@@ -763,7 +763,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node --test \"test/*.test.mjs\" \"test/*.test.ts\"",
     "package": "node esbuild.mjs --production && echo y | npx @vscode/vsce package --no-dependencies --no-git-tag-version --allow-missing-repository --baseContentUrl https://github.com/shubhamtaywade82/nodeforge/blob/main/packages/extension",
-    "clean": "rm -rf dist *.tsbuildinfo"
+    "clean": "rm -rf dist *.tsbuildinfo",
+    "test:integration": "npx --yes @vscode/test-cli@0.0.15"
   },
   "dependencies": {
     "@nodeforge/contracts": "workspace:*",
