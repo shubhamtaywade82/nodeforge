@@ -36,12 +36,12 @@ const DEFAULT_CONTEXT_LENGTH = 8192;
 const MAX_OUTPUT_TOKENS = 8192;
 
 export function toOllamaApiBaseUrl(baseUrl: string): string {
-  const normalized = stripTrailingSlash(baseUrl).replace(/\\/v1$/, "");
+  const normalized = stripTrailingSlash(baseUrl).replace(/\/v1$/, "");
   return normalized + "/api";
 }
 
 export function toOllamaOpenAiBaseUrl(baseUrl: string): string {
-  const normalized = stripTrailingSlash(baseUrl).replace(/\\/v1$/, "");
+  const normalized = stripTrailingSlash(baseUrl).replace(/\/v1$/, "");
   return normalized + "/v1";
 }
 
@@ -90,5 +90,5 @@ export function buildOllamaModelMetadata(
 }
 
 function stripTrailingSlash(value: string): string {
-  return value.replace(/\\+$/, "");
+  return value.replace(/\/+$/, "");
 }
