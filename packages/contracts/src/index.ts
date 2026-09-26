@@ -22,6 +22,7 @@ export * from "./github-actions.js";
 export * from "./dependency-graph.js";
 export * from "./chat.js";
 export * from "./devdocs.js";
+export * from "./change-impact.js";
 
 /**
  * Build a stable diagnostic id from its parts. Used by every adapter so
