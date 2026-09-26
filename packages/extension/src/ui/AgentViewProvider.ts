@@ -83,7 +83,7 @@ export class AgentViewProvider implements vscode.TreeDataProvider<TreeNode> {
           kind: "field",
           label: "Capabilities",
           description: "tools + resources + prompts",
-          tooltip: "The server exposes 17 tools, 22 resource types, and 6 prompts."
+          tooltip: "The server exposes 18 tools, 22 resource types, and 6 prompts."
         }
       ];
     }
