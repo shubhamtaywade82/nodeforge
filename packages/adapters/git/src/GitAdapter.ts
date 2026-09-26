@@ -21,6 +21,8 @@
 import * as path from "node:path";
 import {
   type CommandRequest,
+  type GitDiff,
+  type GitDiffScope,
   type GitState
 } from "@nodeforge/contracts";
 import { ProcessRunner, resolveExecutable } from "@nodeforge/runner";
@@ -117,6 +119,61 @@ export class GitAdapter {
       ahead,
       behind,
       upstream
+    };
+  }
+
+
+  async getDiff(
+    workspaceRoot: string,
+    scope: GitDiffScope = "working"
+  ): Promise<GitDiff | undefined> {
+    const gitBin = this.options.gitPath ?? (await resolveGitBinary());
+    if (!gitBin) return undefined;
+
+    const toplevelResult = await this.runGit(gitBin, workspaceRoot, [
+      "rev-parse", "--show-toplevel"
+    ]);
+    if (toplevelResult.exitCode !== 0 || !toplevelResult.stdout.trim()) {
+      return undefined;
+    }
+
+    const root = toplevelResult.stdout.trim();
+    let diffArgs: string[];
+
+    if (scope === "working") {
+      diffArgs = ["diff", "--unified=40"];
+    } else if (scope === "staged") {
+      diffArgs = ["diff", "--cached", "--unified=40"];
+    } else {
+      const upstream = await this.runGit(
+        gitBin,
+        root,
+        ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"]
+      );
+      const ref = upstream.stdout.trim();
+      if (upstream.exitCode !== 0 || !ref) return undefined;
+      diffArgs = ["diff", "--unified=40", ref + "...HEAD"];
+    }
+
+    const [patchResult, filesResult] = await Promise.all([
+      this.runGit(gitBin, root, diffArgs),
+      this.runGit(gitBin, root, [
+        ...diffArgs.filter((arg) => !arg.startsWith("--unified")),
+        "--name-only"
+      ])
+    ]);
+
+    if (patchResult.exitCode !== 0) return undefined;
+
+    const files = filesResult.stdout
+      .split(/\r?\n/)
+      .map((file) => file.trim())
+      .filter(Boolean);
+
+    return {
+      scope,
+      files,
+      patch: patchResult.stdout
     };
   }
 
