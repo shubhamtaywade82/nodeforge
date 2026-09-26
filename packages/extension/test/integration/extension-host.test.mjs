@@ -8,6 +8,7 @@ const PROVIDER_VENDOR = "nodeforge-ollama";
 let server;
 let baseUrl;
 let lastChatRequest;
+let lastModelRequestAuthorization;
 
 suite("NodeForge Extension Host", () => {
   suiteSetup(async () => {
@@ -29,6 +30,7 @@ suite("NodeForge Extension Host", () => {
       }
 
       if (request.url === "/api/show" && request.method === "POST") {
+        lastModelRequestAuthorization = request.headers.authorization;
         await consume(request);
         return sendJson(response, 200, {
           capabilities: ["completion", "tools"],
@@ -131,6 +133,7 @@ suite("NodeForge Extension Host", () => {
     assert.equal(models[0].vendor, PROVIDER_VENDOR);
     assert.equal(models[0].maxInputTokens, 122880);
     assert.equal(models[0].maxOutputTokens, 8192);
+    assert.equal(lastModelRequestAuthorization, "Bearer ollama");
   });
 
   test("streams text through the native Ollama provider", async () => {
