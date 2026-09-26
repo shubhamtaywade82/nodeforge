@@ -1,0 +1,17 @@
+{
+  "files": "test/integration/**/*.test.mjs",
+  "version": "1.138.0",
+  "extensionDevelopmentPath": ".",
+  "workspaceFolder": "./test/integration/fixture-workspace",
+  "launchArgs": [
+    "--disable-extensions",
+    "--disable-telemetry",
+    "--skip-welcome",
+    "--skip-release-notes"
+  ],
+  "mocha": {
+    "ui": "tdd",
+    "timeout": 30000,
+    "color": true
+  }
+}
