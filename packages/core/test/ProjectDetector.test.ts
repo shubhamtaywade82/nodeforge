@@ -20,6 +20,8 @@ describe("detectWorkspaceProfile", () => {
     expect(profile.runtime).toBe("node");
     expect(profile.packageManager).toBe("npm"); // package-lock.json absent, but engines.node present
     expect(profile.typescript).toBe(true);
+    expect(profile.typescriptVersion).toBeDefined();
+    expect(profile.moduleSystem).toBe("commonjs");
     expect(profile.linter).toBe("eslint");
     expect(profile.formatter).toBe("prettier");
     expect(profile.testRunner).toBe("jest");
@@ -33,6 +35,8 @@ describe("detectWorkspaceProfile", () => {
     const profile = await detectWorkspaceProfile(path.join(FIXTURES, "node-ts-biome"));
 
     expect(profile.runtime).toBe("node");
+    expect(profile.typescriptVersion).toBeDefined();
+    expect(profile.moduleSystem).toBe("commonjs");
     expect(profile.typescript).toBe(true);
     expect(profile.linter).toBe("biome");
     expect(profile.formatter).toBe("biome");
