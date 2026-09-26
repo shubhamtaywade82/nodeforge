@@ -36,12 +36,12 @@ const DEFAULT_CONTEXT_LENGTH = 8192;
 const MAX_OUTPUT_TOKENS = 8192;
 
 export function toOllamaApiBaseUrl(baseUrl: string): string {
-  const normalized = stripTrailingSlash(baseUrl).replace(/\/v1$/, "");
+  const normalized = stripTrailingSlash(baseUrl).replace(/\/(?:api|v1)$/, "");
   return normalized + "/api";
 }
 
 export function toOllamaOpenAiBaseUrl(baseUrl: string): string {
-  const normalized = stripTrailingSlash(baseUrl).replace(/\/v1$/, "");
+  const normalized = stripTrailingSlash(baseUrl).replace(/\/(?:api|v1)$/, "");
   return normalized + "/v1";
 }
 
@@ -79,7 +79,9 @@ export function buildOllamaModelMetadata(
     maxInputTokens,
     maxOutputTokens,
     toolCalling: capabilities.has("tools"),
-    imageInput: capabilities.has("vision"),
+    // Image messages are not yet translated by the provider, so do not advertise
+    // vision support even when Ollama reports the model as vision-capable.
+    imageInput: false,
     tooltip: [
       "Ollama: " + tag.name,
       "context " + contextLength.toLocaleString() + " tokens",
