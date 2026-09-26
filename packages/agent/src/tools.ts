@@ -246,6 +246,36 @@ export const TOOLS: McpTool[] = [
   },
   {
     definition: {
+      name: "getChangeImpact",
+      description:
+        "Analyze source-file change impact from the supplied files, or from the current working Git diff when files are omitted. Returns direct and transitive dependencies, direct and transitive dependents, affected external packages, and circular dependency chains touching the changed files.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          files: {
+            type: "array",
+            items: { type: "string" },
+            description:
+              "Workspace-relative or absolute-in-workspace source files. Omit to use files from the working Git diff."
+          }
+        }
+      }
+    },
+    handler: async (args, ctx) => {
+      const files = Array.isArray(args["files"]) ? args["files"].map(String) : undefined;
+      const impact = await ctx.getChangeImpact(files);
+      if (!impact) {
+        return JSON.stringify(
+          { error: "No changed files available for impact analysis." },
+          null,
+          2
+        );
+      }
+      return JSON.stringify(impact, null, 2);
+    }
+  },
+  {
+    definition: {
       name: "runScript",
       description:
         "Run a script from package.json (e.g. `build`, `test`, `lint`, `dev`). Uses the detected package manager (npm/pnpm/yarn). Returns stdout, stderr, exit code, and duration. This is a write operation — the script may modify files or start processes.",
