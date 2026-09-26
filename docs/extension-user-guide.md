@@ -2,13 +2,13 @@
 
 NodeForge is a **control plane** for Node.js, JavaScript, and TypeScript projects in VS Code and Cursor. It detects your stack, runs your existing tools (`tsc`, ESLint, Biome, Vitest, Jest, …), surfaces results in the sidebar, and provides built-in **Chat** (OpenAI-compatible) plus optional **MCP** for external agents.
 
-**Version:** 0.0.1 (alpha). See [readiness notes](#limitations) before adopting team-wide.
+**Version:** 0.1.0. Native VS Code AI integration is available when using VS Code 1.138+.
 
 ---
 
 ## Prerequisites
 
-- VS Code **1.85+** or **Cursor**
+- VS Code **1.138+** or **Cursor**
 - **Node.js 20+** on your PATH (or set `nodeforge.runtime.preferredNodeBinary`)
 - Project dependencies installed (`npm install` / `pnpm install`) so local `tsc`, `eslint`, etc. resolve
 - **Git** (optional, for Git view)
@@ -17,10 +17,10 @@ NodeForge is a **control plane** for Node.js, JavaScript, and TypeScript project
 
 ## Installation
 
-1. Build or obtain `nodeforge-0.0.1.vsix` (see [INSTALL.md](../INSTALL.md)).
+1. Build or obtain `nodeforge-0.1.0.vsix` (see [INSTALL.md](../INSTALL.md)).
 2. Install via CLI or UI:
-   - In Cursor: `cursor --install-extension /home/nemesis/projects/developer-tools/nodeforge/packages/extension/nodeforge-0.0.1.vsix`
-   - In VS Code: `code --install-extension /home/nemesis/projects/developer-tools/nodeforge/packages/extension/nodeforge-0.0.1.vsix`
+   - In Cursor: `cursor --install-extension /home/nemesis/projects/developer-tools/nodeforge/packages/extension/nodeforge-0.1.0.vsix`
+   - In VS Code: `code --install-extension /home/nemesis/projects/developer-tools/nodeforge/packages/extension/nodeforge-0.1.0.vsix`
    - Or UI: **Extensions → … → Install from VSIX...**
 3. Reload the window (`Ctrl+Shift+P` → **Developer: Reload Window**).
 4. In your target project, ensure dev dependencies are installed (`npm install` / `pnpm install`) so local tools (`tsc`, `eslint`, etc.) resolve.
@@ -124,13 +124,13 @@ Built-in Chat does **not** require MCP. To connect Claude Code or another MCP cl
 
 ---
 
-## Limitations (0.0.1)
+## Limitations (0.1.0)
 
 - **Companion, not replacement** for the TypeScript language service, ESLint extension, or Test Explorer.
 - TypeScript/ESLint/Biome results appear primarily in the **NodeForge Diagnostics** tree; dependency issues also appear in **Problems**.
 - **First workspace folder** only in multi-root setups.
 - Distributed via **VSIX / source**, not the public Marketplace yet.
-- Extension automated integration tests are still planned (`TESTING.md` for manual QA).
+- Real VS Code Extension Host integration tests are still planned; deterministic provider/manifest contracts are covered by automated tests.
 
 ---
 
