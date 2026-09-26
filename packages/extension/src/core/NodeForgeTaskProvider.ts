@@ -40,10 +40,6 @@ export class NodeForgeTaskProvider implements vscode.TaskProvider {
 
       for (const [scriptName, scriptCommand] of Object.entries(pkg.scripts)) {
         // For yarn: `yarn <script>`. For npm/pnpm: `npm/pnpm run <script>`.
-        const fullCommand = pm === "yarn"
-          ? `yarn ${scriptName}`
-          : `${pm} run ${scriptName}`;
-
         const task = new vscode.Task(
           { type: NodeForgeTaskProvider.taskType, script: scriptName },
           vscode.TaskScope.Workspace,
@@ -76,10 +72,6 @@ export class NodeForgeTaskProvider implements vscode.TaskProvider {
     }
 
     const pm = this.packageManager;
-    const fullCommand = pm === "yarn"
-      ? `yarn ${definition.script}`
-      : `${pm} run ${definition.script}`;
-
     return new vscode.Task(
       definition,
       vscode.TaskScope.Workspace,
