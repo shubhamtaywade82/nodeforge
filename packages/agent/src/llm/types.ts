@@ -22,6 +22,8 @@ export interface LlmCompletionRequest {
   messages: LlmMessage[];
   tools: LlmToolDefinition[];
   model: string;
+  modelOptions?: Record<string, unknown>;
+  toolChoice?: "auto" | "required";
   signal?: AbortSignal;
   onTextDelta?: (text: string) => void;
 }
