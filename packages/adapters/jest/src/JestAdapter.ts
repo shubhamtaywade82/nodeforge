@@ -93,7 +93,7 @@ export class JestAdapter {
    * Jest exits 0 if all tests pass, 1 if any test fails. We treat exit 1
    * as "tests ran, here are the failures".
    */
-  async run(workspaceRoot: string, signal?: AbortSignal): Promise<JestRunResult> {
+  async run(workspaceRoot: string, signal?: AbortSignal, test?: TestCase): Promise<JestRunResult> {
     const jestBin = this.options.jestPath ?? (await resolveJestBinary(workspaceRoot));
     if (!jestBin) {
       throw new FileNotFoundError("jest");
@@ -102,6 +102,9 @@ export class JestAdapter {
     const args = ["--json"];
     if (this.options.patterns && this.options.patterns.length > 0) {
       args.push(...this.options.patterns);
+    }
+    if (test) {
+      args.push(test.file, "-t", test.fullName ?? test.name);
     }
     if (this.options.extraArgs) {
       args.push(...this.options.extraArgs);
@@ -123,8 +126,9 @@ export class JestAdapter {
 
     const { suite, summary } = parseJestJsonOutput(stdout, workspaceRoot);
 
+    const cases = collectTestCases(suite);
     const runResult: TestRunResult = {
-      id: "jest:all",
+      id: test?.id ?? "jest:all",
       status: summary.numFailedTests > 0 ? "failed" : "passed",
       durationMs: result.durationMs,
       counts: {
@@ -135,7 +139,8 @@ export class JestAdapter {
         running: 0,
         errored: 0
       },
-      failures: [],
+      cases,
+      failures: cases.flatMap((testCase) => testCase.error ? [testCase.error] : []),
       stdout,
       stderr
     };
@@ -350,6 +355,7 @@ function fileResultToSuite(fileResult: JestFileResult, workspaceRoot: string): T
     const test: TestCase = {
       id: `jest:${absFile}:${a.fullName ?? title}`,
       name: title,
+      fullName: a.fullName ?? title,
       file: absFile,
       line: a.location?.line ?? undefined,
       status: mapStatus(a.status),
@@ -404,4 +410,13 @@ function mapStatus(s: string): TestStatus {
     default:
       return "errored";
   }
+}
+
+
+function collectTestCases(suite: TestSuite): TestCase[] {
+  const cases = [...suite.tests];
+  for (const child of suite.suites) {
+    cases.push(...collectTestCases(child));
+  }
+  return cases;
 }
