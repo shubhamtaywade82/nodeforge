@@ -10,8 +10,10 @@ import {
 test("normalizes Ollama endpoint URLs", () => {
   assert.equal(toOllamaApiBaseUrl("http://localhost:11434/"), "http://localhost:11434/api");
   assert.equal(toOllamaApiBaseUrl("http://localhost:11434/v1"), "http://localhost:11434/api");
+  assert.equal(toOllamaApiBaseUrl("http://localhost:11434/api/"), "http://localhost:11434/api");
   assert.equal(toOllamaOpenAiBaseUrl("http://localhost:11434"), "http://localhost:11434/v1");
   assert.equal(toOllamaOpenAiBaseUrl("http://localhost:11434/v1/"), "http://localhost:11434/v1");
+  assert.equal(toOllamaOpenAiBaseUrl("http://localhost:11434/api/"), "http://localhost:11434/v1");
 });
 
 test("extracts Ollama model context length from model_info", () => {
