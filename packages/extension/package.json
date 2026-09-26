@@ -460,7 +460,7 @@
             "title": "Configure the MCP Agent",
             "description": "Enable AI agents (Cursor, Claude Code) to read your workspace and take actions.\n[Show Agent Setup](command:nodeforge.refresh)",
             "media": {
-              "markdown": "NodeForge ships an MCP server with **18 tools**, **6 prompts**, and **22 resource types**.\n\n**Quick setup:**\n1. Build: `cd packages/agent && pnpm build`\n2. Add to `.cursor/mcp.json`:\n```json\n{\n  \"mcpServers\": {\n    \"nodeforge\": {\n      \"command\": \"node\",\n      \"args\": [\"/path/to/nodeforge/packages/agent/dist/cli.js\"],\n      \"env\": { \"NODEFORGE_WORKSPACE_ROOT\": \"/your/project\" }\n    }\n  }\n}\n```\n3. Restart Cursor\n\nThen ask: \"What does this project use?\", \"Run diagnostics\", \"Validate the workspace\"."
+              "markdown": "NodeForge ships an MCP server with **19 tools**, **6 prompts**, and **22 resource types**.\n\n**Quick setup:**\n1. Build: `cd packages/agent && pnpm build`\n2. Add to `.cursor/mcp.json`:\n```json\n{\n  \"mcpServers\": {\n    \"nodeforge\": {\n      \"command\": \"node\",\n      \"args\": [\"/path/to/nodeforge/packages/agent/dist/cli.js\"],\n      \"env\": { \"NODEFORGE_WORKSPACE_ROOT\": \"/your/project\" }\n    }\n  }\n}\n```\n3. Restart Cursor\n\nThen ask: \"What does this project use?\", \"Run diagnostics\", \"Validate the workspace\"."
             }
           },
           {
