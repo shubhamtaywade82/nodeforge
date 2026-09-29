@@ -221,29 +221,35 @@ above explicitly grant trust, execution, write, and network capabilities.
 
 ### Available MCP Tools (18 total)
 
-**Read-only tools:**
+**Read-only repository state:**
 
 - `getProjectContext` — workspace profile
-- `getDiagnostics` — TS + ESLint/Biome findings
-- `runTypeCheck` — TypeScript compiler errors only
-- `runLinter` — ESLint or Biome findings only
-- `getTestResults` — test suite + run result
-- `runTests` — alias for getTestResults
 - `getGitState` — branch, dirty status, changed files
-- `getDependencyReport` — vulnerabilities + outdated
+- `getGitDiff` — working, staged, or HEAD-vs-upstream patch
 - `getDatabaseSchema` — Prisma or Drizzle schema
 - `getDockerConfig` — Dockerfile + docker-compose
-- `getKubernetesManifests` — k8s resources
+- `getKubernetesManifests` — Kubernetes resources
 - `getGitHubWorkflows` — CI/CD workflows
-- `getDependencyGraph` — unused + circular + missing deps
-- `getGitDiff` — working, staged, or HEAD-vs-upstream patch
+- `getDependencyGraph` — unused + circular + missing dependencies
 
-**Execution and write tools:**
+**Execution / analysis tools:**
 
-- `runScript` — run `npm run <script>` / `pnpm run <script>` / `yarn <script>`
-- `formatFiles` — run Prettier or Biome with `--write`
-- `applyEslintFix` — run ESLint with `--fix`
+- `getDiagnostics` — TypeScript + ESLint/Biome findings
+- `runTypeCheck` — TypeScript compiler errors only
+- `runLinter` — ESLint or Biome findings only
+- `getTestResults` / `runTests` — test suite + run result
+- `getDependencyReport` — vulnerability/outdated dependency report
 - `validateWorkspace` — combined typecheck + lint + tests + audit
+
+**Write / code-execution tools:**
+
+- `runScript` — run an existing package.json script
+- `formatFiles` — format workspace files with Prettier or Biome
+- `applyEslintFix` — run ESLint with `--fix`
+
+Execution tools are trust-gated. Workspace mutations and package-script execution are
+explicitly approval-gated in built-in NodeForge chat; standalone MCP uses environment
+capabilities to fail closed by default.
 
 **MCP Resources:** Config files (package.json, tsconfig.json, eslint.config,
 Dockerfile, etc.) are exposed as MCP resources — the agent can read them
