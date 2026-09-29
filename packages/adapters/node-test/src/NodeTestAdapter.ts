@@ -231,8 +231,10 @@ export function parseNodeTestOutput(
 }
 
 function escapeRegExp(value: string): string {
-  return value.replace(/[\\^$.*+?()[\]{}|]/g, "\\function escapeRegExp(value: string): string {
-  return value.replace(/[\\^$.*+?()[\]{}|]/g, "\\function mapStatus(item: DriverCase): TestStatus {
+  return value.replace(/[\\^$.*+?()[\]{}|]/g, "\\$&");
+}
+
+function mapStatus(item: DriverCase): TestStatus {
 ");
 }");
 }
