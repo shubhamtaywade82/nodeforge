@@ -16,7 +16,6 @@
  */
 
 import * as vscode from "vscode";
-import { logger } from "./Logger.js";
 
 const TEST_FUNCTION_REGEX = /^\s*(?:it|test|it\.only|test\.only|it\.skip|test\.skip)\s*\(\s*["'`]([^"'`]+)["'`]/;
 const DESCRIBE_REGEX = /^\s*(?:describe|describe\.only|describe\.skip)\s*\(\s*["'`]([^"'`]+)["'`]/;
