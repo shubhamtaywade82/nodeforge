@@ -43,6 +43,20 @@ jobs:
 
       - run: pnpm lint
       - run: pnpm typecheck
+      - name: Install integration fixture dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          for fixture in \
+            node-ts-eslint \
+            node-ts-with-errors \
+            node-ts-biome-lint \
+            node-ts-jest \
+            node-ts-vitest
+          do
+            pnpm --dir "packages/test-fixtures/$fixture" install --no-frozen-lockfile --ignore-scripts --no-audit --no-fund
+          done
+
       - name: Start Xvfb for VS Code extension-host tests
         shell: bash
         run: |
