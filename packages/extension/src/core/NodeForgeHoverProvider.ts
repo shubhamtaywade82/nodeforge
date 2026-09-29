@@ -14,7 +14,6 @@
 
 import * as vscode from "vscode";
 import type { DiagnosticStore } from "@nodeforge/core";
-import { logger } from "./Logger.js";
 
 export class NodeForgeHoverProvider implements vscode.HoverProvider {
   constructor(private readonly store: DiagnosticStore) {}
