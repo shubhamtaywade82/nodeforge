@@ -22,7 +22,7 @@
 import { createContextFromEnv, NodeForgeContext } from "./NodeForgeContext.js";
 import { findTool, listToolDefinitions } from "./tools.js";
 import { executeTool, ToolArgumentValidationError, ToolAuthorizationError, UnknownToolError } from "./toolRunner.js";
-import { getMcpExecutionContext } from "./toolPolicy.js";
+import { getMcpExecutionContext, type ToolExecutionContext } from "./toolPolicy.js";
 import { PROMPTS } from "./prompts.js";
 
 // JSON-RPC 2.0 types
@@ -59,10 +59,15 @@ const SERVER_CAPABILITIES = {
 
 export class McpServer {
   private readonly context: NodeForgeContext;
+  private readonly executionContext: ToolExecutionContext;
   private initialized = false;
 
-  constructor(context?: NodeForgeContext) {
+  constructor(
+    context?: NodeForgeContext,
+    executionContext: ToolExecutionContext = getMcpExecutionContext()
+  ) {
     this.context = context ?? createContextFromEnv();
+    this.executionContext = executionContext;
   }
 
   /**
@@ -195,7 +200,7 @@ export class McpServer {
         p.name,
         (args ?? {}) as Record<string, unknown>,
         this.context,
-        getMcpExecutionContext()
+        this.executionContext
       );
     } catch (err) {
       if (err instanceof UnknownToolError || err instanceof ToolArgumentValidationError) {
