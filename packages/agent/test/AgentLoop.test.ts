@@ -68,6 +68,53 @@ describe("AgentLoop", () => {
     expect(result.toolInvocations[0]?.result).toContain("not trusted");
   });
 
+  it("requests approval before a trusted workspace write", async () => {
+    const ctx = new NodeForgeContext(FIXTURE);
+    const llm = new MockLlm([
+      {
+        content: "",
+        toolCalls: [{ id: "call_1", name: "formatFiles", arguments: {} }]
+      },
+      { content: "Approval handled.", toolCalls: [] }
+    ]);
+
+    const loop = new AgentLoop(llm, ctx, "test-model");
+    const requestToolApproval = vi.fn(async () => false);
+
+    const result = await loop.runTurn("format", [], {
+      maxToolRounds: 4,
+      workspaceTrusted: true,
+      requestToolApproval
+    });
+
+    expect(requestToolApproval).toHaveBeenCalledWith("formatFiles", {});
+    expect(result.toolInvocations[0]?.ok).toBe(false);
+    expect(result.toolInvocations[0]?.result).toContain("Workspace writes are disabled");
+  });
+
+  it("allows a trusted workspace write after explicit approval", async () => {
+    const ctx = new NodeForgeContext(FIXTURE);
+    const llm = new MockLlm([
+      {
+        content: "",
+        toolCalls: [{ id: "call_1", name: "formatFiles", arguments: {} }]
+      },
+      { content: "Formatted.", toolCalls: [] }
+    ]);
+
+    const loop = new AgentLoop(llm, ctx, "test-model");
+    const requestToolApproval = vi.fn(async () => true);
+
+    const result = await loop.runTurn("format", [], {
+      maxToolRounds: 4,
+      workspaceTrusted: true,
+      requestToolApproval
+    });
+
+    expect(requestToolApproval).toHaveBeenCalledWith("formatFiles", {});
+    expect(result.toolInvocations[0]?.ok).toBe(true);
+  });
+
   it("respects abort signal", async () => {
     const ctx = new NodeForgeContext(FIXTURE);
     const llm: LlmClient = {
