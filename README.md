@@ -247,3 +247,18 @@ pnpm build
 ## License
 
 MIT
+
+
+## Repository quality gates
+
+NodeForge enforces the same baseline checks locally and in CI:
+
+```bash
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm build
+pnpm package
+```
+
+The test suite includes a real VS Code extension-host integration suite under `packages/extension-vscode-tests`. It launches the extension against the included TypeScript fixture using Microsoft's VS Code Test CLI.
