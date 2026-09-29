@@ -14,6 +14,7 @@
  */
 
 import * as path from "node:path";
+import { resolveContainedPath } from "./safePath.js";
 import { detectWorkspaceProfile, NodeFilesystemReader } from "@nodeforge/core";
 import { ProcessRunner } from "@nodeforge/runner";
 import { TypescriptAdapter } from "@nodeforge/adapter-typescript";
@@ -259,13 +260,11 @@ export class NodeForgeContext {
    */
   async readConfigFile(filePath: string): Promise<string | undefined> {
     const fs = await import("node:fs/promises");
-    const abs = path.resolve(this.workspaceRoot, filePath);
-    const relative = path.relative(this.workspaceRoot, abs);
-    if (relative === "" || relative.startsWith(".." + path.sep) || path.isAbsolute(relative)) {
-      return undefined;
-    }
+    const safePath = await resolveContainedPath(this.workspaceRoot, filePath);
+    if (!safePath) return undefined;
+
     try {
-      return await fs.readFile(abs, "utf8");
+      return await fs.readFile(safePath, "utf8");
     } catch {
       return undefined;
     }
@@ -302,11 +301,16 @@ export class NodeForgeContext {
 
     const results: Array<{ path: string; description: string }> = [];
     for (const c of candidates) {
+      const safePath = await resolveContainedPath(this.workspaceRoot, c.name);
+      if (!safePath) continue;
+
       try {
-        await fs.access(path.join(this.workspaceRoot, c.name));
-        results.push({ path: c.name, description: c.description });
+        const stat = await fs.stat(safePath);
+        if (stat.isFile()) {
+          results.push({ path: c.name, description: c.description });
+        }
       } catch {
-        // file doesn't exist — skip
+        // file doesn't exist or is no longer accessible — skip
       }
     }
     return results;
