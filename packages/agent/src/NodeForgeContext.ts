@@ -21,6 +21,7 @@ import { EslintAdapter } from "@nodeforge/adapter-eslint";
 import { BiomeAdapter } from "@nodeforge/adapter-biome";
 import { VitestAdapter } from "@nodeforge/adapter-vitest";
 import { JestAdapter } from "@nodeforge/adapter-jest";
+import { NodeTestAdapter } from "@nodeforge/adapter-node-test";
 import { GitAdapter } from "@nodeforge/adapter-git";
 import { PrismaAdapter } from "@nodeforge/adapter-prisma";
 import { DrizzleAdapter } from "@nodeforge/adapter-drizzle";
@@ -136,6 +137,10 @@ export class NodeForgeContext {
     }
     if (profile.testRunner === "jest") {
       const result = await new JestAdapter(this.runner).run(this.workspaceRoot);
+      return { suite: result.suite, result: result.result };
+    }
+    if (profile.testRunner === "node") {
+      const result = await new NodeTestAdapter(this.runner).run(this.workspaceRoot);
       return { suite: result.suite, result: result.result };
     }
     return undefined;
