@@ -113,9 +113,9 @@ will appear in the Activity Bar on the left with 10 views:
 3. Ask questions or use workflow chips / slash commands:
    - `/audit-and-upgrade-deps`, `/validate-and-fix`, `/onboard-to-project`, `/explain-errors`
 
-The chat uses the the same 18 engineering tools as the MCP server. Write tools
-(`formatFiles`, `applyEslintFix`, `runScript`, `validateWorkspace`) run automatically
-when the workspace is **Trusted**; they are blocked in Restricted Mode.
+The chat uses the same engineering tool layer as the MCP server. Workspace writes
+and package-script execution require explicit confirmation and are blocked in
+Restricted Mode.
 
 Configure the model and API base URL under **Settings → NodeForge → Chat**.
 
@@ -216,7 +216,7 @@ JSON back.
 
 ### Available MCP Tools (18 total)
 
-**Read-only tools (13):**
+**Read-only tools:**
 
 - `getProjectContext` — workspace profile
 - `getDiagnostics` — TS + ESLint/Biome findings
@@ -233,7 +233,7 @@ JSON back.
 - `getDependencyGraph` — unused + circular + missing deps
 - `getGitDiff` — working, staged, or HEAD-vs-upstream patch
 
-**Action tools (4):**
+**Execution and write tools:**
 
 - `runScript` — run `npm run <script>` / `pnpm run <script>` / `yarn <script>`
 - `formatFiles` — run Prettier or Biome with `--write`
@@ -326,3 +326,16 @@ You should see 18 tools listed.
 - **More MCP prompts** for common workflows
 - **Monorepo-aware diagnostics** (per-package adapter runs)
 - **Custom adapter SDK** so you can add your own adapters
+
+
+### MCP security configuration
+
+The standalone MCP server does not inherit VS Code Workspace Trust. It starts fail-closed:
+
+- reads are available by default;
+- project code execution requires `NODEFORGE_ALLOW_EXECUTION=true` and `NODEFORGE_WORKSPACE_TRUSTED=true`;
+- workspace mutations additionally require `NODEFORGE_ALLOW_WRITES=true`;
+- network-dependent tools additionally require `NODEFORGE_ALLOW_NETWORK=true`;
+- `runScript` is arbitrary project-controlled code execution and should be treated as high risk.
+
+Enable these capabilities only for workspaces and package scripts you trust.
