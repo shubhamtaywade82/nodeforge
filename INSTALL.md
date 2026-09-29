@@ -133,7 +133,7 @@ On activation (trusted workspaces), NodeForge can automatically run a dependency
 
 - `NodeForge: Analyze Workspace` — re-detect the workspace profile
 - `NodeForge: Run Diagnostics` — run TypeScript + ESLint/Biome
-- `NodeForge: Run Tests` — run Vitest or Jest
+- `NodeForge: Run Tests` — run the detected Vitest, Jest, or Node test runner
 - `NodeForge: Refresh Git State` — re-detect git state
 - `NodeForge: Detect Database Schema` — parse Prisma or Drizzle schema
 - `NodeForge: Audit Dependencies` — run `npm audit` + `outdated`
