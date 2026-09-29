@@ -21,7 +21,8 @@
 
 import { createContextFromEnv, NodeForgeContext } from "./NodeForgeContext.js";
 import { findTool, listToolDefinitions } from "./tools.js";
-import { executeTool, UnknownToolError } from "./toolRunner.js";
+import { executeTool, ToolArgumentValidationError, ToolAuthorizationError, UnknownToolError } from "./toolRunner.js";
+import { getMcpExecutionContext } from "./toolPolicy.js";
 import { PROMPTS } from "./prompts.js";
 
 // JSON-RPC 2.0 types
@@ -177,15 +178,42 @@ export class McpServer {
     }
 
     const args = p.arguments ?? {};
+    if (args !== null && (typeof args !== "object" || Array.isArray(args))) {
+      return {
+        jsonrpc: "2.0",
+        id,
+        error: {
+          code: -32602,
+          message: "Invalid params: arguments must be an object"
+        }
+      };
+    }
+
     let resultText: string;
     try {
-      resultText = await executeTool(p.name, args, this.context);
+      resultText = await executeTool(
+        p.name,
+        (args ?? {}) as Record<string, unknown>,
+        this.context,
+        getMcpExecutionContext()
+      );
     } catch (err) {
-      if (err instanceof UnknownToolError) {
+      if (err instanceof UnknownToolError || err instanceof ToolArgumentValidationError) {
         return {
           jsonrpc: "2.0",
           id,
           error: { code: -32602, message: err.message }
+        };
+      }
+      if (err instanceof ToolAuthorizationError) {
+        return {
+          jsonrpc: "2.0",
+          id,
+          error: {
+            code: -32001,
+            message: `Tool denied: ${err.message}`,
+            data: { tool: err.toolName, reason: err.code }
+          }
         };
       }
       throw err;
