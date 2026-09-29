@@ -80,7 +80,7 @@ Phase 2:
 - [x] `packages/adapters/eslint` — discovers `eslint.config.*`, runs local ESLint with `--format json`, normalizes to `Diagnostic[]`
 - [x] `packages/core/diagnostics` — `DiagnosticStore` + `DiagnosticAggregator`, publishes `diagnostics.snapshot` events
 - [x] Integration tests against real `tsc` / `eslint` runs on fixtures
-- [x] 48 tests passing across the workspace
+- [x] Automated test coverage for the workspace
 
 Phase 3:
 
@@ -88,7 +88,7 @@ Phase 3:
 - [x] `packages/adapters/vitest` — wraps `vitest run --reporter=json`, normalizes to `TestSuite` / `TestRunResult`
 - [x] `packages/adapters/jest` — wraps `jest --json`, normalizes to `TestSuite` / `TestRunResult`
 - [x] Real fixtures with deliberate lint findings, passing tests, and failing tests
-- [x] 80 tests passing across the workspace
+- [x] Automated test coverage for the workspace
 
 Phase 4:
 
@@ -101,7 +101,7 @@ Phase 4:
 - [x] `RuntimeViewProvider` shows running processes with recent output
 - [x] `GitViewProvider` shows branch/HEAD/upstream/changed-files/staged-files
 - [x] `nodeforge.refreshGit` command + auto-detection on activation
-- [x] 103 tests passing across the workspace
+- [x] Automated test coverage for the workspace
 
 Phase 5:
 
@@ -114,7 +114,7 @@ Phase 5:
 - [x] `DependencyViewProvider` renders vulnerabilities + outdated packages with severity breakdown
 - [x] `nodeforge.detectDatabase` and `nodeforge.auditDependencies` commands
 - [x] Auto-detects database schema on activation when ORM is present
-- [x] 152 tests passing across the workspace
+- [x] Automated test coverage for the workspace
 
 Phase 6:
 
@@ -126,7 +126,7 @@ Phase 6:
 - [x] Standalone CLI entry point (`nodeforge-mcp`) that Cursor/Claude Code can spawn
 - [x] `AgentViewProvider` in the extension sidebar shows MCP server status + tool reference
 - [x] Full Cursor MCP config documentation in `packages/agent/README.md`
-- [x] 171 tests passing across the workspace
+- [x] Automated test coverage for the workspace
 
 Phase 7:
 
@@ -138,7 +138,7 @@ Phase 7:
   push/pull_request/schedule/workflow_dispatch, jobs, steps, matrix, env, concurrency, permissions)
 - [x] 3 new MCP tools: `getDockerConfig`, `getKubernetesManifests`, `getGitHubWorkflows` (12 total)
 - [x] Real fixture repo with Dockerfile, docker-compose.yml, k8s/ manifests, .github/workflows/
-- [x] 208 tests passing across the workspace
+- [x] Automated test coverage for the workspace
 
 Phase 8:
 
@@ -150,7 +150,7 @@ Phase 8:
 - [x] DFS-based circular dependency detection among file nodes
 - [x] 1 new MCP tool: `getDependencyGraph` (13 total)
 - [x] Real fixture with deliberate unused dep (`lodash`) and circular chain (`a → b → c → a`)
-- [x] 235 tests passing across the workspace
+- [x] Automated test coverage for the workspace
 
 Phase 9:
 
@@ -163,7 +163,7 @@ Phase 9:
   - `applyEslintFix` — runs ESLint with `--fix` to auto-fix lint issues
   - `validateWorkspace` — combined typecheck + lint + tests + audit report
 - [x] Action tools are centrally classified as read, execute, or write; mutating operations require explicit authorization
-- [x] 240 tests passing across the workspace
+- [x] Automated test coverage for the workspace
 
 Phase 10:
 
