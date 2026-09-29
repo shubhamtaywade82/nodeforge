@@ -140,7 +140,10 @@ describe("VitestAdapter (integration against fixture)", () => {
     try {
       await fs.access(vitestBin);
     } catch {
-      console.warn(`[nodeforge:test] skipping Vitest integration test — fixture vitest missing at ${vitestBin}`);
+      console.warn(`[nodeforge:test] fixture vitest missing at ${vitestBin}`);
+      if (process.env.CI) {
+        throw new Error("Fixture dependency is required in CI: install fixture dependencies before running integration tests.");
+      }
       return;
     }
 
