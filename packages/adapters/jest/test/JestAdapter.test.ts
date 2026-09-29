@@ -172,7 +172,10 @@ describe("JestAdapter (integration against fixture)", () => {
     try {
       await fs.access(jestBin);
     } catch {
-      console.warn(`[nodeforge:test] skipping Jest integration test — fixture jest missing at ${jestBin}`);
+      console.warn(`[nodeforge:test] fixture jest missing at ${jestBin}`);
+      if (process.env.CI) {
+        throw new Error("Fixture dependency is required in CI: install fixture dependencies before running integration tests.");
+      }
       return;
     }
 
