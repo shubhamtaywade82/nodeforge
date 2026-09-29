@@ -28,6 +28,24 @@ describe("NodeForgeContext resource paths", () => {
     }
   });
 
+  it("does not expose unlisted or secret-bearing files as resources", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "nodeforge-safe-resource-"));
+    try {
+      await writeFile(path.join(root, ".env"), "TOKEN=secret\n", "utf8");
+      await writeFile(path.join(root, "secret.txt"), "secret\n", "utf8");
+
+      const ctx = new NodeForgeContext(root);
+
+      await expect(ctx.readConfigFile(".env")).resolves.toBeUndefined();
+      await expect(ctx.readConfigFile("secret.txt")).resolves.toBeUndefined();
+      await expect(ctx.listConfigFiles()).resolves.not.toContainEqual(
+        expect.objectContaining({ path: ".env" })
+      );
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it("rejects a symlink that resolves outside the workspace", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "nodeforge-safe-path-"));
     const outside = await mkdtemp(path.join(tmpdir(), "nodeforge-outside-"));
