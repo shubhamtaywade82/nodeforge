@@ -74,7 +74,10 @@ describe("TypescriptAdapter (integration against fixture)", () => {
       await fs.access(tscBin);
     } catch {
       // Skip integration test if fixture deps weren't installed.
-      console.warn(`[nodeforge:test] skipping TS integration test — fixture tsc missing at ${tscBin}`);
+      console.warn(`[nodeforge:test] fixture tsc missing at ${tscBin}`);
+      if (process.env.CI) {
+        throw new Error("Fixture dependency is required in CI: install fixture dependencies before running integration tests.");
+      }
       return;
     }
 
