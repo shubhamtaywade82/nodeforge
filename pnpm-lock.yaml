@@ -345,9 +345,6 @@ importers:
       '@nodeforge/adapter-node-test':
         specifier: workspace:*
         version: link:../adapters/node-test
-      '@nodeforge/adapter-node-test':
-        specifier: workspace:*
-        version: link:../adapters/node-test
       '@nodeforge/adapter-prettier':
         specifier: workspace:*
         version: link:../adapters/prettier
@@ -406,6 +403,9 @@ importers:
 
   packages/extension:
     dependencies:
+      '@nodeforge/adapter-node-test':
+        specifier: workspace:*
+        version: link:../adapters/node-test
       '@nodeforge/adapter-biome':
         specifier: workspace:*
         version: link:../adapters/biome
