@@ -99,7 +99,7 @@ export class OllamaLanguageModelChatProvider implements vscode.LanguageModelChat
         function: {
           name: tool.name,
           description: tool.description,
-          parameters: tool.inputSchema ?? { type: "object", properties: {} }
+          parameters: toJsonSchemaRecord(tool.inputSchema ?? { type: "object", properties: {} })
         }
       }));
 
@@ -273,6 +273,10 @@ function createAbortController(token: vscode.CancellationToken): {
     signal: controller.signal,
     dispose: () => disposable.dispose()
   };
+}
+
+function toJsonSchemaRecord(value: object): Record<string, unknown> {
+  return value as Record<string, unknown>;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
