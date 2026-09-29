@@ -11,6 +11,7 @@ out/
 .turbo/
 
 # VS Code extension artifacts
+.vscode-test/
 *.vsix
 .vsix/
 
