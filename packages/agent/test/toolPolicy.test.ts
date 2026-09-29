@@ -3,11 +3,25 @@ import {
   TOOL_POLICIES,
   authorizeTool,
   getMcpExecutionContext,
+  WRITE_TOOL_NAMES,
   type ToolExecutionContext
 } from "../src/toolPolicy.js";
+import { TOOLS } from "../src/tools.js";
 
 describe("tool execution policy", () => {
-  it("has a policy for every exposed tool", () => {\n    for (const tool of TOOLS) {\n      expect(TOOL_POLICIES[tool.definition.name]).toBeDefined();\n    }\n  });\n\n  it("keeps mutating tools in the write-tool set", () => {\n    expect(WRITE_TOOL_NAMES).toEqual(\n      new Set(["runScript", "formatFiles", "applyEslintFix"])\n    );\n  });\n\n  it("classifies code execution and workspace mutation separately", () => {
+  it("has a policy for every exposed tool", () => {
+    for (const tool of TOOLS) {
+      expect(TOOL_POLICIES[tool.definition.name]).toBeDefined();
+    }
+  });
+
+  it("keeps mutating tools in the write-tool set", () => {
+    expect(WRITE_TOOL_NAMES).toEqual(
+      new Set(["runScript", "formatFiles", "applyEslintFix"])
+    );
+  });
+
+  it("classifies code execution and workspace mutation separately", () => {
     expect(TOOL_POLICIES.runScript).toMatchObject({
       risk: "execute",
       mutatesWorkspace: true,
@@ -41,11 +55,14 @@ describe("tool execution policy", () => {
       workspaceTrusted: true,
       executionAllowed: true,
       writesAllowed: true,
+      networkAllowed: true,
       approvalGranted: false
     };
 
     expect(authorizeTool("formatFiles", base).allowed).toBe(false);
-    expect(authorizeTool("formatFiles", { ...base, approvalGranted: true }).allowed).toBe(true);
+    expect(
+      authorizeTool("formatFiles", { ...base, approvalGranted: true }).allowed
+    ).toBe(true);
   });
 
   it("requires workspace trust even when MCP execution is enabled", () => {
