@@ -947,7 +947,7 @@ function readEditorSearchQuery(): string | undefined {
 }
 
 function scheduleBackgroundDependencyAudit(
-  root: string,
+  _root: string,
   depManager: DependencyManager,
   session: ExtensionWorkspaceSession
 ): void {
@@ -965,7 +965,7 @@ function scheduleBackgroundDependencyAudit(
 }
 
 function scheduleBackgroundDependencyGraph(
-  root: string,
+  _root: string,
   graphManager: DependencyGraphManager,
   session: ExtensionWorkspaceSession,
   dependencyView: DependencyViewProvider,
