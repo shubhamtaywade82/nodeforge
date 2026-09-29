@@ -89,7 +89,7 @@ describe("AgentLoop", () => {
 
     expect(requestToolApproval).toHaveBeenCalledWith("formatFiles", {});
     expect(result.toolInvocations[0]?.ok).toBe(false);
-    expect(result.toolInvocations[0]?.result).toContain("Workspace writes are disabled");
+    expect(result.toolInvocations[0]?.result).toContain("Explicit user approval is required");
   });
 
   it("allows a trusted workspace write after explicit approval", async () => {
