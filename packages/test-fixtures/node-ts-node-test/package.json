@@ -1,0 +1,10 @@
+{
+  "name": "fixture-node-ts-node-test",
+  "version": "0.0.0",
+  "private": true,
+  "type": "commonjs",
+  "engines": { "node": ">=20.10.0" },
+  "scripts": {
+    "test": "node --test"
+  }
+}
