@@ -1,0 +1,59 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify tag matches extension version
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME#v}"
+          version="$(node -p 'require("./packages/extension/package.json").version')"
+          test "$tag" = "$version"
+
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+      - run: pnpm package
+
+      - name: Verify VSIX
+        shell: bash
+        run: |
+          set -euo pipefail
+          vsix="$(find packages/extension -maxdepth 1 -type f -name '*.vsix' -print -quit)"
+          test -n "$vsix"
+          unzip -t "$vsix" >/dev/null
+          unzip -l "$vsix" | grep -q 'extension/package.json'
+          unzip -l "$vsix" | grep -q 'extension/dist/extension.cjs'
+          sha256sum "$vsix" > "${vsix}.sha256"
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          vsix="$(find packages/extension -maxdepth 1 -type f -name '*.vsix' -print -quit)"
+          gh release create "${GITHUB_REF_NAME}" "$vsix" "${vsix}.sha256"             --title "NodeForge ${GITHUB_REF_NAME}"             --generate-notes
