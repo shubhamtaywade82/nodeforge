@@ -86,7 +86,7 @@ export const TOOLS: McpTool[] = [
     definition: {
       name: "getTestResults",
       description:
-        "Run the detected test runner (Vitest or Jest) and return the test suite tree + run result. Includes pass/fail counts, durations, and failure messages.",
+        "Run the detected test runner (Vitest, Jest, or the built-in Node test runner) and return the test suite tree + run result. Includes pass/fail counts, durations, skips, todos, and failure messages.",
       inputSchema: { type: "object", properties: {} }
     },
     handler: async (_args, ctx) => {
