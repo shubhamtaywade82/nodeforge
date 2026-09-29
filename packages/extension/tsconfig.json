@@ -29,6 +29,7 @@
     { "path": "../adapters/dependency-graph" },
     { "path": "../adapters/devdocs" },
     { "path": "../adapters/prettier" },
+    { "path": "../adapters/node-test" },
     { "path": "../agent" }
   ]
 }
