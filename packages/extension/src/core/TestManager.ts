@@ -4,7 +4,7 @@
  * When a `WorkspaceProfile` arrives:
  *   testRunner === "vitest"  → use VitestAdapter
  *   testRunner === "jest"    → use JestAdapter
- *   testRunner === "node"    → not yet supported (placeholder)
+ *   testRunner === "node"    → NodeTestAdapter
  *   otherwise                → no test adapter
  *
  * The manager publishes `test.runCompleted` events on the bus so the
