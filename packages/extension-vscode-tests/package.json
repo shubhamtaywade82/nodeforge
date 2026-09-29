@@ -6,6 +6,6 @@
   "license": "MIT",
   "type": "commonjs",
   "scripts": {
-    "test": "pnpm -C ../extension run build && pnpx @vscode/test-cli@0.0.15"
+    "test": "pnpm -C ../extension run build && npm exec --yes --package=@vscode/test-cli@0.0.15 --package=@vscode/test-electron@3.1.0 -- vscode-test"
   }
 }

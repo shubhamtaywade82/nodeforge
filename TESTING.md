@@ -581,7 +581,7 @@ Use this for release or PR verification.
 | Area | Pass |
 | ------ | ------ |
 | Extension installs from `.vsix` | ☐ |
-| All 8 sidebar views render | ☐ |
+| All 10 contributed sidebar views render | ☐ |
 | Workspace detection (ESLint + Biome + monorepo fixtures) | ☐ |
 | Diagnostics (TS + ESLint + Biome) | ☐ |
 | Click-to-navigate diagnostics | ☐ |
@@ -609,7 +609,7 @@ If you only have time for a minimal smoke test:
 2. Package and install the `.vsix` (see §0)
 3. `npm install` in `packages/test-fixtures/node-ts-eslint`
 4. Open that fixture in Cursor, trust workspace
-5. Verify all 8 sidebar views populate
+5. Verify all 10 contributed sidebar views populate
 6. Run **Analyze Workspace**, **Run Diagnostics**, **Run Tests**, **Refresh Git**,
    **Detect Database Schema**, **Audit Dependencies**
 7. Open `node-ts-with-errors`, run diagnostics, click a finding

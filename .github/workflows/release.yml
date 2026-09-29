@@ -10,9 +10,14 @@ permissions:
   id-token: write
   attestations: write
 
+concurrency:
+  group: nodeforge-release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   release:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
 

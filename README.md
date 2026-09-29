@@ -262,3 +262,13 @@ pnpm package
 ```
 
 The test suite includes a real VS Code extension-host integration suite under `packages/extension-vscode-tests`. It launches the extension against the included TypeScript fixture using Microsoft's VS Code Test CLI. The test runner uses a stable VS Code desktop build in CI.
+
+
+### Release artifact verification
+
+NodeForge's release workflow generates a SHA-256 checksum and a GitHub artifact attestation for the VSIX. Verify a downloaded release with:
+
+```bash
+sha256sum -c nodeforge-<version>.vsix.sha256
+gh attestation verify nodeforge-<version>.vsix --repo shubhamtaywade82/nodeforge
+```
