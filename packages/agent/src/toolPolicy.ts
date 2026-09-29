@@ -135,19 +135,19 @@ export function authorizeTool(
     };
   }
 
-  if (policy.requiresTrust && !context.workspaceTrusted) {
-    return {
-      allowed: false,
-      code: "WORKSPACE_NOT_TRUSTED",
-      reason: "This tool requires a trusted workspace."
-    };
-  }
-
   if (policy.risk !== "read" && !context.executionAllowed) {
     return {
       allowed: false,
       code: "EXECUTION_DISABLED",
       reason: "Project code execution is disabled for this caller."
+    };
+  }
+
+  if (policy.requiresTrust && !context.workspaceTrusted) {
+    return {
+      allowed: false,
+      code: "WORKSPACE_NOT_TRUSTED",
+      reason: "This tool requires a trusted workspace."
     };
   }
 
