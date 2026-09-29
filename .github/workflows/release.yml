@@ -34,6 +34,7 @@ jobs:
           version="$(node -p 'require("./packages/extension/package.json").version')"
           test "$tag" = "$version"
 
+      - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
