@@ -54,3 +54,16 @@ suite("NodeForge extension host", () => {
     await vscode.commands.executeCommand("nodeforge.analyzeWorkspace");
   });
 });
+
+
+  test("runs the detected test runner through the public command", async () => {
+    await vscode.commands.executeCommand("nodeforge.runTests");
+
+    const testManager = extension.exports?.testManager;
+    assert.ok(testManager, "Extension should expose its test manager for integration verification.");
+
+    const outcome = testManager.getCurrent();
+    assert.ok(outcome, "Run Tests should publish a completed test result.");
+    assert.equal(outcome.result.counts.failed, 0);
+    assert.ok(outcome.result.counts.passed >= 1);
+  });
