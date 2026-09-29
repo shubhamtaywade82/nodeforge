@@ -14,7 +14,7 @@
  */
 
 import * as vscode from "vscode";
-import type { DatabaseSchema, Column, Index, Relation, Table } from "@nodeforge/contracts";
+import type { DatabaseSchema, Column, Index, Relation } from "@nodeforge/contracts";
 
 type NodeKind = "root" | "table" | "column" | "index" | "relation" | "empty";
 
