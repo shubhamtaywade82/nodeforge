@@ -261,4 +261,4 @@ pnpm build
 pnpm package
 ```
 
-The test suite includes a real VS Code extension-host integration suite under `packages/extension-vscode-tests`. It launches the extension against the included TypeScript fixture using Microsoft's VS Code Test CLI.
+The test suite includes a real VS Code extension-host integration suite under `packages/extension-vscode-tests`. It launches the extension against the included TypeScript fixture using Microsoft's VS Code Test CLI. The test runner uses a stable VS Code desktop build in CI.
