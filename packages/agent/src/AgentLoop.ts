@@ -1,7 +1,7 @@
 import type { ChatMessage, ChatTurnResult, ToolInvocationRecord } from "@nodeforge/contracts";
 import type { NodeForgeContext } from "./NodeForgeContext.js";
 import { executeTool } from "./toolRunner.js";
-import { isWriteTool } from "./toolPolicy.js";
+import { authorizeTool, getToolPolicy, type ToolExecutionContext } from "./toolPolicy.js";
 import { NODEFORGE_SYSTEM_PROMPT } from "./systemPrompt.js";
 import type { LlmClient, LlmMessage, LlmToolDefinition } from "./llm/types.js";
 import { listToolDefinitions } from "./tools.js";
@@ -21,6 +21,10 @@ export interface AgentLoopOptions {
   onTextDelta?: (text: string) => void;
   onToolStart?: (name: string) => void;
   onToolEnd?: (record: ToolInvocationRecord) => void;
+  requestToolApproval?: (
+    toolName: string,
+    args: Record<string, unknown>
+  ) => Promise<boolean>;
 }
 
 export class AgentLoop {
@@ -73,20 +77,45 @@ export class AgentLoop {
         let output: string;
         let ok = true;
 
-        if (isWriteTool(call.name) && !options.workspaceTrusted) {
-          output = JSON.stringify({
-            error: "Workspace is not trusted. Write tools are blocked in Restricted Mode."
-          });
-          ok = false;
-        } else {
-          try {
-            output = await executeTool(call.name, call.arguments, this.context);
-          } catch (err) {
-            ok = false;
-            output = JSON.stringify({
-              error: err instanceof Error ? err.message : String(err)
-            });
+        try {
+          let executionContext: ToolExecutionContext = {
+            caller: "agent",
+            workspaceTrusted: options.workspaceTrusted,
+            executionAllowed: options.workspaceTrusted,
+            writesAllowed: options.workspaceTrusted,
+            networkAllowed: options.workspaceTrusted,
+            approvalGranted: false
+          };
+
+          let decision = authorizeTool(call.name, executionContext);
+          const policy = getToolPolicy(call.name);
+
+          if (
+            !decision.allowed &&
+            decision.code === "APPROVAL_REQUIRED" &&
+            policy?.requiresApproval
+          ) {
+            const approved =
+              (await options.requestToolApproval?.(call.name, call.arguments)) ?? false;
+            executionContext = { ...executionContext, approvalGranted: approved };
+            decision = authorizeTool(call.name, executionContext);
           }
+
+          if (!decision.allowed) {
+            throw new Error(decision.reason ?? "Tool invocation denied.");
+          }
+
+          output = await executeTool(
+            call.name,
+            call.arguments,
+            this.context,
+            executionContext
+          );
+        } catch (err) {
+          ok = false;
+          output = JSON.stringify({
+            error: err instanceof Error ? err.message : String(err)
+          });
         }
 
         const record: ToolInvocationRecord = {
