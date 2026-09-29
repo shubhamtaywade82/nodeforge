@@ -13,12 +13,22 @@ import { McpServer } from "../src/McpServer.js";
 import { NodeForgeContext } from "../src/NodeForgeContext.js";
 import { TOOLS, findTool, listToolDefinitions } from "../src/tools.js";
 import { PROMPTS } from "../src/prompts.js";
+import type { ToolExecutionContext } from "../src/toolPolicy.js";
 
 const FIXTURE = path.resolve(__dirname, "../../test-fixtures/node-ts-docker");
 
+const TRUSTED_TEST_EXECUTION: ToolExecutionContext = {
+  caller: "mcp",
+  workspaceTrusted: true,
+  executionAllowed: true,
+  writesAllowed: true,
+  networkAllowed: true,
+  approvalGranted: false
+};
+
 function makeServer(): McpServer {
   const ctx = new NodeForgeContext(FIXTURE);
-  return new McpServer(ctx);
+  return new McpServer(ctx, TRUSTED_TEST_EXECUTION);
 }
 
 describe("McpServer protocol", () => {
@@ -135,6 +145,48 @@ describe("McpServer protocol", () => {
     expect(response!.error).toBeDefined();
     expect(response!.error!.code).toBe(-32602);
     expect(response!.error!.message).toContain("Invalid params");
+  });
+
+  it("denies project execution when MCP capabilities are not explicitly enabled", async () => {
+    const server = new McpServer(
+      new NodeForgeContext(FIXTURE),
+      {
+        caller: "mcp",
+        workspaceTrusted: true,
+        executionAllowed: false,
+        writesAllowed: false,
+        networkAllowed: false,
+        approvalGranted: false
+      }
+    );
+
+    const response = await server.handleMessage({
+      jsonrpc: "2.0",
+      id: 7,
+      method: "tools/call",
+      params: { name: "runTypeCheck", arguments: {} }
+    });
+
+    expect(response!.error).toBeDefined();
+    expect(response!.error!.code).toBe(-32001);
+    expect(response!.error!.message).toContain("Project code execution is disabled");
+  });
+
+  it("rejects malformed tool arguments at the MCP boundary", async () => {
+    const server = makeServer();
+    const response = await server.handleMessage({
+      jsonrpc: "2.0",
+      id: 8,
+      method: "tools/call",
+      params: {
+        name: "getGitDiff",
+        arguments: { scope: "invalid" }
+      }
+    });
+
+    expect(response!.error).toBeDefined();
+    expect(response!.error!.code).toBe(-32602);
+    expect(response!.error!.message).toContain("scope");
   });
 
   it("responds to resources/list with config files", async () => {
@@ -498,7 +550,7 @@ describe("McpServer tool dispatch (real adapter runs)", () => {
 
     const result = response!.result as { content: Array<{ text: string }> };
     const parsed = JSON.parse(result.content[0]!.text) as { error: string };
-    expect(parsed.error).toContain("Missing required parameter: script");
+    expect(parsed.error).toContain('missing required argument "script"');
   });
 
   it("validateWorkspace runs typecheck + lint and returns overall status", async () => {
