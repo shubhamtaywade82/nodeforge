@@ -13,7 +13,6 @@
  * version can add caching with file-watch invalidation.
  */
 
-import * as path from "node:path";
 import { resolveContainedPath } from "./safePath.js";
 import { detectWorkspaceProfile, NodeFilesystemReader } from "@nodeforge/core";
 import { ProcessRunner } from "@nodeforge/runner";
