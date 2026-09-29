@@ -34,7 +34,7 @@ NodeForge is a **control plane** for Node.js, JavaScript, and TypeScript project
 |------|---------|
 | **Workspace** | Detected runtime, package manager, TypeScript, linter, formatter, tests, ORM, Docker, CI, monorepo |
 | **Diagnostics** | TypeScript + ESLint/Biome findings (refreshes on save when trusted) |
-| **Tests** | Vitest/Jest tree after **Run Tests** |
+| **Tests** | Detected Vitest, Jest, or Node test tree after **Run Tests** |
 | **Runtime** | Long-lived processes managed by NodeForge |
 | **Git** | Branch, dirty state, changed/staged files |
 | **Database** | Prisma/Drizzle schema tree |
@@ -51,7 +51,7 @@ NodeForge is a **control plane** for Node.js, JavaScript, and TypeScript project
 |---------|--------|
 | `NodeForge: Analyze Workspace` | Re-run stack detection |
 | `NodeForge: Run Diagnostics` | Typecheck + lint |
-| `NodeForge: Run Tests` | Vitest or Jest |
+| `NodeForge: Run Tests` | Detected Vitest, Jest, or Node test runner |
 | `NodeForge: Audit Dependencies` | `audit` + outdated |
 | `NodeForge: Analyze Dependency Graph` | Unused / circular / missing imports |
 | `NodeForge: Set Chat API Key` | Store OpenAI-compatible key |
