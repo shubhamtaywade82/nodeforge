@@ -503,6 +503,7 @@ call_tool() {
 | `runTypeCheck` | `node-ts-with-errors` | TypeScript errors only | ☐ |
 | `runLinter` | `node-ts-with-errors` | ESLint findings only | ☐ |
 | `getTestResults` | `node-ts-vitest` | Suites + pass/fail counts | ☐ |
+| Node built-in test runner | `node-ts-node-test` | Pass/skip/todo normalization | ✅ |
 | `getGitState` | any in git repo | `branch`, `dirty` | ☐ |
 | `getDependencyReport` | `node-ts-eslint` | vulnerabilities or outdated | ☐ |
 | `getDatabaseSchema` | `node-ts-eslint` | Prisma tables | ☐ |
