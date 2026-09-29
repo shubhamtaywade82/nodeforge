@@ -55,7 +55,7 @@ jobs:
             node-ts-jest \
             node-ts-vitest
           do
-            pnpm --dir "packages/test-fixtures/$fixture" install --no-frozen-lockfile --ignore-scripts --no-audit --no-fund
+            pnpm --dir "packages/test-fixtures/$fixture" install --no-frozen-lockfile --ignore-scripts
           done
 
       - name: Start Xvfb for VS Code extension-host tests
