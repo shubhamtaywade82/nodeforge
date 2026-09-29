@@ -377,6 +377,8 @@ importers:
         specifier: ^2.1.4
         version: 2.1.9(@types/node@20.19.43)
 
+  packages/extension-vscode-tests: {}
+
   packages/extension:
     dependencies:
       '@nodeforge/adapter-biome':
