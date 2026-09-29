@@ -53,8 +53,6 @@ suite("NodeForge extension host", () => {
 
     await vscode.commands.executeCommand("nodeforge.analyzeWorkspace");
   });
-});
-
 
   test("runs the detected test runner through the public command", async () => {
     await vscode.commands.executeCommand("nodeforge.runTests");
@@ -67,3 +65,4 @@ suite("NodeForge extension host", () => {
     assert.equal(outcome.result.counts.failed, 0);
     assert.ok(outcome.result.counts.passed >= 1);
   });
+});
