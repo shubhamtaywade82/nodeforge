@@ -27,10 +27,13 @@ Existing tools (tsc / eslint / biome / vitest / jest / git / docker / prisma)
         ▼
    Runner              (packages/runner — cancellable process execution)
         │
-   ┌────┴────┐
-   ▼         ▼
- IDE UI    Agent Interface
-(VS Code)   (MCP / context + tools)
+        ▼
+  Tool Runner + Policy Engine
+        │
+   ┌────┴─────┐
+   ▼          ▼
+ IDE UI     Agent Interface
+(VS Code)   (MCP / Chat / LM tools)
 ```
 
 ### Dependency rule
@@ -159,21 +162,31 @@ Phase 9:
   - `formatFiles` — runs Prettier or Biome formatter with `--write`
   - `applyEslintFix` — runs ESLint with `--fix` to auto-fix lint issues
   - `validateWorkspace` — combined typecheck + lint + tests + audit report
-- [x] All action tools are write operations (modify files / run commands)
+- [x] Action tools are centrally classified as read, execute, or write; mutating operations require explicit authorization
 - [x] 240 tests passing across the workspace
 
 Phase 10:
 
-- [x] MCP resources — `resources/list` + `resources/read` expose 22 config file
-  types (package.json, tsconfig.json, eslint.config, Dockerfile, docker-compose,
-  biome.json, .prettierrc, vitest.config, jest.config, drizzle.config, .env, etc.)
+- [x] MCP resources — `resources/list` + `resources/read` expose an explicit
+  allowlist of engineering configuration files; arbitrary workspace files and
+  secret-bearing files such as `.env` are not exposed
 - [x] MCP prompts — 6 engineering workflow prompts with argument substitution:
   `fix-lint-errors`, `audit-and-upgrade-deps`, `validate-and-fix`,
   `onboard-to-project`, `add-test-for`, `explain-errors`
 - [x] Extension packaged as installable .vsix (36.99 KB) via `vsce package`
 - [x] Full INSTALL.md guide covering extension install + MCP server config
 - [x] End-to-end verified: initialize returns tools + resources + prompts capabilities
-- [x] 246 tests passing across the workspace
+
+Phase 11:
+
+- [x] Central tool authorization policy shared by MCP, built-in chat, and native VS Code language-model tools
+- [x] Standalone MCP execution is fail-closed with explicit trust, execution, write, and network capabilities
+- [x] Interactive approval for built-in chat workspace writes and package-script execution
+- [x] Runtime tool argument validation rejects unknown, missing, and invalid values
+- [x] Canonical path containment blocks traversal and symlink/junction escapes
+- [x] MCP resource allowlist prevents arbitrary file and secret-file reads
+- [x] Prompt-injection boundary explicitly treats repository content and tool output as untrusted data
+- [x] Security model, Dependabot configuration, and capability-aware installation docs added
 
 ## Documentation
 
@@ -184,6 +197,7 @@ Phase 10:
 | **[docs/README.md](./docs/README.md)** | Documentation index |
 | **[INSTALL.md](./INSTALL.md)** | Install `.vsix`, optional MCP |
 | **[TESTING.md](./TESTING.md)** | Manual QA checklists |
+| **[SECURITY.md](./SECURITY.md)** | Security model, trust boundaries, and MCP capability controls |
 | **[packages/extension/README.md](./packages/extension/README.md)** | Extension package + F5 dev loop |
 
 ## Installation
@@ -208,7 +222,13 @@ Quick MCP config (`.cursor/mcp.json`):
     "nodeforge": {
       "command": "node",
       "args": ["~/projects/developer-tools/nodeforge/packages/agent/dist/cli.js"],
-      "env": { "NODEFORGE_WORKSPACE_ROOT": "~/projects/developer-tools/nodeforge" }
+      "env": {
+        "NODEFORGE_WORKSPACE_ROOT": "~/projects/developer-tools/nodeforge",
+        "NODEFORGE_WORKSPACE_TRUSTED": "true",
+        "NODEFORGE_ALLOW_EXECUTION": "true",
+        "NODEFORGE_ALLOW_WRITES": "true",
+        "NODEFORGE_ALLOW_NETWORK": "true"
+      }
     }
   }
 }
