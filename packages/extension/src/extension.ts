@@ -68,10 +68,7 @@ let testManager: TestManager | undefined;
 let processManager: ProcessManager | undefined;
 let databaseManager: DatabaseManager | undefined;
 let dependencyManager: DependencyManager | undefined;
-let dependencyGraphManager: DependencyGraphManager | undefined;
-let workspaceSession: ExtensionWorkspaceSession | undefined;
 let dependencyDiagnostics: DependencyDiagnosticPublisher | undefined;
-let chatWebviewProvider: ChatWebviewProvider | undefined;
 let devDocsProvider: DevDocsWebviewProvider | undefined;
 let devDocsOffline: DevDocsOfflineManager | undefined;
 let gitAdapter: GitAdapter | undefined;
@@ -101,11 +98,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const depManager = new DependencyManager(runner, bus);
   dependencyManager = depManager;
   const graphManager = new DependencyGraphManager(bus);
-  dependencyGraphManager = graphManager;
   const session = new ExtensionWorkspaceSession(bus);
   registerNodeForgeLanguageModelTools(context, session);
   context.subscriptions.push(registerOllamaLanguageModelChatProvider());
-  workspaceSession = session;
   const depDiagPublisher = new DependencyDiagnosticPublisher();
   dependencyDiagnostics = depDiagPublisher;
   const chatController = new ChatController(
@@ -114,7 +109,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     isTrusted
   );
   const chatProvider = new ChatWebviewProvider(context, session, chatController, isTrusted);
-  chatWebviewProvider = chatProvider;
   const git = new GitAdapter(runner);
   gitAdapter = git;
 
@@ -849,11 +843,8 @@ export function deactivate(): void {
   processManager = undefined;
   databaseManager = undefined;
   dependencyManager = undefined;
-  dependencyGraphManager = undefined;
-  workspaceSession = undefined;
   dependencyDiagnostics?.dispose();
   dependencyDiagnostics = undefined;
-  chatWebviewProvider = undefined;
   devDocsProvider = undefined;
   devDocsOffline = undefined;
   gitAdapter = undefined;
@@ -865,10 +856,6 @@ export function deactivate(): void {
   if (depGraphTimer) {
     clearTimeout(depGraphTimer);
     depGraphTimer = undefined;
-  }
-  if (devDocsSyncTimer) {
-    clearTimeout(devDocsSyncTimer);
-    devDocsSyncTimer = undefined;
   }
 }
 
@@ -920,19 +907,6 @@ async function searchDevDocsWithOffline(context: vscode.ExtensionContext, query:
     }
   }
   await openDevDocs(buildDevDocsUrl({ query }));
-}
-
-let devDocsSyncTimer: ReturnType<typeof setTimeout> | undefined;
-
-function scheduleBackgroundDevDocsSync(profile: WorkspaceProfile, mgr: DevDocsOfflineManager): void {
-  const cfg = vscode.workspace.getConfiguration("nodeforge.docs.offline");
-  if (!cfg.get<boolean>("autoSync", false)) return;
-
-  if (devDocsSyncTimer) clearTimeout(devDocsSyncTimer);
-  devDocsSyncTimer = setTimeout(() => {
-    const slugs = mgr.slugsToSync(profile);
-    void mgr.sync(slugs);
-  }, 4000);
 }
 
 function readEditorSearchQuery(): string | undefined {
