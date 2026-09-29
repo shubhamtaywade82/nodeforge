@@ -1,4 +1,6 @@
 import * as path from "node:path";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import {
   AdapterParseError,
   FileNotFoundError,
@@ -46,38 +48,41 @@ interface DriverEnvelope {
   error?: string;
 }
 
-const DRIVER_SOURCE = [
-  "import { once } from \"node:events\";",
-  "import { run } from \"node:test\";",
-  "const config = __CONFIG__;",
-  "const cases = [];",
-  "let streamError;",
-  "const stream = run(config.files.length > 0 ? { files: config.files } : {});",
-  "function record(data, passed) {",
-  "  const type = data?.details?.type ?? data?.type;",
-  "  if (type === \"suite\") return;",
-  "  const error = data?.details?.error;",
-  "  cases.push({",
-  "    testId: data?.testNumber ?? data?.testId,",
-  "    name: data?.name ?? \"(unnamed)\",",
-  "    file: data?.file,",
-  "    line: data?.line,",
-  "    column: data?.column,",
-  "    passed,",
-  "    skip: data?.skip,",
-  "    todo: data?.todo,",
-  "    durationMs: data?.details?.duration_ms,",
-  "    error: error ? { message: error?.message ?? String(error), stack: error?.stack } : undefined",
-  "  });",
-  "}",
-  "stream.on(\"test:pass\", (data) => record(data, true));",
-  "stream.on(\"test:fail\", (data) => record(data, false));",
-  "stream.on(\"error\", (error) => { streamError = error instanceof Error ? error.message : String(error); });",
-  "stream.resume();",
-  "await once(stream, \"end\");",
-  "const envelope = { cases, error: streamError };",
-  "const status = streamError || cases.some((item) => !item.passed && !item.skip && !item.todo) ? 1 : 0;",
-  "process.stdout.write("__NODEFORGE_NODE_TEST_RESULT__" + JSON.stringify(envelope), () => process.exit(status));"
+const REPORTER_SOURCE = [
+  "export default async function* reporter(source) {",
+  "  const cases = new Map();",
+  "  function key(data) {",
+  "    return String(data?.file ?? data?.entryFile ?? \"\") + \"::\" + String(data?.testId ?? data?.testNumber ?? data?.name ?? \"(unnamed)\");",
+  "  }",
+  "  function isSuite(data) {",
+  "    return (data?.details?.type ?? data?.type) === \"suite\";",
+  "  }",
+  "  function record(data, passed) {",
+  "    if (isSuite(data)) return;",
+  "    const id = key(data);",
+  "    const current = cases.get(id) ?? {};",
+  "    const error = data?.details?.error;",
+  "    cases.set(id, {",
+  "      ...current,",
+  "      testId: data?.testNumber ?? data?.testId,",
+  "      name: data?.name ?? current.name ?? \"(unnamed)\",",
+  "      file: data?.file ?? data?.entryFile ?? current.file,",
+  "      line: data?.line ?? current.line,",
+  "      column: data?.column ?? current.column,",
+  "      passed,",
+  "      skip: data?.skip ?? current.skip,",
+  "      todo: data?.todo ?? current.todo,",
+  "      durationMs: data?.details?.duration_ms ?? current.durationMs,",
+  "      error: error ? { message: error?.message ?? String(error), stack: error?.stack } : current.error",
+  "    });",
+  "  }",
+  "  for await (const event of source) {",
+  "    if (event.type === \"test:pass\") record(event.data, true);",
+  "    else if (event.type === \"test:fail\") record(event.data, false);",
+  "  }",
+  "  const envelope = { cases: [...cases.values()] };",
+  "  yield " + JSON.stringify("__NODEFORGE_NODE_TEST_RESULT__") + " + JSON.stringify(envelope);",
+  "}"
 ].join("\n");
 
 export class NodeTestAdapter {
@@ -90,31 +95,47 @@ export class NodeTestAdapter {
     const node = this.options.nodePath ?? (await resolveExecutable("node"));
     if (!node) throw new FileNotFoundError("node");
 
-    const config = {
-      files: test ? [test.file] : (this.options.patterns ?? [])
-    };
+    const reporterDir = await mkdtemp(path.join(tmpdir(), "nodeforge-node-test-"));
+    const reporterPath = path.join(reporterDir, "reporter.mjs");
 
-    const request: CommandRequest = {
-      command: node,
-      args: ["--input-type=module", "-e", DRIVER_SOURCE.replace("__CONFIG__", JSON.stringify(config))],
-      cwd: workspaceRoot,
-      timeoutMs: this.options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
-      signal
-    };
+    try {
+      await writeFile(reporterPath, REPORTER_SOURCE, "utf8");
 
-    const execution = await this.runner.run(request);
-    const stdout = execution.stdout ?? "";
-    const stderr = execution.stderr ?? "";
-    const parsed = parseNodeTestOutput(stdout, workspaceRoot);
+      const files = test ? [path.resolve(test.file)] : (this.options.patterns ?? []).map((file) =>
+        path.isAbsolute(file) ? file : path.resolve(workspaceRoot, file)
+      );
+      const args = ["--test", "--test-reporter=" + reporterPath];
 
-    return {
-      suite: parsed.suite,
-      result: parsed.result,
-      rawStdout: stdout,
-      rawStderr: stderr,
-      durationMs: execution.durationMs,
-      exitCode: execution.exitCode ?? null
-    };
+      const testName = test?.fullName ?? test?.name;
+      if (testName) {
+        args.push("--test-name-pattern", "^" + escapeRegExp(testName) + "$");
+      }
+      args.push(...files);
+
+      const request: CommandRequest = {
+        command: node,
+        args,
+        cwd: workspaceRoot,
+        timeoutMs: this.options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+        signal
+      };
+
+      const execution = await this.runner.run(request);
+      const stdout = execution.stdout ?? "";
+      const stderr = execution.stderr ?? "";
+      const parsed = parseNodeTestOutput(stdout, workspaceRoot);
+
+      return {
+        suite: parsed.suite,
+        result: parsed.result,
+        rawStdout: stdout,
+        rawStderr: stderr,
+        durationMs: execution.durationMs,
+        exitCode: execution.exitCode ?? null
+      };
+    } finally {
+      await rm(reporterDir, { recursive: true, force: true });
+    }
   }
 
   static async hasConfig(workspaceRoot: string): Promise<boolean> {
@@ -207,6 +228,11 @@ export function parseNodeTestOutput(
       failures: cases.flatMap((item) => item.error ? [item.error] : [])
     }
   };
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[\\^$.*+?()[\]{}|]/g, "\\function mapStatus(item: DriverCase): TestStatus {
+");
 }
 
 function mapStatus(item: DriverCase): TestStatus {
