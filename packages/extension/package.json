@@ -514,7 +514,7 @@
       {
         "name": "nodeforge_get_diagnostics",
         "displayName": "NodeForge: Diagnostics",
-        "modelDescription": "Run TypeScript plus the detected ESLint or Biome checks and return normalized diagnostics. Read-only.",
+        "modelDescription": "Run TypeScript plus the detected ESLint or Biome checks and return normalized diagnostics. Requires Workspace Trust because project tooling is executed.",
         "userDescription": "Inspect current compiler and lint findings.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "nodeforgeDiagnostics",
@@ -532,7 +532,7 @@
       {
         "name": "nodeforge_run_typecheck",
         "displayName": "NodeForge: Typecheck",
-        "modelDescription": "Run the workspace TypeScript compiler with no emit and return normalized type errors. Read-only.",
+        "modelDescription": "Run the workspace TypeScript compiler with no emit and return normalized type errors. Requires Workspace Trust because the project compiler is executed.",
         "userDescription": "Run TypeScript type checking.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "nodeforgeTypecheck",
@@ -550,7 +550,7 @@
       {
         "name": "nodeforge_run_linter",
         "displayName": "NodeForge: Lint",
-        "modelDescription": "Run the detected project linter and return normalized findings. Read-only.",
+        "modelDescription": "Run the detected project linter and return normalized findings. Requires Workspace Trust because project tooling is executed.",
         "userDescription": "Run project lint checks.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "nodeforgeLint",
@@ -568,7 +568,7 @@
       {
         "name": "nodeforge_get_tests",
         "displayName": "NodeForge: Test Results",
-        "modelDescription": "Run the detected Vitest or Jest suite and return per-test results, failures, locations, and durations. Read-only from NodeForge's perspective.",
+        "modelDescription": "Run the detected Vitest or Jest suite and return per-test results, failures, locations, and durations. Requires Workspace Trust because project code is executed.",
         "userDescription": "Run tests and inspect per-test outcomes.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "nodeforgeTests",
@@ -633,7 +633,7 @@
       {
         "name": "nodeforge_get_dependency_report",
         "displayName": "NodeForge: Dependency Report",
-        "modelDescription": "Run package-manager audit and outdated checks and return dependency vulnerability and version findings. Read-only.",
+        "modelDescription": "Run package-manager audit and outdated checks and return dependency vulnerability and version findings. Requires Workspace Trust and network capability because package-manager commands are executed.",
         "userDescription": "Inspect dependency vulnerabilities and drift.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "nodeforgeDependencyReport",
