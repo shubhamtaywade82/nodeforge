@@ -50,3 +50,7 @@ Report security issues privately to the repository maintainer rather than openin
 Prefer GitHub private vulnerability reporting when it is enabled for this repository. Do not publish credentials, tokens, real customer data, or weaponized exploit details in a public issue.
 
 Security fixes should include regression coverage where practical and should preserve the fail-closed behavior of the MCP and agent execution boundaries.
+
+## CI security controls
+
+The repository also runs GitGuardian secret scanning, dependency review on pull requests, and scheduled CodeQL analysis for JavaScript/TypeScript. Release artifacts receive GitHub build provenance attestations.
