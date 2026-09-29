@@ -939,7 +939,7 @@ function scheduleBackgroundDependencyAudit(
 }
 
 function scheduleBackgroundDependencyGraph(
-  _root: string,
+  root: string,
   graphManager: DependencyGraphManager,
   session: ExtensionWorkspaceSession,
   dependencyView: DependencyViewProvider,
