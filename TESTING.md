@@ -614,3 +614,10 @@ If you only have time for a minimal smoke test:
    **Detect Database Schema**, **Audit Dependencies**
 7. Open `node-ts-with-errors`, run diagnostics, click a finding
 8. MCP: `initialize` + `tools/list` via CLI (§15.1)
+
+
+## Enforced VS Code extension-host tests
+
+The repository includes `packages/extension-vscode-tests`, which launches a real VS Code Extension Development Host against `packages/test-fixtures/node-ts-eslint`.
+
+The suite verifies extension activation, contributed command registration, and a real `nodeforge.analyzeWorkspace` command invocation. CI runs it through the root `pnpm test` command.
