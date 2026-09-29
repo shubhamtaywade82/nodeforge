@@ -235,11 +235,6 @@ function escapeRegExp(value: string): string {
 }
 
 function mapStatus(item: DriverCase): TestStatus {
-");
-}");
-}
-
-function mapStatus(item: DriverCase): TestStatus {
   if (item.skip) return "skipped";
   if (item.todo) return "todo";
   return item.passed ? "passed" : "failed";
