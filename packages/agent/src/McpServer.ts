@@ -13,10 +13,14 @@
  *   - `notifications/initialized` — client notification (no response)
  *   - `tools/list`           — returns available tool definitions
  *   - `tools/call`           — calls a tool by name with arguments
+ *   - `resources/list`       — returns the explicit configuration-resource allowlist
+ *   - `resources/read`       — reads an allowlisted configuration resource
+ *   - `prompts/list`         — returns built-in engineering workflows
+ *   - `prompts/get`          — renders a built-in engineering workflow
  *   - `ping`                 — health check
  *
- * The server is intentionally minimal — it doesn't implement resources,
- * prompts, or subscriptions. Those can be added later.
+ * Tool execution is authorization-gated by the shared NodeForge policy layer.
+ * The standalone server fails closed for project execution, writes, and network use.
  */
 
 import { createContextFromEnv, NodeForgeContext } from "./NodeForgeContext.js";
