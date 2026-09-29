@@ -9,11 +9,10 @@
  *   - Continuous Testing mode
  *   - Native test result navigation
  *
- * The controller creates a TestRunProfile for "run" mode. Debug mode is
- * declared but requires a debug adapter to be useful (future work).
+ * The controller creates a TestRunProfile for "run" mode. Debug mode is declared for future native debug integration.
  *
  * On each run, the controller:
- *   1. Calls the TestManager to run Vitest/Jest
+ *   1. Calls the TestManager to run the detected test runner (Vitest, Jest, or Node test)
  *   2. Maps the result back to TestItems by file path + test name
  *   3. Marks each TestItem as passed/failed/skipped
  *   4. Shows failure messages inline
