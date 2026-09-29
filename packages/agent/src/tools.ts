@@ -92,7 +92,7 @@ export const TOOLS: McpTool[] = [
     handler: async (_args, ctx) => {
       const outcome = await ctx.getTestResults();
       if (!outcome) {
-        return JSON.stringify({ error: "No test runner detected (expected Vitest or Jest)." });
+        return JSON.stringify({ error: "No supported test runner detected (expected Vitest, Jest, or Node test runner)." });
       }
       return JSON.stringify(outcome, null, 2);
     }
@@ -303,7 +303,7 @@ export const TOOLS: McpTool[] = [
     definition: {
       name: "validateWorkspace",
       description:
-        "Run a comprehensive validation: TypeScript typecheck + ESLint/Biome lint + tests (Vitest/Jest) + dependency audit. Returns pass/fail status for each stage plus an overall pass/fail. Use this to check if the workspace is in a healthy state.",
+        "Run a comprehensive validation: TypeScript typecheck + ESLint/Biome lint + tests (Vitest/Jest/Node test runner) + dependency audit. Returns pass/fail status for each stage plus an overall pass/fail. Use this to check if the workspace is in a healthy state.",
       inputSchema: { type: "object", properties: {} }
     },
     handler: async (_args, ctx) => {
