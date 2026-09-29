@@ -12,7 +12,6 @@ import { describe, expect, it } from "vitest";
 import { McpServer } from "../src/McpServer.js";
 import { NodeForgeContext } from "../src/NodeForgeContext.js";
 import { TOOLS, findTool, listToolDefinitions } from "../src/tools.js";
-import { PROMPTS } from "../src/prompts.js";
 import type { ToolExecutionContext } from "../src/toolPolicy.js";
 
 const FIXTURE = path.resolve(__dirname, "../../test-fixtures/node-ts-docker");
