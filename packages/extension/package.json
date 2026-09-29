@@ -781,6 +781,7 @@
     "@nodeforge/adapter-dependency-graph": "workspace:*",
     "@nodeforge/adapter-devdocs": "workspace:*",
     "@nodeforge/adapter-prettier": "workspace:*",
+    "@nodeforge/adapter-node-test": "workspace:*",
     "@nodeforge/agent": "workspace:*"
   },
   "devDependencies": {
