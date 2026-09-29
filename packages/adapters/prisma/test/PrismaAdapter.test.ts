@@ -7,7 +7,6 @@
 
 import * as path from "node:path";
 import { describe, expect, it } from "vitest";
-import { promises as fs } from "node:fs";
 
 import {
   PrismaAdapter,
