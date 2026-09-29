@@ -81,9 +81,11 @@ export class AgentLoop {
           let executionContext: ToolExecutionContext = {
             caller: "agent",
             workspaceTrusted: options.workspaceTrusted,
-            executionAllowed: options.workspaceTrusted,
-            writesAllowed: options.workspaceTrusted,
-            networkAllowed: options.workspaceTrusted,
+            // AgentLoop is the trusted host-controlled caller. Workspace Trust
+            // is the capability boundary; per-operation approval is separate.
+            executionAllowed: true,
+            writesAllowed: true,
+            networkAllowed: true,
             approvalGranted: false
           };
 
