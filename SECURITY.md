@@ -43,3 +43,10 @@ NodeForge's system prompt explicitly treats repository content and tool output a
 ## Reporting
 
 Report security issues privately to the repository maintainer rather than opening a public issue containing exploit details. Include the affected component, reproduction steps, impact, and any relevant logs with secrets removed.
+
+
+## Reporting workflow
+
+Prefer GitHub private vulnerability reporting when it is enabled for this repository. Do not publish credentials, tokens, real customer data, or weaponized exploit details in a public issue.
+
+Security fixes should include regression coverage where practical and should preserve the fail-closed behavior of the MCP and agent execution boundaries.
