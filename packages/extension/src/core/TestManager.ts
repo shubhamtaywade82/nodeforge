@@ -15,6 +15,7 @@ import type { EventBus, TestCase, TestRunResult, TestSuite, WorkspaceProfile } f
 import { ProcessRunner } from "@nodeforge/runner";
 import { VitestAdapter } from "@nodeforge/adapter-vitest";
 import { JestAdapter } from "@nodeforge/adapter-jest";
+import { NodeTestAdapter } from "@nodeforge/adapter-node-test";
 
 export interface TestRunOutcome {
   suite: TestSuite;
@@ -22,7 +23,7 @@ export interface TestRunOutcome {
 }
 
 interface EnabledTestAdapter {
-  kind: "vitest" | "jest";
+  kind: "vitest" | "jest" | "node";
   // We keep both adapters around as one-of; only the active one is invoked.
   // The shape makes it explicit that we run one type at a time.
   run: (root: string, signal?: AbortSignal, test?: TestCase) => Promise<TestRunOutcome>;
@@ -69,6 +70,15 @@ export class TestManager {
       const adapter = new JestAdapter(this.runner);
       this.adapter = {
         kind: "jest",
+        run: async (root, signal, test) => {
+          const result = await adapter.run(root, signal, test);
+          return { suite: result.suite, result: result.result };
+        }
+      };
+    } else if (profile.testRunner === "node") {
+      const adapter = new NodeTestAdapter(this.runner);
+      this.adapter = {
+        kind: "node",
         run: async (root, signal, test) => {
           const result = await adapter.run(root, signal, test);
           return { suite: result.suite, result: result.result };
