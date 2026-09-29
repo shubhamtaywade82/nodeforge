@@ -183,7 +183,11 @@ Create or edit `.cursor/mcp.json` in your project root:
       "command": "node",
       "args": ["/home/nemesis/projects/developer-tools/nodeforge/packages/agent/dist/cli.js"],
       "env": {
-        "NODEFORGE_WORKSPACE_ROOT": "/home/nemesis/projects/developer-tools/nodeforge/packages/test-fixtures/node-ts-eslint"
+        "NODEFORGE_WORKSPACE_ROOT": "/home/nemesis/projects/developer-tools/nodeforge/packages/test-fixtures/node-ts-eslint",
+        "NODEFORGE_WORKSPACE_TRUSTED": "true",
+        "NODEFORGE_ALLOW_EXECUTION": "true",
+        "NODEFORGE_ALLOW_WRITES": "true",
+        "NODEFORGE_ALLOW_NETWORK": "true"
       }
     }
   }
@@ -212,7 +216,8 @@ Now you can ask Cursor things like:
 - "Onboard me to this project"
 
 The agent will call the appropriate NodeForge MCP tools and get structured
-JSON back.
+JSON back. Standalone MCP execution is fail-closed; the environment variables
+above explicitly grant trust, execution, write, and network capabilities.
 
 ### Available MCP Tools (18 total)
 
