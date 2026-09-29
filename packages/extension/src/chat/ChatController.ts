@@ -1,3 +1,4 @@
+import * as vscode from "vscode";
 import type { ChatMessage, ToolInvocationRecord } from "@nodeforge/contracts";
 import {
   AgentLoop,
@@ -83,7 +84,15 @@ export class ChatController {
           callbacks.onAssistantDelta(delta);
         },
         onToolStart: callbacks.onToolStart,
-        onToolEnd: callbacks.onToolEnd
+        onToolEnd: callbacks.onToolEnd,
+        requestToolApproval: async (toolName) => {
+          const choice = await vscode.window.showWarningMessage(
+            `NodeForge wants to perform "${toolName}".`,
+            { modal: true },
+            "Allow once"
+          );
+          return choice === "Allow once";
+        }
       });
 
       assistantText = result.assistantMessage || assistantText;
