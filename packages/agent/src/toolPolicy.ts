@@ -147,7 +147,7 @@ export function authorizeTool(
     return {
       allowed: false,
       code: "WORKSPACE_NOT_TRUSTED",
-      reason: "This tool requires a trusted workspace."
+      reason: "Workspace is not trusted."
     };
   }
 
