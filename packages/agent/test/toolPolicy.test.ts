@@ -7,7 +7,6 @@ import {
   WRITE_TOOL_NAMES,
   type ToolExecutionContext
 } from "../src/toolPolicy.js";
-import { TOOLS } from "../src/tools.js";
 
 describe("tool execution policy", () => {
   it("has an authorization policy for every registered tool", () => {
