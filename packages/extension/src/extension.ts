@@ -326,7 +326,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       }
       if (!tests.isEnabled()) {
         void vscode.window.showWarningMessage(
-          "NodeForge: no test runner detected (expected Vitest or Jest in dependencies)."
+          "NodeForge: no supported test runner detected (expected Vitest, Jest, or Node test runner)."
         );
         return;
       }
@@ -582,7 +582,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       if (!r || !isTrusted()) return;
       if (!manager.current()) await manager.analyze(r);
       if (!tests.isEnabled()) {
-        void vscode.window.showWarningMessage("NodeForge: no supported test runner detected.");
+        void vscode.window.showWarningMessage("NodeForge: no supported test runner detected (Vitest, Jest, or Node test runner).");
         return;
       }
 
@@ -602,7 +602,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       if (!manager.current()) await manager.analyze(r);
 
       const profile = manager.current();
-      if (!profile?.testRunner || (profile.testRunner !== "vitest" && profile.testRunner !== "jest")) {
+      if (!profile?.testRunner || (profile.testRunner !== "vitest" && profile.testRunner !== "jest" && profile.testRunner !== "node")) {
         void vscode.window.showWarningMessage("NodeForge: no supported test runner detected.");
         return;
       }
@@ -610,13 +610,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       const runner = profile.testRunner;
       const runtimeArgs = runner === "vitest"
         ? ["vitest", "run", filePath]
-        : ["jest", filePath];
+        : runner === "jest"
+          ? ["jest", filePath]
+          : ["--test", filePath];
+      const runtimeExecutable = runner === "node" ? "node" : "npx";
 
       const config: vscode.DebugConfiguration = {
         name: "Debug " + runner + " file",
         type: "node",
         request: "launch",
-        runtimeExecutable: "npx",
+        runtimeExecutable,
         runtimeArgs,
         cwd: r,
         console: "integratedTerminal",
