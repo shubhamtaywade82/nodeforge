@@ -97,21 +97,26 @@ with file-watch invalidation.
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `NODEFORGE_WORKSPACE_ROOT` | Absolute path to the workspace root. | `process.cwd()` |
+| `NODEFORGE_WORKSPACE_ROOT` | Absolute workspace root. | `process.cwd()` |
+| `NODEFORGE_WORKSPACE_TRUSTED` | Explicit trust assertion for standalone MCP execution. | `false` |
+| `NODEFORGE_ALLOW_EXECUTION` | Enables tools that execute project-controlled code. | `false` |
+| `NODEFORGE_ALLOW_WRITES` | Enables workspace-mutating tools. Requires execution + trust. | `false` |
+| `NODEFORGE_ALLOW_NETWORK` | Enables network-dependent tools such as dependency audit. | `false` |
+
+The standalone MCP server is fail-closed. Static inspection tools are available by default;
+execution, writes, and network access require explicit opt-in. Treat `runScript` as arbitrary
+project-controlled code execution.
 
 ## Protocol
 
-The server implements MCP protocol version `2024-11-05` with:
+The server currently advertises MCP protocol version `2024-11-05` with:
 
 - **Tools**: `listChanged: false` (static tool list)
-- **Resources**: not implemented
-- **Prompts**: not implemented
+- **Resources**: config-file resources via `resources/list` + `resources/read`
+- **Prompts**: pre-built workflows via `prompts/list` + `prompts/get`
 - **Subscriptions**: not implemented
 
-Future versions will add:
-- `resources/list` + `resources/read` for exposing config files as MCP resources
-- `prompts/list` + `prompts/get` for pre-built engineering prompts
-- Tool result caching with file-watch invalidation
+Future versions can add tool result caching with file-watch invalidation and additional engineering workflows.
 
 ## Development
 
