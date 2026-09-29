@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { TOOLS } from "../src/tools.js";
 import {
   TOOL_POLICIES,
   authorizeTool,
@@ -9,6 +10,11 @@ import {
 import { TOOLS } from "../src/tools.js";
 
 describe("tool execution policy", () => {
+  it("has an authorization policy for every registered tool", () => {
+    const registered = new Set(TOOLS.map((tool) => tool.definition.name));
+    expect(Object.keys(TOOL_POLICIES).sort()).toEqual([...registered].sort());
+  });
+
   it("has a policy for every exposed tool", () => {
     for (const tool of TOOLS) {
       expect(TOOL_POLICIES[tool.definition.name]).toBeDefined();
