@@ -70,7 +70,7 @@ Full list: Command Palette → filter `NodeForge`.
 3. Ask in plain language or use chips / slash workflows:
    `/audit-and-upgrade-deps`, `/validate-and-fix`, `/onboard-to-project`, `/explain-errors`
 
-The assistant calls the same engineering tools as the MCP server (diagnostics, tests, git, deps, format/fix when trusted).
+The assistant uses the same centralized engineering tool layer as the MCP server. Execution tools require Workspace Trust; workspace-mutating tools and package-script execution additionally require explicit confirmation.
 
 ### Chat settings
 
@@ -82,7 +82,7 @@ The assistant calls the same engineering tools as the MCP server (diagnostics, t
 | `nodeforge.chat.injectWorkspaceSnapshot` | `true` | Profile + dep summary each turn |
 | `nodeforge.ollama.baseUrl` | `http://localhost:11434` | Native Ollama server base URL |
 
-**Trust:** Write tools (`formatFiles`, `applyEslintFix`, `runScript`, `validateWorkspace`) run only in **Trusted** workspaces.
+**Trust:** Execution tools require **Trusted** workspaces. Workspace-mutating tools (`formatFiles`, `applyEslintFix`) and package-script execution (`runScript`) require explicit approval in built-in chat.
 
 ---
 
@@ -103,7 +103,7 @@ See [devdocs.md](./devdocs.md). Summary:
 | Mode | Inspection | Run tools / tests / audits | Chat write tools |
 |------|------------|----------------------------|------------------|
 | **Restricted** | Profile visible | Blocked | Blocked |
-| **Trusted** | Full | Allowed | Allowed |
+| **Trusted** | Full | Allowed | Approval required for mutations / scripts |
 
 ---
 
