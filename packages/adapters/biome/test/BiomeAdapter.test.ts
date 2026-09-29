@@ -177,7 +177,10 @@ describe("BiomeAdapter (integration against fixture)", () => {
     try {
       await fs.access(biomeBin);
     } catch {
-      console.warn(`[nodeforge:test] skipping Biome integration test — fixture biome missing at ${biomeBin}`);
+      console.warn(`[nodeforge:test] fixture biome missing at ${biomeBin}`);
+      if (process.env.CI) {
+        throw new Error("Fixture dependency is required in CI: install fixture dependencies before running integration tests.");
+      }
       return;
     }
 
