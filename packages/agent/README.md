@@ -66,7 +66,7 @@ back — not terminal text.
 | `getDiagnostics` | Execute | Runs TypeScript plus detected ESLint/Biome checks. Requires execution capability. |
 | `runTypeCheck` | Execute | Runs the project's TypeScript compiler. Requires execution capability. |
 | `runLinter` | Execute | Runs the project's detected linter. Requires execution capability. |
-| `getTestResults` / `runTests` | Execute | Runs the detected Vitest/Jest suite. Requires execution capability. |
+| `getTestResults` / `runTests` | Execute | Runs the detected Vitest, Jest, or built-in Node test suite. Requires execution capability. |
 | `getDependencyReport` | Execute + Network | Runs dependency audit/outdated checks. Requires execution and network capability. |
 | `validateWorkspace` | Execute + Network | Runs typecheck, lint, tests, and dependency audit. Requires execution and network capability. |
 | `runScript` | Execute + Write | Runs an existing package script. High-risk project-controlled code execution. |
