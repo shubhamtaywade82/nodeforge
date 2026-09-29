@@ -7,7 +7,6 @@
  */
 
 import * as path from "node:path";
-import { promises as fs } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import { DependencyAdapter, parseAuditJson, parseOutdatedJson } from "../src/DependencyAdapter.js";
