@@ -59,4 +59,5 @@ suite("NodeForge extension host", () => {
       vscode.commands.executeCommand("nodeforge.runTests"),
       "The public Run Tests command should complete without throwing."
     );
-  });});
+  });
+});
