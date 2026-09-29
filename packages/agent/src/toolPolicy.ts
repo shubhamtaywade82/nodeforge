@@ -91,7 +91,8 @@ export const TOOL_POLICIES: Readonly<Record<string, ToolPolicy>> = Object.freeze
         requiresApproval: false,
         mutatesWorkspace: false,
         executesCode: true,
-        usesNetwork: name === "getDependencyReport"
+        usesNetwork:
+          name === "getDependencyReport" || name === "validateWorkspace"
       } satisfies ToolPolicy
     ])
   ),
