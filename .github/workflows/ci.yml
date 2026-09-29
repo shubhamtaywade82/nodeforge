@@ -30,3 +30,11 @@ jobs:
       - run: pnpm test
       - run: pnpm build
       - run: pnpm package
+      - name: Verify VSIX artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          vsix="$(find packages/extension -maxdepth 1 -type f -name '*.vsix' -print -quit)"
+          test -n "$vsix"
+          unzip -l "$vsix" | grep -q 'extension/package.json'
+          unzip -l "$vsix" | grep -q 'extension/dist/extension.cjs'
