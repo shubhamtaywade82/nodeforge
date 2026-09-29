@@ -3,7 +3,7 @@
 > An autonomous Node.js/TypeScript engineering workspace — orchestration core for VS Code and Cursor.
 
 NodeForge is **not** an extension bundle. It is a control plane that wraps existing
-engineering tools (TypeScript, ESLint, Biome, Prettier, Vitest, Jest, Prisma, Drizzle,
+engineering tools (TypeScript, ESLint, Biome, Prettier, Vitest, Jest, Node test runner, Prisma, Drizzle,
 Docker, Git, etc.) behind a single normalized engineering model and exposes that model
 both to the IDE (VS Code / Cursor) and to AI coding agents.
 
