@@ -74,8 +74,6 @@ describe("parsePorcelainBranchHeader (pure parser)", () => {
 });
 
 describe("GitAdapter (integration against real git repo)", () => {
-  let tmpDir: string;
-
   async function mkRepo(): Promise<string> {
     const repo = await fs.mkdtemp(path.join(os.tmpdir(), "nodeforge-git-"));
     await runRaw(repo, "git", ["init", "-q", "-b", "main"]);
