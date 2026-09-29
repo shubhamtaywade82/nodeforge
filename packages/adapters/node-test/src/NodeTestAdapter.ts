@@ -106,7 +106,7 @@ export class NodeTestAdapter {
       );
       const args = ["--test", "--test-reporter=" + reporterPath];
 
-      const testName = test?.fullName ?? test?.name;
+      const testName = test && !test.id.startsWith("file:") ? (test.fullName ?? test.name) : undefined;
       if (testName) {
         args.push("--test-name-pattern", "^" + escapeRegExp(testName) + "$");
       }
@@ -201,11 +201,33 @@ export function parseNodeTestOutput(
     };
   });
 
+  const suitesByFile = new Map<string, TestSuite>();
+  const rootTests: TestCase[] = [];
+
+  for (const test of cases) {
+    if (test.file && test.file !== workspaceRoot) {
+      const fileSuite = suitesByFile.get(test.file);
+      if (fileSuite) {
+        fileSuite.tests.push(test);
+      } else {
+        suitesByFile.set(test.file, {
+          id: "node-test:file:" + test.file,
+          name: path.basename(test.file),
+          file: test.file,
+          suites: [],
+          tests: [test]
+        });
+      }
+    } else {
+      rootTests.push(test);
+    }
+  }
+
   const rootSuite: TestSuite = {
     id: "node-test:root",
     name: "node:test",
-    suites: [],
-    tests: cases
+    suites: [...suitesByFile.values()],
+    tests: rootTests
   };
 
   const counts: Record<TestStatus, number> = {
