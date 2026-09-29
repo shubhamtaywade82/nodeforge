@@ -366,7 +366,10 @@ describe("McpServer tool dispatch (real adapter runs)", () => {
     try {
       await fs.access(eslintBin);
     } catch {
-      console.warn(`[nodeforge:test] skipping runLinter MCP test — eslint missing at ${eslintBin}`);
+      console.warn(`[nodeforge:test] eslint fixture binary missing at ${eslintBin}`);
+      if (process.env.CI) {
+        throw new Error("Fixture dependency is required in CI: install fixture dependencies before running integration tests.");
+      }
       return;
     }
 
