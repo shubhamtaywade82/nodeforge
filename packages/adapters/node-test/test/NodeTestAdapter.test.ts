@@ -52,7 +52,24 @@ describe("NodeTestAdapter", () => {
     expect(result.result.counts.passed).toBeGreaterThanOrEqual(2);
     expect(result.result.counts.skipped).toBe(1);
     expect(result.result.counts.todo).toBe(1);
+    expect(result.suite.suites).toHaveLength(1);
+    expect(result.suite.suites[0]?.tests).toHaveLength(4);
     expect(result.exitCode).toBe(0);
+  });
+
+  it("runs a specific file without turning the file path into a test-name filter", async () => {
+    const adapter = new NodeTestAdapter(new ProcessRunner());
+    const file = path.join(FIXTURE, "test/math.test.js");
+    const result = await adapter.run(FIXTURE, undefined, {
+      id: "file:" + file,
+      name: file,
+      file,
+      status: "running"
+    });
+
+    expect(result.result.counts.passed).toBeGreaterThanOrEqual(2);
+    expect(result.result.counts.skipped).toBe(1);
+    expect(result.result.counts.todo).toBe(1);
   });
 
   it("detects a package.json script using node --test", async () => {
