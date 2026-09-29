@@ -99,7 +99,8 @@ Cursor / MCP Client
         ▼       ▼                   ▼
   detectWorkspaceProfile  TypescriptAdapter  EslintAdapter
                          BiomeAdapter       VitestAdapter
-                         JestAdapter        GitAdapter
+                         JestAdapter
+                         NodeTestAdapter        GitAdapter
                          PrismaAdapter      DrizzleAdapter
                          DependencyAdapter
 ```
