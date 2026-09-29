@@ -539,7 +539,7 @@ describe("McpServer tool dispatch (real adapter runs)", () => {
     expect(scriptResult.exitCode).toBe(0); // tsc --noEmit on clean fixture
   });
 
-  it("runScript returns error for missing script parameter", async () => {
+  it("returns an MCP invalid-params error for a missing script parameter", async () => {
     const server = makeServer();
     const response = await server.handleMessage({
       jsonrpc: "2.0",
@@ -548,9 +548,9 @@ describe("McpServer tool dispatch (real adapter runs)", () => {
       params: { name: "runScript", arguments: {} }
     });
 
-    const result = response!.result as { content: Array<{ text: string }> };
-    const parsed = JSON.parse(result.content[0]!.text) as { error: string };
-    expect(parsed.error).toContain('missing required argument "script"');
+    expect(response!.error).toBeDefined();
+    expect(response!.error!.code).toBe(-32602);
+    expect(response!.error!.message).toContain('missing required argument "script"');
   });
 
   it("validateWorkspace runs typecheck + lint and returns overall status", async () => {
