@@ -53,7 +53,7 @@ const DRIVER_SOURCE = [
   "const cases = [];",
   "let streamError;",
   "const stream = run(config.files.length > 0 ? { files: config.files } : {});",
-  "stream.on(\"test:complete\", (data) => {",
+  "function record(data, passed) {",
   "  const type = data?.details?.type ?? data?.type;",
   "  if (type === \"suite\") return;",
   "  const error = data?.details?.error;",
@@ -63,19 +63,21 @@ const DRIVER_SOURCE = [
   "    file: data?.file,",
   "    line: data?.line,",
   "    column: data?.column,",
-  "    passed: data?.details?.passed === true,",
+  "    passed,",
   "    skip: data?.skip,",
   "    todo: data?.todo,",
   "    durationMs: data?.details?.duration_ms,",
   "    error: error ? { message: error?.message ?? String(error), stack: error?.stack } : undefined",
   "  });",
-  "});",
+  "}",
+  "stream.on(\"test:pass\", (data) => record(data, true));",
+  "stream.on(\"test:fail\", (data) => record(data, false));",
   "stream.on(\"error\", (error) => { streamError = error instanceof Error ? error.message : String(error); });",
   "stream.resume();",
   "await once(stream, \"end\");",
   "const envelope = { cases, error: streamError };",
   "const status = streamError || cases.some((item) => !item.passed && !item.skip && !item.todo) ? 1 : 0;",
-  "process.stdout.write(" + JSON.stringify(RESULT_MARKER) + " + JSON.stringify(envelope), () => process.exit(status));"
+  "process.stdout.write("__NODEFORGE_NODE_TEST_RESULT__" + JSON.stringify(envelope), () => process.exit(status));"
 ].join("\n");
 
 export class NodeTestAdapter {
