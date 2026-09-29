@@ -24,7 +24,11 @@ Add to your Cursor MCP settings (`.cursor/mcp.json` or via Settings → MCP):
       "command": "node",
       "args": ["/absolute/path/to/nodeforge/packages/agent/dist/cli.js"],
       "env": {
-        "NODEFORGE_WORKSPACE_ROOT": "/absolute/path/to/your/project"
+        "NODEFORGE_WORKSPACE_ROOT": "/absolute/path/to/your/project",
+        "NODEFORGE_WORKSPACE_TRUSTED": "true",
+        "NODEFORGE_ALLOW_EXECUTION": "true",
+        "NODEFORGE_ALLOW_WRITES": "true",
+        "NODEFORGE_ALLOW_NETWORK": "true"
       }
     }
   }
