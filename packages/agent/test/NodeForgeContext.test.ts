@@ -80,3 +80,18 @@ describe("NodeForgeContext resource paths", () => {
     }
   });
 });
+
+
+describe("NodeForgeContext test runner support", () => {
+  it("runs a workspace using the built-in Node test runner", async () => {
+    const root = path.resolve(__dirname, "../../test-fixtures/node-ts-node-test");
+    const ctx = new NodeForgeContext(root);
+
+    const outcome = await ctx.getTestResults();
+
+    expect(outcome).toBeDefined();
+    expect(outcome?.result.counts.passed).toBeGreaterThanOrEqual(2);
+    expect(outcome?.result.counts.skipped).toBe(1);
+    expect(outcome?.result.counts.todo).toBe(1);
+  });
+});
