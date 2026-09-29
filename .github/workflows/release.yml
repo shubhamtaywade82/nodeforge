@@ -7,18 +7,20 @@ on:
 
 permissions:
   contents: write
+  id-token: write
+  attestations: write
 
 jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: 9.15.9
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: pnpm
@@ -50,6 +52,11 @@ jobs:
           unzip -l "$vsix" | grep -q 'extension/package.json'
           unzip -l "$vsix" | grep -q 'extension/dist/extension.cjs'
           sha256sum "$vsix" > "${vsix}.sha256"
+
+      - name: Attest VSIX provenance
+        uses: actions/attest@v4.2.1
+        with:
+          subject-path: packages/extension/*.vsix
 
       - name: Create GitHub release
         env:
