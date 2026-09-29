@@ -7,7 +7,7 @@ import {
 } from "../src/toolPolicy.js";
 
 describe("tool execution policy", () => {
-  it("classifies code execution and workspace mutation separately", () => {
+  it("has a policy for every exposed tool", () => {\n    for (const tool of TOOLS) {\n      expect(TOOL_POLICIES[tool.definition.name]).toBeDefined();\n    }\n  });\n\n  it("keeps mutating tools in the write-tool set", () => {\n    expect(WRITE_TOOL_NAMES).toEqual(\n      new Set(["runScript", "formatFiles", "applyEslintFix"])\n    );\n  });\n\n  it("classifies code execution and workspace mutation separately", () => {
     expect(TOOL_POLICIES.runScript).toMatchObject({
       risk: "execute",
       mutatesWorkspace: true,
