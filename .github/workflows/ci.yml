@@ -44,7 +44,22 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm typecheck
+      - name: Start Xvfb for VS Code extension-host tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          Xvfb :99 -screen 0 1280x1024x24 >/tmp/nodeforge-xvfb.log 2>&1 &
+          echo $! > /tmp/nodeforge-xvfb.pid
+          for _ in {1..20}; do
+            if kill -0 "$(cat /tmp/nodeforge-xvfb.pid)" 2>/dev/null; then
+              break
+            fi
+            sleep 0.5
+          done
+          kill -0 "$(cat /tmp/nodeforge-xvfb.pid)"
       - run: pnpm test
+        env:
+          DISPLAY: ":99.0"
       - run: pnpm build
       - run: pnpm package
       - name: Verify VSIX artifact
