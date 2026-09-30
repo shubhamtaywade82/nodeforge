@@ -256,56 +256,62 @@ export class NodeForgeTestController {
 
       if (token.isCancellationRequested) return;
 
-      if (included.length !== 1) {
+      if (included.length > 1) {
         const item = included[0];
         if (item) {
           run.errored(
             item,
-            new vscode.TestMessage("Select exactly one test or test file to debug.")
+            new vscode.TestMessage("Select one test, test suite, or test file to debug.")
           );
         }
         return;
       }
 
-      const item = included[0]!;
-      if (request.exclude?.includes(item)) {
+      const item = included[0];
+      if (item && request.exclude?.includes(item)) {
         return;
       }
 
-      run.enqueued(item);
+      if (item) run.enqueued(item);
 
-      const runner = this.testManager.getTestRunner() as TestRunnerKind | undefined;
+      const runner: TestRunnerKind | undefined = this.testManager.getTestRunner();
       const workspaceRoot = this.testManager.getWorkspaceRoot();
       if (!runner || !workspaceRoot) {
-        run.errored(item, new vscode.TestMessage("No supported test runner is detected."));
+        if (item) {
+          run.errored(item, new vscode.TestMessage("No supported test runner is detected."));
+        }
         return;
       }
 
-      const test = this.testCasesById.get(item.id);
-      const file = test?.file ?? item.uri?.fsPath;
-      if (!file) {
-        run.errored(item, new vscode.TestMessage("Unable to resolve the selected test file."));
-        return;
-      }
+      const test = item ? this.testCasesById.get(item.id) : undefined;
+      const file = test?.file ?? item?.uri?.fsPath;
 
       const configuration = buildTestDebugConfiguration({
         runner,
         workspaceRoot,
-        file,
-        fullName: test?.fullName
+        ...(file ? { file } : {}),
+        ...(test?.fullName ? { fullName: test.fullName } : {})
       });
 
       const folder = vscode.workspace.getWorkspaceFolder(
-        item.uri ?? vscode.Uri.file(workspaceRoot)
+        item?.uri ?? vscode.Uri.file(workspaceRoot)
       );
       if (!folder) {
-        run.errored(item, new vscode.TestMessage("Unable to resolve the VS Code workspace folder."));
+        if (item) {
+          run.errored(
+            item,
+            new vscode.TestMessage("Unable to resolve the VS Code workspace folder.")
+          );
+        }
         return;
       }
 
       const started = await vscode.debug.startDebugging(folder, configuration);
-      if (!started) {
+      if (!started && item) {
         run.errored(item, new vscode.TestMessage("VS Code did not start the test debugger."));
+      }
+      if (!started && !item) {
+        void vscode.window.showErrorMessage("NodeForge: VS Code did not start the test debugger.");
       }
     } catch (err) {
       logger.error("Test debug failed", err);
