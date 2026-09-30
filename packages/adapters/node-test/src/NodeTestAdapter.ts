@@ -30,12 +30,18 @@ export interface NodeTestRunResult {
 const DEFAULT_TIMEOUT_MS = 120_000;
 const RESULT_MARKER = "__NODEFORGE_NODE_TEST_RESULT__";
 
-interface DriverCase {
-  testId?: number;
+interface DriverNode {
+  testId: number;
   name: string;
+  type: "suite" | "test";
+  parentId?: number;
   file?: string;
   line?: number;
   column?: number;
+}
+
+interface DriverCase extends DriverNode {
+  type: "test";
   passed: boolean;
   skip?: boolean | string;
   todo?: boolean | string;
@@ -45,44 +51,66 @@ interface DriverCase {
 
 interface DriverEnvelope {
   cases: DriverCase[];
+  nodes?: DriverNode[];
   error?: string;
 }
 
 const REPORTER_SOURCE = [
   "export default async function* reporter(source) {",
-  "  const cases = new Map();",
-  "  function key(data) {",
-  "    return String(data?.file ?? data?.entryFile ?? \"\") + \"::\" + String(data?.testId ?? data?.testNumber ?? data?.name ?? \"(unnamed)\");",
-  "  }",
-  "  function isSuite(data) {",
-  "    return (data?.details?.type ?? data?.type) === \"suite\";",
-  "  }",
-  "  function record(data, passed) {",
-  "    if (isSuite(data)) return;",
-  "    const id = key(data);",
-  "    const current = cases.get(id) ?? {};",
-  "    const error = data?.details?.error;",
-  "    cases.set(id, {",
-  "      ...current,",
-  "      testId: data?.testNumber ?? data?.testId,",
-  "      name: data?.name ?? current.name ?? \"(unnamed)\",",
-  "      file: data?.file ?? data?.entryFile ?? current.file,",
-  "      line: data?.line ?? current.line,",
-  "      column: data?.column ?? current.column,",
-  "      passed,",
-  "      skip: data?.skip ?? current.skip,",
-  "      todo: data?.todo ?? current.todo,",
-  "      durationMs: data?.details?.duration_ms ?? current.durationMs,",
-  "      error: error ? { message: error?.message ?? String(error), stack: error?.stack } : current.error",
-  "    });",
-  "  }",
-  "  for await (const event of source) {",
-  "    if (event.type === \"test:pass\") record(event.data, true);",
-  "    else if (event.type === \"test:fail\") record(event.data, false);",
-  "  }",
-  "  const envelope = { cases: [...cases.values()] };",
-  "  yield " + JSON.stringify("__NODEFORGE_NODE_TEST_RESULT__") + " + JSON.stringify(envelope);",
-  "}"
+"  const nodes = new Map();",
+"  const cases = new Map();",
+"  function fileOf(data) { return data?.file ?? data?.entryFile; }",
+"  function key(data) {",
+"    return String(fileOf(data) ?? \"\") + \"::\" + String(data?.testId ?? data?.testNumber ?? data?.name ?? \"(unnamed)\");",
+"  }",
+"  function typeOf(data) { return data?.details?.type ?? data?.type; }",
+"  function recordNode(data) {",
+"    const type = typeOf(data);",
+"    if (type !== \"suite\" && type !== \"test\") return;",
+"    const testId = data?.testId ?? data?.testNumber;",
+"    if (typeof testId !== \"number\") return;",
+"    const id = key(data);",
+"    const current = nodes.get(id) ?? {};",
+"    nodes.set(id, {",
+"      ...current,",
+"      testId,",
+"      name: data?.name ?? current.name ?? \"(unnamed)\",",
+"      type,",
+"      parentId: data?.parentId ?? current.parentId,",
+"      file: fileOf(data) ?? current.file,",
+"      line: data?.line ?? current.line,",
+"      column: data?.column ?? current.column",
+"    });",
+"  }",
+"  function record(data, passed) {",
+"    recordNode(data);",
+"    if (typeOf(data) !== \"test\") return;",
+"    const id = key(data);",
+"    const current = cases.get(id) ?? {};",
+"    const error = data?.details?.error;",
+"    cases.set(id, {",
+"      ...current,",
+"      testId: data?.testId ?? data?.testNumber,",
+"      name: data?.name ?? current.name ?? \"(unnamed)\",",
+"      type: \"test\",",
+"      parentId: data?.parentId ?? current.parentId,",
+"      file: fileOf(data) ?? current.file,",
+"      line: data?.line ?? current.line,",
+"      column: data?.column ?? current.column,",
+"      passed,",
+"      skip: data?.skip ?? current.skip,",
+"      todo: data?.todo ?? current.todo,",
+"      durationMs: data?.details?.duration_ms ?? current.durationMs,",
+"      error: error ? { message: error?.message ?? String(error), stack: error?.stack } : current.error",
+"    });",
+"  }",
+"  for await (const event of source) {",
+"    if (event.type === \"test:enqueue\" || event.type === \"test:start\") recordNode(event.data);",
+"    else if (event.type === \"test:pass\") record(event.data, true);",
+"    else if (event.type === \"test:fail\") record(event.data, false);",
+"  }",
+"  yield \"__NODEFORGE_NODE_TEST_RESULT__\" + JSON.stringify({ cases: [...cases.values()], nodes: [...nodes.values()] });",
+"}"
 ].join("\n");
 
 export class NodeTestAdapter {
@@ -127,7 +155,13 @@ export class NodeTestAdapter {
 
       return {
         suite: parsed.suite,
-        result: parsed.result,
+        result: {
+          ...parsed.result,
+          id: test?.id ?? parsed.result.id,
+          durationMs: execution.durationMs,
+          stdout,
+          stderr
+        },
         rawStdout: stdout,
         rawStderr: stderr,
         durationMs: execution.durationMs,
@@ -173,17 +207,56 @@ export function parseNodeTestOutput(
     throw new AdapterParseError("node-test", "Expected a result envelope with a cases array.");
   }
 
+  const nodes = (envelope.nodes ?? []).filter((node) => typeof node.testId === "number");
+  const nodesByFile = new Map<string, Map<number, DriverNode>>();
+
+  for (const node of nodes) {
+    const file = resolveNodeFile(node.file, workspaceRoot);
+    let byId = nodesByFile.get(file);
+    if (!byId) {
+      byId = new Map<number, DriverNode>();
+      nodesByFile.set(file, byId);
+    }
+    byId.set(node.testId, node);
+  }
+
+  const suiteRootsByFile = new Map<string, TestSuite>();
+  const suiteItems = new Map<string, TestSuite>();
+
+  for (const node of nodes) {
+    if (node.type !== "suite") continue;
+    const file = resolveNodeFile(node.file, workspaceRoot);
+    const suite: TestSuite = {
+      id: `node-test:${file}:suite:${node.testId}`,
+      name: node.name,
+      file,
+      suites: [],
+      tests: []
+    };
+    suiteItems.set(suite.id, suite);
+
+    let root = suiteRootsByFile.get(file);
+    if (!root) {
+      root = createFileSuite(file, workspaceRoot);
+      suiteRootsByFile.set(file, root);
+    }
+
+    const parent = node.parentId !== undefined
+      ? suiteItems.get(`node-test:${file}:suite:${node.parentId}`)
+      : undefined;
+    (parent ?? root).suites.push(suite);
+  }
+
   const cases: TestCase[] = envelope.cases.map((item, index) => {
-    const file = item.file
-      ? path.isAbsolute(item.file)
-        ? item.file
-        : path.resolve(workspaceRoot, item.file)
-      : workspaceRoot;
+    const file = resolveNodeFile(item.file, workspaceRoot);
+    const byId = nodesByFile.get(file);
+    const fullName = buildNodeTestFullName(item, byId);
     const status = mapStatus(item);
+
     return {
-      id: "node-test:" + file + ":" + (item.testId ?? index) + ":" + item.name,
+      id: `node-test:${file}:${fullName || item.testId || index}`,
       name: item.name,
-      fullName: item.name,
+      fullName,
       file,
       line: item.line,
       status,
@@ -201,33 +274,27 @@ export function parseNodeTestOutput(
     };
   });
 
-  const suitesByFile = new Map<string, TestSuite>();
-  const rootTests: TestCase[] = [];
+  envelope.cases.forEach((item, index) => {
+    const test = cases[index];
+    if (!test) return;
 
-  for (const test of cases) {
-    if (test.file && test.file !== workspaceRoot) {
-      const fileSuite = suitesByFile.get(test.file);
-      if (fileSuite) {
-        fileSuite.tests.push(test);
-      } else {
-        suitesByFile.set(test.file, {
-          id: "node-test:file:" + test.file,
-          name: path.basename(test.file),
-          file: test.file,
-          suites: [],
-          tests: [test]
-        });
-      }
-    } else {
-      rootTests.push(test);
+    let root = suiteRootsByFile.get(test.file);
+    if (!root) {
+      root = createFileSuite(test.file, workspaceRoot);
+      suiteRootsByFile.set(test.file, root);
     }
-  }
+
+    const parentSuite = item.parentId !== undefined
+      ? suiteItems.get(`node-test:${test.file}:suite:${item.parentId}`)
+      : undefined;
+    (parentSuite ?? root).tests.push(test);
+  });
 
   const rootSuite: TestSuite = {
     id: "node-test:root",
     name: "node:test",
-    suites: [...suitesByFile.values()],
-    tests: rootTests
+    suites: [...suiteRootsByFile.values()],
+    tests: []
   };
 
   const counts: Record<TestStatus, number> = {
@@ -251,6 +318,41 @@ export function parseNodeTestOutput(
     }
   };
 }
+
+function resolveNodeFile(file: string | undefined, workspaceRoot: string): string {
+  if (!file) return workspaceRoot;
+  return path.isAbsolute(file) ? file : path.resolve(workspaceRoot, file);
+}
+
+function createFileSuite(file: string, workspaceRoot: string): TestSuite {
+  return {
+    id: `node-test:file:${file}`,
+    name: path.relative(workspaceRoot, file) || file,
+    file,
+    suites: [],
+    tests: []
+  };
+}
+
+function buildNodeTestFullName(
+  item: DriverCase,
+  byId: Map<number, DriverNode> | undefined
+): string {
+  const names = [item.name];
+  let parentId = item.parentId;
+  const seen = new Set<number>();
+
+  while (parentId !== undefined && byId && !seen.has(parentId)) {
+    seen.add(parentId);
+    const parent = byId.get(parentId);
+    if (!parent) break;
+    names.unshift(parent.name);
+    parentId = parent.parentId;
+  }
+
+  return names.join(" > ");
+}
+
 
 function escapeRegExp(value: string): string {
   return value.replace(/[\\^$.*+?()[\]{}|]/g, "\\$&");
