@@ -34,7 +34,7 @@ NodeForge is a **control plane** for Node.js, JavaScript, and TypeScript project
 |------|---------|
 | **Workspace** | Detected runtime, package manager, TypeScript, linter, formatter, tests, ORM, Docker, CI, monorepo |
 | **Diagnostics** | TypeScript + ESLint/Biome findings (refreshes on save when trusted) |
-| **Tests** | Detected Vitest, Jest, or Node test tree after **Run Tests** |
+| **Tests** | Detected Vitest, Jest, or Node test tree after **Run Tests**, with native Run/Debug profiles |
 | **Runtime** | Long-lived processes managed by NodeForge |
 | **Git** | Branch, dirty state, changed/staged files |
 | **Database** | Prisma/Drizzle schema tree |
@@ -62,6 +62,17 @@ NodeForge is a **control plane** for Node.js, JavaScript, and TypeScript project
 Full list: Command Palette → filter `NodeForge`.
 
 ---
+
+
+### Native Test Explorer
+
+NodeForge registers native VS Code Test Explorer Run and Debug profiles. Debugging is runner-aware:
+
+- Node.js built-in test runner: node --test with the selected file/test name when applicable.
+- Vitest: local workspace Vitest entrypoint with run and optional -t filter.
+- Jest: local workspace Jest entrypoint with --runInBand and optional -t filter.
+
+Debugging requires Workspace Trust. NodeForge does not perform an implicit package installation to start a debug session.
 
 ## Built-in Chat
 
@@ -131,7 +142,7 @@ Built-in Chat does **not** require MCP. To connect Claude Code or another MCP cl
 - TypeScript/ESLint/Biome results appear primarily in the **NodeForge Diagnostics** tree; dependency issues also appear in **Problems**.
 - **First workspace folder** only in multi-root setups.
 - Distributed via **VSIX / source**, not the public Marketplace yet.
-- Real VS Code Extension Host integration tests are still planned; deterministic provider/manifest contracts are covered by automated tests.
+- The current extension-host suite covers activation, command registration, workspace analysis, and the public test command. Deeper Test Explorer interaction coverage remains future work.
 
 ---
 
