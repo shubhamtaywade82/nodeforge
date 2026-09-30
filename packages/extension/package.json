@@ -450,7 +450,7 @@
           {
             "id": "tests",
             "title": "Run Tests",
-            "description": "Run Vitest or Jest with native Test Explorer integration.\n[Run Tests](command:nodeforge.runTests)",
+            "description": "Run Vitest, Jest, or Node test with native Test Explorer integration.\n[Run Tests](command:nodeforge.runTests)",
             "media": {
               "markdown": "NodeForge integrates with VS Code's Test Explorer:\n\n- Gutter glyphs (✓ green check / ✗ red X)\n- \"Run Test\" code lenses above `it()` calls\n- Per-test status icons\n- Click a test to jump to its source\n\nUse `Debug Test` to debug a single test with breakpoints."
             }
