@@ -140,6 +140,16 @@ export class TestManager {
     return undefined;
   }
 
+  /** Return the detected test runner for the current workspace. */
+  getTestRunner(): EnabledTestAdapter["kind"] | undefined {
+    return this.adapter?.kind;
+  }
+
+  /** Return the current workspace root used for test execution. */
+  getWorkspaceRoot(): string | undefined {
+    return this.profile?.root;
+  }
+
   /** Run all tests contained in a single test file. */
   async runFile(filePath: string, externalSignal?: AbortSignal): Promise<TestRunOutcome | undefined> {
     const target: TestCase = {
