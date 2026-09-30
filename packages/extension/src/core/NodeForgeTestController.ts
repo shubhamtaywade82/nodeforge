@@ -22,10 +22,13 @@ import * as vscode from "vscode";
 import type { EventBus, TestCase, TestRunResult, TestSuite } from "@nodeforge/contracts";
 import type { TestManager } from "./TestManager.js";
 import { logger } from "./Logger.js";
+import { buildTestDebugConfiguration, type TestRunnerKind } from "./testDebugConfiguration.js";
 
 export class NodeForgeTestController {
   private readonly controller: vscode.TestController;
   private readonly runProfile: vscode.TestRunProfile;
+  private readonly debugProfile: vscode.TestRunProfile;
+  private readonly testCasesById = new Map<string, TestCase>();
 
   constructor(
     private readonly testManager: TestManager,
@@ -41,7 +44,14 @@ export class NodeForgeTestController {
       "NodeForge Run",
       vscode.TestRunProfileKind.Run,
       (request, token) => this.runHandler(request, token),
-      true // isDefault
+      true
+    );
+
+    this.debugProfile = this.controller.createRunProfile(
+      "NodeForge Debug",
+      vscode.TestRunProfileKind.Debug,
+      (request, token) => this.debugHandler(request, token),
+      false
     );
 
     // Discover tests on controller creation (lazy — VS Code calls refresh).
@@ -165,6 +175,7 @@ export class NodeForgeTestController {
   /** Build the test tree from a TestSuite. */
   private buildTestTree(suite: TestSuite): void {
     this.controller.items.replace([]);
+    this.testCasesById.clear();
 
     for (const fileSuite of suite.suites) {
       const fileItem = this.controller.createTestItem(
@@ -199,6 +210,8 @@ export class NodeForgeTestController {
 
       // Add top-level tests (not inside a describe block).
       for (const test of fileSuite.tests) {
+        this.testCasesById.set(test.id, test);
+        this.testCasesById.set(test.id, test);
         const testItem = this.controller.createTestItem(
           test.id,
           test.name,
@@ -214,6 +227,89 @@ export class NodeForgeTestController {
       }
 
       this.controller.items.add(fileItem);
+    }
+  }
+
+  private async debugHandler(
+    request: vscode.TestRunRequest,
+    token: vscode.CancellationToken
+  ): Promise<void> {
+    const run = this.controller.createTestRun(request);
+    const included = request.include ?? [];
+
+    try {
+      if (!isWorkspaceTrusted()) {
+        const item = included[0];
+        if (item) {
+          run.errored(item, new vscode.TestMessage("Debugging tests requires Workspace Trust."));
+        }
+        return;
+      }
+
+      if (token.isCancellationRequested) return;
+
+      if (included.length !== 1) {
+        const item = included[0];
+        if (item) {
+          run.errored(
+            item,
+            new vscode.TestMessage("Select exactly one test or test file to debug.")
+          );
+        }
+        return;
+      }
+
+      const item = included[0]!;
+      if (request.exclude?.includes(item)) {
+        return;
+      }
+
+      run.enqueued(item);
+
+      const runner = this.testManager.getTestRunner() as TestRunnerKind | undefined;
+      const workspaceRoot = this.testManager.getWorkspaceRoot();
+      if (!runner || !workspaceRoot) {
+        run.errored(item, new vscode.TestMessage("No supported test runner is detected."));
+        return;
+      }
+
+      const test = this.testCasesById.get(item.id);
+      const file = test?.file ?? item.uri?.fsPath;
+      if (!file) {
+        run.errored(item, new vscode.TestMessage("Unable to resolve the selected test file."));
+        return;
+      }
+
+      const configuration = buildTestDebugConfiguration({
+        runner,
+        workspaceRoot,
+        file,
+        fullName: test?.fullName
+      });
+
+      const folder = vscode.workspace.getWorkspaceFolder(
+        item.uri ?? vscode.Uri.file(workspaceRoot)
+      );
+      if (!folder) {
+        run.errored(item, new vscode.TestMessage("Unable to resolve the VS Code workspace folder."));
+        return;
+      }
+
+      const started = await vscode.debug.startDebugging(folder, configuration);
+      if (!started) {
+        run.errored(item, new vscode.TestMessage("VS Code did not start the test debugger."));
+      }
+    } catch (err) {
+      logger.error("Test debug failed", err);
+      const item = included[0];
+      if (item) {
+        run.errored(
+          item,
+          new vscode.TestMessage(err instanceof Error ? err.message : String(err))
+        );
+      }
+    } finally {
+      run.end();
     }
   }
 
