@@ -54,6 +54,9 @@ describe("NodeTestAdapter", () => {
     expect(result.result.counts.todo).toBe(1);
     expect(result.suite.suites).toHaveLength(1);
     expect(result.suite.suites[0]?.tests).toHaveLength(4);
+    expect(result.suite.suites[0]?.suites).toHaveLength(1);
+    expect(result.suite.suites[0]?.suites[0]?.name).toBe("nested math");
+    expect(result.suite.suites[0]?.suites[0]?.tests[0]?.name).toBe("multiplies numbers");
     expect(result.exitCode).toBe(0);
     expect(result.result.durationMs).toBe(result.durationMs);
     expect(result.result.stdout).toBe(result.rawStdout);
@@ -70,9 +73,12 @@ describe("NodeTestAdapter", () => {
       status: "running"
     });
 
-    expect(result.result.counts.passed).toBeGreaterThanOrEqual(2);
+    expect(result.result.counts.passed).toBeGreaterThanOrEqual(3);
     expect(result.result.counts.skipped).toBe(1);
     expect(result.result.counts.todo).toBe(1);
+    expect(result.result.stdout).toBe(result.rawStdout);
+    expect(result.result.stderr).toBe(result.rawStderr);
+    expect(result.result.durationMs).toBe(result.durationMs);
   });
 
   it("detects a package.json script using node --test", async () => {
