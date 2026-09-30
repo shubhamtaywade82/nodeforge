@@ -91,7 +91,9 @@ export class TestManager {
 
   /** Run the enabled test adapter. Cancels any in-flight run. */
   async run(testId?: string, externalSignal?: AbortSignal): Promise<TestRunOutcome | undefined> {
-    const target = testId ? this.findTestCase(this.lastOutcome?.suite, testId) : undefined;
+    const target = testId
+      ? this.findTestTarget(this.lastOutcome?.suite, testId, [], true)
+      : undefined;
     return this.runTarget(target, externalSignal);
   }
 
@@ -128,15 +130,36 @@ export class TestManager {
     }
   }
 
-  private findTestCase(suite: TestSuite | undefined, testId: string): TestCase | undefined {
+  private findTestTarget(
+    suite: TestSuite | undefined,
+    testId: string,
+    suitePath: string[],
+    isRoot: boolean
+  ): TestCase | undefined {
     if (!suite) return undefined;
+
     for (const test of suite.tests) {
       if (test.id === testId) return test;
     }
+
     for (const child of suite.suites) {
-      const found = this.findTestCase(child, testId);
+      const childIsFileSuite = isRoot;
+      const childPath = childIsFileSuite ? [] : [...suitePath, child.name];
+
+      if (child.id === testId && child.file) {
+        return {
+          id: child.id,
+          name: child.name,
+          file: child.file,
+          fullName: childIsFileSuite ? undefined : childPath.join(" > "),
+          status: "running"
+        };
+      }
+
+      const found = this.findTestTarget(child, testId, childPath, false);
       if (found) return found;
     }
+
     return undefined;
   }
 
