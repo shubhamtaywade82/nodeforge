@@ -5,6 +5,17 @@ import { buildTestDebugConfiguration } from "../src/core/testDebugConfiguration.
 const ROOT = "/workspace/app";
 
 describe("buildTestDebugConfiguration", () => {
+  it("builds a whole-workspace debug configuration when no file is selected", () => {
+    const config = buildTestDebugConfiguration({
+      runner: "node",
+      workspaceRoot: ROOT
+    });
+
+    expect(config.runtimeExecutable).toBe("node");
+    expect(config.runtimeArgs).toEqual(["--inspect-brk", "--test"]);
+    expect(config.name).toBe("Debug node:test: workspace");
+  });
+
   it("builds a native node:test debug configuration", () => {
     const config = buildTestDebugConfiguration({
       runner: "node",
