@@ -138,7 +138,7 @@ Built-in Chat does **not** require MCP. To connect Claude Code or another MCP cl
 
 ## Limitations (0.1.0)
 
-- **Companion, not replacement** for the TypeScript language service, ESLint extension, or Test Explorer.
+- **Companion, not replacement** for the TypeScript language service or ESLint extension; NodeForge provides native VS Code Test Explorer integration.
 - TypeScript/ESLint/Biome results appear primarily in the **NodeForge Diagnostics** tree; dependency issues also appear in **Problems**.
 - **First workspace folder** only in multi-root setups.
 - Distributed via **VSIX / source**, not the public Marketplace yet.
