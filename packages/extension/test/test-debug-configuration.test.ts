@@ -19,7 +19,7 @@ describe("buildTestDebugConfiguration", () => {
       "--test",
       join(ROOT, "test/math.test.js"),
       "--test-name-pattern",
-      "^math \\> adds numbers$"
+      "^math > adds numbers$"
     ]);
     expect(config.cwd).toBe(ROOT);
     expect(config.autoAttachChildProcesses).toBe(true);
