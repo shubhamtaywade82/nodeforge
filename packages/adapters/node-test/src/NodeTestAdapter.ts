@@ -235,11 +235,17 @@ export function parseNodeTestOutput(
     };
     suiteItems.set(suite.id, suite);
 
-    let root = suiteRootsByFile.get(file);
-    if (!root) {
-      root = createFileSuite(file, workspaceRoot);
-      suiteRootsByFile.set(file, root);
+    if (!suiteRootsByFile.has(file)) {
+      suiteRootsByFile.set(file, createFileSuite(file, workspaceRoot));
     }
+  }
+
+  for (const node of nodes) {
+    if (node.type !== "suite") continue;
+    const file = resolveNodeFile(node.file, workspaceRoot);
+    const suite = suiteItems.get(`node-test:${file}:suite:${node.testId}`);
+    const root = suiteRootsByFile.get(file);
+    if (!suite || !root) continue;
 
     const parent = node.parentId !== undefined
       ? suiteItems.get(`node-test:${file}:suite:${node.parentId}`)
