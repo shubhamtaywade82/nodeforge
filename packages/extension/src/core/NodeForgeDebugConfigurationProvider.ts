@@ -47,6 +47,8 @@ export class NodeForgeDebugConfigurationProvider implements vscode.DebugConfigur
     _folder: vscode.WorkspaceFolder | undefined,
     _token?: vscode.CancellationToken
   ): Promise<vscode.DebugConfiguration[]> {
+    if (!isWorkspaceTrusted()) return [];
+
     const configs: vscode.DebugConfiguration[] = [];
 
     try {
@@ -111,7 +113,9 @@ export class NodeForgeDebugConfigurationProvider implements vscode.DebugConfigur
     _folder: vscode.WorkspaceFolder | undefined,
     debugConfiguration: vscode.DebugConfiguration,
     _token?: vscode.CancellationToken
-  ): Promise<vscode.DebugConfiguration> {
+  ): Promise<vscode.DebugConfiguration | undefined> {
+    if (!isWorkspaceTrusted()) return undefined;
+
     const env = await this.loadEnvFile();
     if (Object.keys(env).length > 0) {
       debugConfiguration.env = { ...env, ...debugConfiguration.env };
@@ -183,4 +187,12 @@ export class NodeForgeDebugConfigurationProvider implements vscode.DebugConfigur
       return {};
     }
   }
+}
+
+
+function isWorkspaceTrusted(): boolean {
+  const workspace = vscode.workspace as typeof vscode.workspace & {
+    isTrusted?: boolean;
+  };
+  return workspace.isTrusted === true;
 }
