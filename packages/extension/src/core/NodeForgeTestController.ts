@@ -194,7 +194,8 @@ export class NodeForgeTestController {
     }
 
     for (const test of suite.tests) {
-      this.addTestItem(this.controller as unknown as vscode.TestItem, test);
+      this.testCasesById.set(test.id, test);
+      this.controller.items.add(this.createTestItem(test));
     }
   }
 
