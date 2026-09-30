@@ -9,7 +9,7 @@
  *   - Continuous Testing mode
  *   - Native test result navigation
  *
- * The controller creates a TestRunProfile for "run" mode. Debug mode is declared for future native debug integration.
+ * The controller creates native Run and Debug TestRunProfiles.
  *
  * On each run, the controller:
  *   1. Calls the TestManager to run the detected test runner (Vitest, Jest, or Node test)
@@ -184,51 +184,56 @@ export class NodeForgeTestController {
         fileSuite.file ? vscode.Uri.file(fileSuite.file) : undefined
       );
 
-      // Add describe-block children.
-      for (const describeSuite of fileSuite.suites) {
-        const describeItem = this.controller.createTestItem(
-          describeSuite.id,
-          describeSuite.name,
-          fileSuite.file ? vscode.Uri.file(fileSuite.file) : undefined
-        );
-        for (const test of describeSuite.tests) {
-          const testItem = this.controller.createTestItem(
-            test.id,
-            test.name,
-            fileSuite.file ? vscode.Uri.file(fileSuite.file) : undefined
-          );
-          if (test.line) {
-            testItem.range = new vscode.Range(
-              new vscode.Position(test.line - 1, 0),
-              new vscode.Position(test.line - 1, 100)
-            );
-          }
-          describeItem.children.add(testItem);
-        }
-        fileItem.children.add(describeItem);
-      }
+      this.appendSuiteChildren(fileItem, fileSuite);
 
-      // Add top-level tests (not inside a describe block).
       for (const test of fileSuite.tests) {
-        this.testCasesById.set(test.id, test);
-        this.testCasesById.set(test.id, test);
-        const testItem = this.controller.createTestItem(
-          test.id,
-          test.name,
-          fileSuite.file ? vscode.Uri.file(fileSuite.file) : undefined
-        );
-        if (test.line) {
-          testItem.range = new vscode.Range(
-            new vscode.Position(test.line - 1, 0),
-            new vscode.Position(test.line - 1, 100)
-          );
-        }
-        fileItem.children.add(testItem);
+        this.addTestItem(fileItem, test);
       }
 
       this.controller.items.add(fileItem);
     }
+
+    for (const test of suite.tests) {
+      this.addTestItem(this.controller as unknown as vscode.TestItem, test);
+    }
   }
+
+  private appendSuiteChildren(parentItem: vscode.TestItem, suite: TestSuite): void {
+    for (const childSuite of suite.suites) {
+      const suiteItem = this.controller.createTestItem(
+        childSuite.id,
+        childSuite.name,
+        childSuite.file ? vscode.Uri.file(childSuite.file) : undefined
+      );
+
+      this.appendSuiteChildren(suiteItem, childSuite);
+
+      for (const test of childSuite.tests) {
+        this.addTestItem(suiteItem, test);
+      }
+
+      parentItem.children.add(suiteItem);
+    }
+  }
+
+  private addTestItem(parentItem: vscode.TestItem, test: TestCase): void {
+    this.testCasesById.set(test.id, test);
+    const testItem = this.controller.createTestItem(
+      test.id,
+      test.name,
+      test.file ? vscode.Uri.file(test.file) : undefined
+    );
+
+    if (test.line) {
+      testItem.range = new vscode.Range(
+        new vscode.Position(test.line - 1, 0),
+        new vscode.Position(test.line - 1, 100)
+      );
+    }
+
+    parentItem.children.add(testItem);
+  }
+
 
   private async debugHandler(
     request: vscode.TestRunRequest,
