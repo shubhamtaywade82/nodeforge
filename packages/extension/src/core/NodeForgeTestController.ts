@@ -19,7 +19,7 @@
  */
 
 import * as vscode from "vscode";
-import type { EventBus, TestCase, TestRunResult, TestSuite } from "@nodeforge/contracts";
+import type { TestCase, TestRunResult, TestSuite } from "@nodeforge/contracts";
 import type { TestManager } from "./TestManager.js";
 import { logger } from "./Logger.js";
 import { buildTestDebugConfiguration, type TestRunnerKind } from "./testDebugConfiguration.js";
@@ -31,8 +31,7 @@ export class NodeForgeTestController {
   private readonly testCasesById = new Map<string, TestCase>();
 
   constructor(
-    private readonly testManager: TestManager,
-    bus: EventBus
+    private readonly testManager: TestManager
   ) {
     this.controller = vscode.tests.createTestController(
       "nodeforge-tests",
