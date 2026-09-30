@@ -216,8 +216,7 @@ export class NodeForgeTestController {
     }
   }
 
-  private addTestItem(parentItem: vscode.TestItem, test: TestCase): void {
-    this.testCasesById.set(test.id, test);
+  private createTestItem(test: TestCase): vscode.TestItem {
     const testItem = this.controller.createTestItem(
       test.id,
       test.name,
@@ -231,9 +230,13 @@ export class NodeForgeTestController {
       );
     }
 
-    parentItem.children.add(testItem);
+    return testItem;
   }
 
+  private addTestItem(parentItem: vscode.TestItem, test: TestCase): void {
+    this.testCasesById.set(test.id, test);
+    parentItem.children.add(this.createTestItem(test));
+  }
 
   private async debugHandler(
     request: vscode.TestRunRequest,
