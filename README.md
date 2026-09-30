@@ -94,7 +94,7 @@ Phase 4:
 
 - [x] Live extension UI — `DiagnosticManager` orchestrates TS/ESLint/Biome adapters based on `WorkspaceProfile`, runs them on save (debounced), records results into the `DiagnosticStore`
 - [x] `DiagnosticsViewProvider` renders real findings grouped by source with click-to-navigate
-- [x] `TestManager` runs the detected Vitest/Jest/Node test runner; `TestsViewProvider` renders the test tree with pass/fail icons
+- [x] `TestManager` runs the detected Vitest/Jest/Node test runner; native Test Explorer renders nested suites with Run/Debug profiles
 - [x] `nodeforge.runDiagnostics` and `nodeforge.runTests` commands with progress UI
 - [x] `packages/core/runtime/ProcessManager` — long-lived process management with stdout/stderr streaming, runtime error detection, exit-code → diagnostic mapping
 - [x] `packages/adapters/git` — detects branch, dirty state, ahead/behind, changed/staged files via `git status --porcelain=v2`
