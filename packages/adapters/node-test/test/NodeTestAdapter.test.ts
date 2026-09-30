@@ -55,6 +55,9 @@ describe("NodeTestAdapter", () => {
     expect(result.suite.suites).toHaveLength(1);
     expect(result.suite.suites[0]?.tests).toHaveLength(4);
     expect(result.exitCode).toBe(0);
+    expect(result.result.durationMs).toBe(result.durationMs);
+    expect(result.result.stdout).toBe(result.rawStdout);
+    expect(result.result.stderr).toBe(result.rawStderr);
   });
 
   it("runs a specific file without turning the file path into a test-name filter", async () => {
