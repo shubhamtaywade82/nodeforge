@@ -272,7 +272,18 @@ Reset setting to `false` after testing.
 | Run Tests | Same structure as Vitest above | ☐ |
 | test runner in Workspace view | `jest` | ☐ |
 
-### 6.3 No test runner
+### 6.3 Node.js built-in test runner
+
+**Fixture:** `node-ts-node-test` (trusted, no extra dependencies)
+
+| Step | Expected | Pass |
+|------|----------|------|
+| Workspace detection | test runner = `node` | ☐ |
+| Run Tests | Pass/skip/todo results appear in Test Explorer | ☐ |
+| Nested suite | `nested math` contains `multiplies numbers` | ☐ |
+| Debug Test | Native Node debugger starts without installing packages | ☐ |
+
+### 6.4 No test runner
 
 **Fixture:** `node-ts-deps` (no test script)
 
@@ -281,6 +292,17 @@ Reset setting to `false` after testing.
 | Run Tests | Warning: "no test runner detected" | ☐ |
 
 ---
+
+### Native Test Explorer debugging
+
+For a test, file, or suite in the **Tests** view:
+
+| Step | Expected | Pass |
+|------|----------|------|
+| Select a test and choose **NodeForge Debug** | Debug session starts for the selected runner | ☐ |
+| Select a test file | Only that file is launched | ☐ |
+| Choose Debug with no selection | Whole detected test suite starts | ☐ |
+| Restricted Mode | Debug execution is blocked | ☐ |
 
 ## 7. Git
 
@@ -586,7 +608,7 @@ Use this for release or PR verification.
 | Workspace detection (ESLint + Biome + monorepo fixtures) | ☐ |
 | Diagnostics (TS + ESLint + Biome) | ☐ |
 | Click-to-navigate diagnostics | ☐ |
-| Tests (Vitest + Jest) | ☐ |
+| Tests (Vitest + Jest + Node test) | ☐ |
 | Git state | ☐ |
 | Database (Prisma + Drizzle) | ☐ |
 | Dependency audit | ☐ |
@@ -621,4 +643,4 @@ If you only have time for a minimal smoke test:
 
 The repository includes `packages/extension-vscode-tests`, which launches a real VS Code Extension Development Host against `packages/test-fixtures/node-ts-eslint`.
 
-The suite verifies extension activation, contributed command registration, and a real `nodeforge.analyzeWorkspace` command invocation. CI runs it through the root `pnpm test` command.
+The suite verifies extension activation, contributed command registration, workspace analysis, and the public test command. Deterministic adapter/manifest tests cover the Node built-in test runner and native Test Explorer debug configuration. CI runs the extension-host suite through the root `pnpm test` command.
