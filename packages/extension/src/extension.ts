@@ -124,7 +124,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const statusBar = new StatusBarController(bus);
 
   // Native Test Explorer integration.
-  const testController = new NodeForgeTestController(tests, bus);
+  const testController = new NodeForgeTestController(tests);
+  context.subscriptions.push(testController);
 
   // Quick Fix lightbulbs for ESLint/Biome diagnostics.
   const codeActionProvider = new NodeForgeCodeActionProvider(diagManager.getStore());
