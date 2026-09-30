@@ -85,9 +85,7 @@ export class NodeForgeTestController {
     const run = this.controller.createTestRun(request);
     const included = request.include ?? this.collectLeafTests(this.controller.items);
     const targetTest =
-      request.include?.length === 1 &&
-      request.include[0] &&
-      request.include[0].children.size === 0
+      request.include?.length === 1 && request.include[0]
         ? request.include[0]
         : undefined;
 
