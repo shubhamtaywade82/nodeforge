@@ -5,7 +5,7 @@ export type TestRunnerKind = "node" | "jest" | "vitest";
 export interface TestDebugTarget {
   readonly runner: TestRunnerKind;
   readonly workspaceRoot: string;
-  readonly file: string;
+  readonly file?: string;
   readonly fullName?: string;
 }
 
@@ -34,7 +34,8 @@ export function buildTestDebugConfiguration(target: TestDebugTarget): TestDebugC
   };
 
   if (target.runner === "node") {
-    const runtimeArgs = ["--inspect-brk", "--test", target.file];
+    const runtimeArgs = ["--inspect-brk", "--test"];
+    if (target.file) runtimeArgs.push(target.file);
     if (target.fullName) {
       runtimeArgs.push("--test-name-pattern", "^" + escapeRegExp(target.fullName) + "$");
     }
@@ -43,7 +44,9 @@ export function buildTestDebugConfiguration(target: TestDebugTarget): TestDebugC
       ...common,
       name: target.fullName
         ? "Debug node:test: " + target.fullName
-        : "Debug node:test: " + path.basename(target.file),
+        : target.file
+          ? "Debug node:test: " + path.basename(target.file)
+          : "Debug node:test: workspace",
       runtimeExecutable: "node",
       runtimeArgs
     };
@@ -56,10 +59,12 @@ export function buildTestDebugConfiguration(target: TestDebugTarget): TestDebugC
   const runtimeArgs = ["--inspect-brk", runnerEntry];
 
   if (target.runner === "vitest") {
-    runtimeArgs.push("run", target.file);
+    runtimeArgs.push("run");
+    if (target.file) runtimeArgs.push(target.file);
     if (target.fullName) runtimeArgs.push("-t", target.fullName);
   } else {
-    runtimeArgs.push(target.file, "--runInBand");
+    if (target.file) runtimeArgs.push(target.file);
+    runtimeArgs.push("--runInBand");
     if (target.fullName) runtimeArgs.push("-t", target.fullName);
   }
 
@@ -67,7 +72,9 @@ export function buildTestDebugConfiguration(target: TestDebugTarget): TestDebugC
     ...common,
     name: target.fullName
       ? "Debug " + target.runner + ": " + target.fullName
-      : "Debug " + target.runner + ": " + path.basename(target.file),
+      : target.file
+        ? "Debug " + target.runner + ": " + path.basename(target.file)
+        : "Debug " + target.runner + ": workspace",
     runtimeExecutable: "node",
     runtimeArgs
   };
