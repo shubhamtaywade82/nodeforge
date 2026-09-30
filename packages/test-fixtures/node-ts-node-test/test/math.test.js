@@ -1,4 +1,4 @@
-const test = require("node:test");
+const { describe, test } = require("node:test");
 const assert = require("node:assert/strict");
 
 test("adds numbers", () => {
@@ -15,4 +15,10 @@ test("skipped until integration service exists", { skip: "integration service un
 
 test("todo follow-up", { todo: "add broader coverage" }, () => {
   assert.equal("node", "node");
+});
+
+describe("nested math", () => {
+  test("multiplies numbers", () => {
+    assert.equal(2 * 3, 6);
+  });
 });
