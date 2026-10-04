@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
 import { join } from "node:path";
 import { buildTestDebugConfiguration } from "../src/core/testDebugConfiguration.ts";
 
@@ -11,9 +12,9 @@ describe("buildTestDebugConfiguration", () => {
       workspaceRoot: ROOT
     });
 
-    expect(config.runtimeExecutable).toBe("node");
-    expect(config.runtimeArgs).toEqual(["--inspect-brk", "--test"]);
-    expect(config.name).toBe("Debug node:test: workspace");
+    assert.equal(config.runtimeExecutable, "node");
+    assert.deepEqual(config.runtimeArgs, ["--inspect-brk", "--test"]);
+    assert.equal(config.name, "Debug node:test: workspace");
   });
 
   it("builds a native node:test debug configuration", () => {
@@ -24,16 +25,16 @@ describe("buildTestDebugConfiguration", () => {
       fullName: "math > adds numbers"
     });
 
-    expect(config.runtimeExecutable).toBe("node");
-    expect(config.runtimeArgs).toEqual([
+    assert.equal(config.runtimeExecutable, "node");
+    assert.deepEqual(config.runtimeArgs, [
       "--inspect-brk",
       "--test",
       join(ROOT, "test/math.test.js"),
       "--test-name-pattern",
       "^math > adds numbers$"
     ]);
-    expect(config.cwd).toBe(ROOT);
-    expect(config.autoAttachChildProcesses).toBe(true);
+    assert.equal(config.cwd, ROOT);
+    assert.equal(config.autoAttachChildProcesses, true);
   });
 
   it("builds a local Vitest debug configuration", () => {
@@ -45,8 +46,8 @@ describe("buildTestDebugConfiguration", () => {
       fullName: "math > adds numbers"
     });
 
-    expect(config.runtimeExecutable).toBe("node");
-    expect(config.runtimeArgs).toEqual([
+    assert.equal(config.runtimeExecutable, "node");
+    assert.deepEqual(config.runtimeArgs, [
       "--inspect-brk",
       join(ROOT, "node_modules/vitest/vitest.mjs"),
       "run",
@@ -54,7 +55,7 @@ describe("buildTestDebugConfiguration", () => {
       "-t",
       "math > adds numbers"
     ]);
-    expect(config.autoAttachChildProcesses).toBe(true);
+    assert.equal(config.autoAttachChildProcesses, true);
   });
 
   it("builds a local Jest debug configuration", () => {
@@ -65,8 +66,8 @@ describe("buildTestDebugConfiguration", () => {
       file
     });
 
-    expect(config.runtimeExecutable).toBe("node");
-    expect(config.runtimeArgs).toEqual([
+    assert.equal(config.runtimeExecutable, "node");
+    assert.deepEqual(config.runtimeArgs, [
       "--inspect-brk",
       join(ROOT, "node_modules/jest/bin/jest.js"),
       file,
