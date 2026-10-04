@@ -33,9 +33,13 @@ interface PackageJson extends PackageJsonDeps {
 
 export class NodeForgeDebugConfigurationProvider implements vscode.DebugConfigurationProvider {
   constructor(
-    private readonly workspaceRoot: string,
+    private workspaceRoot: string,
     private packageManager: "npm" | "pnpm" | "yarn"
   ) {}
+
+  setWorkspaceRoot(workspaceRoot: string): void {
+    this.workspaceRoot = workspaceRoot;
+  }
 
   setPackageManager(packageManager: "npm" | "pnpm" | "yarn"): void {
     this.packageManager = packageManager;

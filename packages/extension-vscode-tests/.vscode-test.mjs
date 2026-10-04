@@ -3,6 +3,7 @@
  *
  *   host       the original smoke tests against the node-ts-eslint fixture
  *   trusted    NodeForge features in a trusted workspace
+ *   multiroot  a three-folder .code-workspace: active-folder selection and fallback
  *   untrusted  Restricted Mode: nothing may execute project code
  */
 import { defineConfig } from "@vscode/test-cli";
@@ -67,6 +68,16 @@ const trusted = {
   mocha
 };
 
+const multiroot = {
+  label: "multiroot",
+  files: "test/suites/multiroot/*.test.js",
+  version,
+  extensionDevelopmentPath,
+  workspaceFolder: "./test/fixtures/multiroot/multiroot.code-workspace",
+  launchArgs: ["--disable-gpu", ...sandbox],
+  mocha
+};
+
 const untrusted =
   process.platform === "win32"
     ? undefined
@@ -82,4 +93,4 @@ const untrusted =
         mocha
       };
 
-export default defineConfig(untrusted ? [host, trusted, untrusted] : [host, trusted]);
+export default defineConfig(untrusted ? [host, trusted, multiroot, untrusted] : [host, trusted, multiroot]);

@@ -12,6 +12,8 @@
  *     on demand, runtime processes can be started.
  */
 
+import * as path from "node:path";
+import { resolveActiveFolder, folderContaining, type FolderRef } from "./core/activeFolder.js";
 import * as vscode from "vscode";
 
 import {
@@ -100,8 +102,14 @@ let depGraphAbort: AbortController | undefined;
 export interface NodeForgeExtensionExports {
   readonly __testing: {
     readonly handleParticipantRequest: typeof handleParticipantRequest;
+    readonly activeRoot: () => string | undefined;
+    readonly selectFolder: (fsPath: string) => Promise<void>;
   };
 }
+
+const SELECTED_FOLDER_KEY = "nodeforge.activeFolder";
+/** Explicit multi-root selection; resolved against the live folder list on every read. */
+let selectedRoot: string | undefined;
 
 export async function activate(context: vscode.ExtensionContext): Promise<NodeForgeExtensionExports> {
   logger.info("NodeForge extension activating");
@@ -127,7 +135,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<NodeFo
   registerNodeForgeLanguageModelTools(context, session);
   context.subscriptions.push(registerOllamaLanguageModelChatProvider());
   registerNodeForgeChatParticipant(context, isTrusted);
-  registerNodeForgeMcpProvider(context, isTrusted, resolveWorkspaceRoot);
+  const mcpProvider = registerNodeForgeMcpProvider(context, isTrusted, resolveWorkspaceRoot);
   registerReports(context, session, isTrusted);
   const depDiagPublisher = new DependencyDiagnosticPublisher();
   dependencyDiagnostics = depDiagPublisher;
@@ -140,6 +148,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<NodeFo
   const git = new GitAdapter(runner);
   gitAdapter = git;
 
+  selectedRoot = context.workspaceState.get<string>(SELECTED_FOLDER_KEY);
   const rootOnActivate = resolveWorkspaceRoot();
   if (rootOnActivate) {
     session.bindRoot(rootOnActivate);
@@ -808,27 +817,96 @@ export async function activate(context: vscode.ExtensionContext): Promise<NodeFo
   context.subscriptions.push(watcher.onDidCreate(onConfigChange));
   context.subscriptions.push(watcher.onDidDelete(onConfigChange));
 
-  // Multi-root workspace support: re-analyze when folders are added/removed.
+  // Multi-root: one active folder at a time. Switching rebinds the session, providers and MCP
+  // server, then re-analyzes; the status bar item shows which folder is active.
+  const folderStatus = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 90);
+  folderStatus.command = "nodeforge.selectWorkspaceFolder";
+  folderStatus.tooltip = "NodeForge: select the active workspace folder";
+  context.subscriptions.push(folderStatus);
+  const renderFolderStatus = (): void => {
+    const folders = workspaceFolderRefs();
+    const active = resolveActiveFolder(folders, selectedRoot);
+    if (folders.length > 1 && active) {
+      folderStatus.text = `$(root-folder) ${active.name}`;
+      folderStatus.show();
+    } else {
+      folderStatus.hide();
+    }
+  };
+
+  const applyActiveFolder = async (reason: string): Promise<void> => {
+    renderFolderStatus();
+    const r = resolveWorkspaceRoot();
+    if (!r) {
+      treeViews.workspace!.message = "Open a workspace folder to begin";
+      return;
+    }
+    session.bindRoot(r);
+    taskProviderImpl?.setWorkspaceRoot(r);
+    debugProvider?.setWorkspaceRoot(r);
+    mcpProvider.refresh();
+    if (!isTrusted()) return;
+    try {
+      const profile = await manager.analyze(r);
+      workspaceView.render(profile);
+      treeViews.workspace!.message = undefined;
+      devDocs.setProfile(profile);
+      scheduleBackgroundDependencyAudit(r, depManager, session);
+      scheduleBackgroundDependencyGraph(r, graphManager, session, dependencyView, depDiagPublisher);
+      logger.info(`Active folder ${r} (${reason})`);
+    } catch (err) {
+      logger.error(`Analysis of active folder failed (${reason})`, err);
+    }
+  };
+
+  const selectFolder = async (fsPath: string): Promise<void> => {
+    const hit = workspaceFolderRefs().find((f) => f.fsPath === fsPath);
+    if (!hit) {
+      throw new Error(`Not a workspace folder: ${fsPath}`);
+    }
+    selectedRoot = hit.fsPath;
+    await context.workspaceState.update(SELECTED_FOLDER_KEY, selectedRoot);
+    await applyActiveFolder("selected");
+  };
+
   context.subscriptions.push(
+    vscode.commands.registerCommand("nodeforge.selectWorkspaceFolder", async (folderPath?: string) => {
+      if (typeof folderPath === "string") {
+        await selectFolder(folderPath);
+        return;
+      }
+      const folders = workspaceFolderRefs();
+      if (folders.length < 2) {
+        void vscode.window.showInformationMessage("NodeForge: this workspace has a single folder.");
+        return;
+      }
+      const active = resolveWorkspaceRoot();
+      const pick = await vscode.window.showQuickPick(
+        folders.map((f) => ({ label: f.name, description: f.fsPath, picked: f.fsPath === active, fsPath: f.fsPath })),
+        { placeHolder: "Select the folder NodeForge analyzes and acts on" }
+      );
+      if (pick) await selectFolder(pick.fsPath);
+    }),
+    // Follow the editor only when the user opted in; never switch silently by default.
+    vscode.window.onDidChangeActiveTextEditor((editor) => {
+      if (!editor || editor.document.uri.scheme !== "file") return;
+      if (!vscode.workspace.getConfiguration("nodeforge.workspace").get<boolean>("followActiveEditor", false)) return;
+      const hit = folderContaining(workspaceFolderRefs(), editor.document.uri.fsPath, path.sep);
+      if (hit && hit.fsPath !== resolveWorkspaceRoot()) void selectFolder(hit.fsPath);
+    }),
     vscode.workspace.onDidChangeWorkspaceFolders((e) => {
       if (e.added.length > 0) {
         logger.info(`Workspace folder(s) added: ${e.added.map((f) => f.name).join(", ")}`);
-        const newRoot = e.added[0]?.uri.fsPath;
-        if (newRoot) {
-          void manager.analyze(newRoot).then(
-            (profile) => {
-              workspaceView.render(profile);
-              treeViews.workspace!.message = undefined;
-            },
-            (err) => logger.error("Re-analysis after folder add failed", err)
-          );
-        }
       }
       if (e.removed.length > 0) {
         logger.info(`Workspace folder(s) removed: ${e.removed.map((f) => f.name).join(", ")}`);
       }
+      const stillActive = !selectedRoot || workspaceFolderRefs().some((f) => f.fsPath === selectedRoot);
+      if (!stillActive) selectedRoot = undefined;
+      void applyActiveFolder("workspace folders changed");
     })
   );
+  renderFolderStatus();
 
   // Dispose managers when the extension is deactivated.
   context.subscriptions.push(
@@ -903,7 +981,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<NodeFo
   }
 
   logger.info("NodeForge extension activated");
-  return { __testing: { handleParticipantRequest } };
+  return { __testing: { handleParticipantRequest, activeRoot: resolveWorkspaceRoot, selectFolder } };
 }
 
 export function deactivate(): void {
@@ -938,11 +1016,13 @@ function isTrusted(): boolean {
   return isWorkspaceTrusted();
 }
 
+function workspaceFolderRefs(): FolderRef[] {
+  return (vscode.workspace.workspaceFolders ?? []).map((f) => ({ name: f.name, fsPath: f.uri.fsPath }));
+}
+
+/** The folder every NodeForge feature operates on: the explicit selection, else the first folder. */
 function resolveWorkspaceRoot(): string | undefined {
-  const folders = vscode.workspace.workspaceFolders;
-  if (!folders || folders.length === 0) return undefined;
-  const first = folders[0];
-  return first ? first.uri.fsPath : undefined;
+  return resolveActiveFolder(workspaceFolderRefs(), selectedRoot)?.fsPath;
 }
 
 async function openDevDocs(url: string): Promise<void> {

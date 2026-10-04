@@ -30,6 +30,7 @@
   ],
   "activationEvents": [
     "onCommand:nodeforge.analyzeWorkspace",
+    "onCommand:nodeforge.selectWorkspaceFolder",
     "onCommand:nodeforge.runDiagnostics",
     "onCommand:nodeforge.runTests",
     "onView:nodeforge.workspace",
@@ -284,6 +285,11 @@
     },
     "commands": [
       {
+        "command": "nodeforge.selectWorkspaceFolder",
+        "title": "NodeForge: Select Workspace Folder",
+        "enablement": "workbench.workspace.folderCount > 1"
+      },
+      {
         "command": "nodeforge.analyzeWorkspace",
         "title": "NodeForge: Analyze Workspace",
         "category": "NodeForge"
@@ -492,6 +498,11 @@
           "type": "boolean",
           "default": true,
           "description": "Analyze dependency graph (unused/circular/missing) on activation and when package.json changes (trusted workspaces)."
+        },
+        "nodeforge.workspace.followActiveEditor": {
+          "type": "boolean",
+          "default": false,
+          "description": "In multi-root workspaces, switch NodeForge's active folder to the folder of the focused editor. Off by default; use “NodeForge: Select Workspace Folder” otherwise."
         },
         "nodeforge.debug.loadDotEnv": {
           "type": "boolean",
