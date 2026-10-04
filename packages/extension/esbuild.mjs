@@ -29,7 +29,19 @@ const options = {
   logLevel: "info"
 };
 
+/**
+ * The MCP server is launched by VS Code as a separate Node process, so it is
+ * bundled as its own self-contained entry point (see src/ai/mcpServerSpec.ts).
+ * @type {import("esbuild").BuildOptions}
+ */
+const mcpOptions = {
+  ...options,
+  entryPoints: ["../agent/src/cli.ts"],
+  outfile: "dist/mcp.cjs"
+};
+
 if (watch) {
+  await build(mcpOptions);
   const ctx = await build({ ...options, watch: true });
   // Keep the process alive.
   process.stdin.pipe(process.stdin);
@@ -38,4 +50,5 @@ if (watch) {
   void ctx;
 } else {
   await build(options);
+  await build(mcpOptions);
 }
