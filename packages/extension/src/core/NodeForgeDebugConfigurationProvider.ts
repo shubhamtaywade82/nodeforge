@@ -19,6 +19,7 @@
  *   - env from .env if present
  */
 
+import { parseDotEnv } from "./dotenv.js";
 import * as vscode from "vscode";
 import * as path from "node:path";
 import { buildCurrentTsFileConfig, type PackageJsonDeps } from "./debugConfigs.js";
@@ -111,7 +112,7 @@ export class NodeForgeDebugConfigurationProvider implements vscode.DebugConfigur
     const env = await this.loadEnvFile();
     if (Object.keys(env).length > 0) {
       debugConfiguration.env = { ...env, ...debugConfiguration.env };
-      logger.info(`Loaded ${Object.keys(env).length} env vars from .env for debug session`);
+      logger.info(`Injected ${Object.keys(env).length} env vars from .env into debug session (nodeforge.debug.loadDotEnv): ${Object.keys(env).join(", ")}`);
     }
 
     return debugConfiguration;
@@ -158,23 +159,17 @@ export class NodeForgeDebugConfigurationProvider implements vscode.DebugConfigur
     return JSON.parse(raw) as PackageJson;
   }
 
-  /** Best-effort .env file loader. Returns an env var map. */
+  /**
+   * Opt-in (`nodeforge.debug.loadDotEnv`). Only variable NAMES are logged, never values.
+   * Existing `env` entries in the launch configuration win.
+   */
   private async loadEnvFile(): Promise<Record<string, string>> {
+    const enabled = vscode.workspace.getConfiguration("nodeforge.debug").get<boolean>("loadDotEnv", false);
+    if (!enabled) return {};
     try {
       const fs = await import("node:fs/promises");
-      const envPath = path.join(this.workspaceRoot, ".env");
-      const content = await fs.readFile(envPath, "utf8");
-      const env: Record<string, string> = {};
-      for (const line of content.split("\n")) {
-        const trimmed = line.trim();
-        if (!trimmed || trimmed.startsWith("#")) continue;
-        const eqIdx = trimmed.indexOf("=");
-        if (eqIdx === -1) continue;
-        const key = trimmed.slice(0, eqIdx).trim();
-        const value = trimmed.slice(eqIdx + 1).trim().replace(/^["']|["']$/g, "");
-        env[key] = value;
-      }
-      return env;
+      const content = await fs.readFile(path.join(this.workspaceRoot, ".env"), "utf8");
+      return parseDotEnv(content);
     } catch {
       return {};
     }

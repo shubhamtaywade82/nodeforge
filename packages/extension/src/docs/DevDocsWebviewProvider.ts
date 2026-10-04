@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import type { WorkspaceProfile } from "@nodeforge/contracts";
+import { DEVDOCS_IFRAME_SANDBOX, escapeHtml, isDevDocsUrl } from "./devdocsSecurity.js";
 import { buildDevDocsUrl, devDocsDefaultSlug, DEVDOCS_HOME_URL } from "@nodeforge/core";
 
 export class DevDocsWebviewProvider implements vscode.WebviewViewProvider {
@@ -18,6 +19,9 @@ export class DevDocsWebviewProvider implements vscode.WebviewViewProvider {
   }
 
   navigate(url: string): void {
+    if (!isDevDocsUrl(url)) {
+      return;
+    }
     this.currentUrl = url;
     this.view?.webview.postMessage({ type: "navigate", url });
     if (this.view) {
@@ -38,7 +42,7 @@ export class DevDocsWebviewProvider implements vscode.WebviewViewProvider {
     webviewView.webview.html = this.getHtml(webviewView.webview, startUrl);
 
     webviewView.webview.onDidReceiveMessage((message: { type: string }) => {
-      if (message.type === "openExternal") {
+      if (message.type === "openExternal" && isDevDocsUrl(this.currentUrl)) {
         void vscode.env.openExternal(vscode.Uri.parse(this.currentUrl));
       }
     });
@@ -46,7 +50,7 @@ export class DevDocsWebviewProvider implements vscode.WebviewViewProvider {
 
   private getHtml(webview: vscode.Webview, iframeUrl: string): string {
     const nonce = getNonce();
-    const escaped = iframeUrl.replace(/"/g, "&quot;");
+    const escaped = escapeHtml(isDevDocsUrl(iframeUrl) ? iframeUrl : DEVDOCS_HOME_URL);
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -73,15 +77,19 @@ export class DevDocsWebviewProvider implements vscode.WebviewViewProvider {
     <span>DevDocs.io (embedded)</span>
     <button id="external">Open in browser</button>
   </div>
-  <iframe id="frame" src="${escaped}" title="DevDocs documentation"></iframe>
+  <iframe id="frame" src="${escaped}" title="DevDocs documentation" sandbox="${DEVDOCS_IFRAME_SANDBOX}" referrerpolicy="no-referrer"></iframe>
   <script nonce="${nonce}">
     const vscode = acquireVsCodeApi();
     document.getElementById('external').addEventListener('click', () => {
       vscode.postMessage({ type: 'openExternal' });
     });
     window.addEventListener('message', (e) => {
-      if (e.data && e.data.type === 'navigate' && e.data.url) {
-        document.getElementById('frame').src = e.data.url;
+      if (e.data && e.data.type === 'navigate' && typeof e.data.url === 'string') {
+        let u;
+        try { u = new URL(e.data.url); } catch { return; }
+        if (u.protocol === 'https:' && u.hostname === 'devdocs.io' && !u.port && !u.username && !u.password) {
+          document.getElementById('frame').src = u.href;
+        }
       }
     });
   </script>

@@ -20,13 +20,14 @@ export class DependencyGraphManager {
     this.profile = profile;
   }
 
-  async analyze(): Promise<DependencyGraphAnalysis | undefined> {
+  async analyze(signal?: AbortSignal): Promise<DependencyGraphAnalysis | undefined> {
     if (!this.profile) return undefined;
     try {
-      this.current = await this.adapter.analyze(this.profile.root);
+      this.current = await this.adapter.analyze(this.profile.root, signal);
       this.bus.publish({ type: "dependencyGraph.analyzed", analysis: this.current });
       return this.current;
     } catch (err) {
+      if (signal?.aborted) return undefined;
       // eslint-disable-next-line no-console
       console.error("[nodeforge:dependency-graph-manager] analyze failed", err);
       return undefined;

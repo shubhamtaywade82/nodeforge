@@ -111,6 +111,7 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
   private getHtml(webview: vscode.Webview): string {
     const styleUri = webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, "media", "chat", "chat.css"));
     const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, "media", "chat", "chat.js"));
+    const markdownUri = webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, "media", "chat", "markdown.js"));
     const nonce = getNonce();
 
     return `<!DOCTYPE html>
@@ -150,6 +151,7 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
       <button id="cancel" class="secondary" disabled>Stop</button>
     </div>
   </div>
+  <script nonce="${nonce}" src="${markdownUri}"></script>
   <script nonce="${nonce}" src="${scriptUri}"></script>
 </body>
 </html>`;

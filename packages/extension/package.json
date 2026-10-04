@@ -493,6 +493,12 @@
           "default": true,
           "description": "Analyze dependency graph (unused/circular/missing) on activation and when package.json changes (trusted workspaces)."
         },
+        "nodeforge.debug.loadDotEnv": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Inject variables from the workspace `.env` into NodeForge-resolved debug sessions (trusted workspaces only). Off by default; variable names are logged, values never are.",
+          "scope": "resource"
+        },
         "nodeforge.docs.preferExternal": {
           "type": "boolean",
           "default": false,

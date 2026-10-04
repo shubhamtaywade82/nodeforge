@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { escapeHtml } from "./devdocsSecurity.js";
 
 export function openOfflineDocPanel(
   context: vscode.ExtensionContext,
@@ -22,5 +23,5 @@ export function openOfflineDocPanel(
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; frame-src ${panel.webview.cspSource}; style-src ${panel.webview.cspSource} 'unsafe-inline'; img-src ${panel.webview.cspSource} data:;" />
 <style>html,body,iframe{margin:0;padding:0;height:100%;width:100%;border:0;}</style>
 </head>
-<body><iframe src="${uri}" title="${title}"></iframe></body></html>`;
+<body><iframe src="${uri}" title="${escapeHtml(title)}"></iframe></body></html>`;
 }
