@@ -1,0 +1,80 @@
+const assert = require("node:assert");
+const fs = require("node:fs");
+const path = require("node:path");
+const vscode = require("vscode");
+const { activateExtension, invokeTool, waitFor, workspaceRoot } = require("../../lib/helpers");
+
+suite("Trusted workspace", () => {
+  suiteSetup(async () => {
+    await activateExtension();
+  });
+
+  test("the workspace is trusted", () => {
+    assert.strictEqual(vscode.workspace.isTrusted, true);
+  });
+
+  test("nodeforge_get_project_context returns the fixture profile", async () => {
+    const profile = JSON.parse(await invokeTool("nodeforge_get_project_context"));
+    assert.strictEqual(profile.root, workspaceRoot());
+    assert.strictEqual(profile.typescript, true);
+    assert.strictEqual(profile.testRunner, "vitest");
+  });
+
+  test("the git-diff tool runs in a trusted workspace and returns a diff object, not a refusal", async () => {
+    const result = JSON.parse(await invokeTool("nodeforge_get_git_diff", { scope: "working" }));
+    assert.strictEqual(result.error, undefined, `tool refused: ${JSON.stringify(result)}`);
+    assert.strictEqual(result.scope, "working");
+    assert.ok(Array.isArray(result.files));
+  });
+
+  test("the NodeForge terminal profile is offered as an extension profile and opens as 'NodeForge'", async () => {
+    // `newWithProfile` only knows detected shells, so select the contributed profile as the default.
+    const platformKey = process.platform === "win32" ? "windows" : process.platform === "darwin" ? "osx" : "linux";
+    const config = vscode.workspace.getConfiguration("terminal.integrated.defaultProfile");
+    await config.update(platformKey, "NodeForge", vscode.ConfigurationTarget.Global);
+    try {
+      const opened = new Promise                 ((resolve) => {
+        const sub = vscode.window.onDidOpenTerminal((t) => {
+          if (t.name === "NodeForge") {
+            sub.dispose();
+            resolve(t);
+          }
+        });
+      });
+      await vscode.commands.executeCommand("workbench.action.terminal.new");
+      const terminal = await Promise.race([
+        opened,
+        new Promise       ((_, reject) => setTimeout(() => reject(new Error("terminal did not open")), 15000))
+      ]);
+      assert.strictEqual(terminal.name, "NodeForge");
+      terminal.dispose();
+    } finally {
+      await config.update(platformKey, undefined, vscode.ConfigurationTarget.Global);
+    }
+  });
+
+  test("F5 debug sessions get .env values injected by the NodeForge debug provider", async () => {
+    const out = path.join(workspaceRoot(), "out.txt");
+    const dotenv = path.join(workspaceRoot(), ".env");
+    fs.rmSync(out, { force: true });
+    fs.writeFileSync(dotenv, "NF_FIXTURE_VAR=from-dotenv\n");
+    const folder = vscode.workspace.workspaceFolders?.[0];
+    const started = await vscode.debug.startDebugging(folder, {
+      type: "node",
+      request: "launch",
+      name: "nodeforge-integration",
+      program: path.join(workspaceRoot(), "src", "debug-target.js"),
+      cwd: workspaceRoot(),
+      console: "internalConsole",
+      env: { NF_OUT: out }
+    });
+    try {
+      assert.strictEqual(started, true, "debug session did not start");
+      const content = await waitFor(() => (fs.existsSync(out) ? fs.readFileSync(out, "utf8") : undefined), "debuggee output", 30000);
+      assert.strictEqual(content, "from-dotenv");
+    } finally {
+      fs.rmSync(out, { force: true });
+      fs.rmSync(dotenv, { force: true });
+    }
+  });
+});
