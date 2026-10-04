@@ -172,7 +172,7 @@
       ],
       "editor/context": [
         {
-          "command": "nodeforge.searchDevDocs",
+          "submenu": "nodeforge.editorSubmenu",
           "when": "editorTextFocus",
           "group": "navigation@95"
         }
@@ -192,6 +192,93 @@
           "command": "nodeforge.copyAdvisoryUrl",
           "when": "view == nodeforge.dependencies && viewItem == detail",
           "group": "9_cutcopypaste"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "nodeforge.stopProcess",
+          "when": "false"
+        },
+        {
+          "command": "nodeforge.copyAdvisoryUrl",
+          "when": "false"
+        },
+        {
+          "command": "nodeforge.openAdvisoryUrl",
+          "when": "false"
+        },
+        {
+          "command": "nodeforge.runDiagnostics",
+          "when": "workspaceFolderCount > 0 && isWorkspaceTrusted"
+        },
+        {
+          "command": "nodeforge.runTests",
+          "when": "workspaceFolderCount > 0 && isWorkspaceTrusted"
+        },
+        {
+          "command": "nodeforge.auditDependencies",
+          "when": "workspaceFolderCount > 0 && isWorkspaceTrusted"
+        },
+        {
+          "command": "nodeforge.analyzeDependencyGraph",
+          "when": "workspaceFolderCount > 0 && isWorkspaceTrusted"
+        },
+        {
+          "command": "nodeforge.startDevServer",
+          "when": "workspaceFolderCount > 0 && isWorkspaceTrusted"
+        },
+        {
+          "command": "nodeforge.applyEslintFix",
+          "when": "workspaceFolderCount > 0 && isWorkspaceTrusted"
+        },
+        {
+          "command": "nodeforge.applyBiomeFix",
+          "when": "workspaceFolderCount > 0 && isWorkspaceTrusted"
+        },
+        {
+          "command": "nodeforge.formatCurrentFile",
+          "when": "workspaceFolderCount > 0 && isWorkspaceTrusted"
+        },
+        {
+          "command": "nodeforge.runTestFromFile",
+          "when": "workspaceFolderCount > 0 && isWorkspaceTrusted"
+        },
+        {
+          "command": "nodeforge.debugTestFromFile",
+          "when": "workspaceFolderCount > 0 && isWorkspaceTrusted"
+        },
+        {
+          "command": "nodeforge.showDependencyGraph",
+          "when": "workspaceFolderCount > 0"
+        },
+        {
+          "command": "nodeforge.showDatabaseSchema",
+          "when": "workspaceFolderCount > 0"
+        }
+      ],
+      "nodeforge.editorSubmenu": [
+        {
+          "command": "nodeforge.searchDevDocs",
+          "group": "1_docs"
+        },
+        {
+          "command": "nodeforge.formatCurrentFile",
+          "when": "isWorkspaceTrusted",
+          "group": "2_fix"
+        },
+        {
+          "command": "nodeforge.applyEslintFix",
+          "when": "isWorkspaceTrusted",
+          "group": "2_fix"
+        },
+        {
+          "command": "nodeforge.applyBiomeFix",
+          "when": "isWorkspaceTrusted",
+          "group": "2_fix"
+        },
+        {
+          "command": "nodeforge.openReport",
+          "group": "3_reports"
         }
       ]
     },
@@ -348,6 +435,12 @@
         "title": "NodeForge: Show Database Schema (ER Diagram)",
         "category": "NodeForge",
         "icon": "$(table)"
+      },
+      {
+        "command": "nodeforge.openReport",
+        "title": "NodeForge: Open Report",
+        "category": "NodeForge",
+        "icon": "$(file-code)"
       }
     ],
     "configuration": {
@@ -422,6 +515,21 @@
           "type": "string",
           "default": "http://localhost:11434",
           "description": "Ollama server base URL. Use a URL such as http://localhost:11434 for a local server."
+        },
+        "nodeforge.mcp.allowExecution": {
+          "type": "boolean",
+          "default": true,
+          "description": "Let the bundled NodeForge MCP server run project tooling (tsc, linters, tests). Only offered in trusted workspaces."
+        },
+        "nodeforge.mcp.allowWrites": {
+          "type": "boolean",
+          "default": false,
+          "description": "Let the bundled NodeForge MCP server run mutating tools (scripts, formatters, auto-fix)."
+        },
+        "nodeforge.mcp.allowNetwork": {
+          "type": "boolean",
+          "default": false,
+          "description": "Let the bundled NodeForge MCP server run network-dependent tools (dependency audit)."
         }
       }
     },
@@ -754,6 +862,139 @@
       {
         "vendor": "nodeforge-ollama",
         "displayName": "NodeForge Ollama"
+      }
+    ],
+    "chatParticipants": [
+      {
+        "id": "nodeforge.engineer",
+        "name": "nodeforge",
+        "fullName": "NodeForge",
+        "description": "Ask about your Node.js/TypeScript workspace: diagnostics, tests, dependencies, schema and Git changes.",
+        "isSticky": true,
+        "commands": [
+          {
+            "name": "context",
+            "description": "Describe the detected Node.js/TypeScript stack"
+          },
+          {
+            "name": "diagnostics",
+            "description": "Run compiler and lint checks and explain the findings"
+          },
+          {
+            "name": "tests",
+            "description": "Run the test suite and analyze failures"
+          },
+          {
+            "name": "deps",
+            "description": "Audit dependencies and the import graph"
+          },
+          {
+            "name": "db",
+            "description": "Inspect the database schema"
+          },
+          {
+            "name": "git",
+            "description": "Review the current Git changes"
+          },
+          {
+            "name": "validate",
+            "description": "Run the full validation pipeline (typecheck, lint, tests)"
+          }
+        ]
+      }
+    ],
+    "mcpServerDefinitionProviders": [
+      {
+        "id": "nodeforge.mcp",
+        "label": "NodeForge"
+      }
+    ],
+    "terminal": {
+      "profiles": [
+        {
+          "id": "nodeforge.terminal",
+          "title": "NodeForge",
+          "icon": "symbol-namespace"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "nodeforge.workspace",
+        "contents": "Open a folder to let NodeForge detect your Node.js/TypeScript stack.\n[Open Folder](command:workbench.action.files.openFolder)",
+        "when": "workspaceFolderCount == 0"
+      },
+      {
+        "view": "nodeforge.diagnostics",
+        "contents": "This workspace is in Restricted Mode, so NodeForge will not run compiler or lint tools.\n[Manage Workspace Trust](command:workbench.trust.manage)",
+        "when": "workspaceFolderCount > 0 && !isWorkspaceTrusted"
+      },
+      {
+        "view": "nodeforge.diagnostics",
+        "contents": "No diagnostics yet.\n[Run Diagnostics](command:nodeforge.runDiagnostics)",
+        "when": "workspaceFolderCount > 0 && isWorkspaceTrusted"
+      },
+      {
+        "view": "nodeforge.tests",
+        "contents": "This workspace is in Restricted Mode, so NodeForge will not run tests.\n[Manage Workspace Trust](command:workbench.trust.manage)",
+        "when": "workspaceFolderCount > 0 && !isWorkspaceTrusted"
+      },
+      {
+        "view": "nodeforge.tests",
+        "contents": "No test results yet.\n[Run Tests](command:nodeforge.runTests)",
+        "when": "workspaceFolderCount > 0 && isWorkspaceTrusted"
+      },
+      {
+        "view": "nodeforge.runtime",
+        "contents": "No NodeForge-managed processes are running.\n[Start Dev Server](command:nodeforge.startDevServer)",
+        "when": "workspaceFolderCount > 0 && isWorkspaceTrusted"
+      },
+      {
+        "view": "nodeforge.git",
+        "contents": "Git state has not been loaded.\n[Refresh Git State](command:nodeforge.refreshGit)",
+        "when": "workspaceFolderCount > 0"
+      },
+      {
+        "view": "nodeforge.database",
+        "contents": "No database schema loaded. NodeForge reads Prisma and Drizzle schemas.\n[Detect Database Schema](command:nodeforge.detectDatabase)",
+        "when": "workspaceFolderCount > 0"
+      },
+      {
+        "view": "nodeforge.dependencies",
+        "contents": "No dependency audit yet.\n[Audit Dependencies](command:nodeforge.auditDependencies)\n[Analyze Dependency Graph](command:nodeforge.analyzeDependencyGraph)",
+        "when": "workspaceFolderCount > 0 && isWorkspaceTrusted"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "nodeforge.runDiagnostics",
+        "key": "ctrl+alt+n d",
+        "mac": "cmd+alt+n d",
+        "when": "workspaceFolderCount > 0 && isWorkspaceTrusted"
+      },
+      {
+        "command": "nodeforge.runTests",
+        "key": "ctrl+alt+n t",
+        "mac": "cmd+alt+n t",
+        "when": "workspaceFolderCount > 0 && isWorkspaceTrusted"
+      },
+      {
+        "command": "nodeforge.openReport",
+        "key": "ctrl+alt+n r",
+        "mac": "cmd+alt+n r",
+        "when": "workspaceFolderCount > 0"
+      },
+      {
+        "command": "nodeforge.openChat",
+        "key": "ctrl+alt+n c",
+        "mac": "cmd+alt+n c",
+        "when": "workspaceFolderCount > 0"
+      }
+    ],
+    "submenus": [
+      {
+        "id": "nodeforge.editorSubmenu",
+        "label": "NodeForge"
       }
     ]
   },

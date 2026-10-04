@@ -60,6 +60,11 @@ import { DependencyGraphPanel } from "./core/DependencyGraphPanel.js";
 import { DatabaseSchemaPanel } from "./core/DatabaseSchemaPanel.js";
 import { logger } from "./core/Logger.js";
 import { registerNodeForgeLanguageModelTools } from "./ai/LanguageModelTools.js";
+import { registerNodeForgeChatParticipant } from "./ai/NodeForgeChatParticipant.js";
+import { registerNodeForgeMcpProvider } from "./ai/NodeForgeMcpProvider.js";
+import { registerReports } from "./reports/ReportContentProvider.js";
+import { terminalProfileOptions } from "./core/terminalProfile.js";
+import { PersistentCache } from "./core/PersistentCache.js";
 import { registerOllamaLanguageModelChatProvider } from "./ai/OllamaLanguageModelChatProvider.js";
 import { isWorkspaceTrusted } from "./core/workspaceTrust.js";
 
@@ -74,6 +79,14 @@ let devDocsProvider: DevDocsWebviewProvider | undefined;
 let devDocsOffline: DevDocsOfflineManager | undefined;
 let gitAdapter: GitAdapter | undefined;
 let eventBus: EventBus | undefined;
+
+const PROFILE_CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+
+function isCachedProfile(data: unknown): data is WorkspaceProfile {
+  if (typeof data !== "object" || data === null) return false;
+  const p = data as Record<string, unknown>;
+  return typeof p["root"] === "string" && typeof p["runtime"] === "string" && typeof p["packageManager"] === "string";
+}
 
 const CHAT_API_KEY_SECRET = "nodeforge.chat.apiKey";
 let depAuditTimer: ReturnType<typeof setTimeout> | undefined;
@@ -102,6 +115,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const session = new ExtensionWorkspaceSession(bus);
   registerNodeForgeLanguageModelTools(context, session);
   context.subscriptions.push(registerOllamaLanguageModelChatProvider());
+  registerNodeForgeChatParticipant(context, isTrusted);
+  registerNodeForgeMcpProvider(context, isTrusted, resolveWorkspaceRoot);
+  registerReports(context, session, isTrusted);
   const depDiagPublisher = new DependencyDiagnosticPublisher();
   dependencyDiagnostics = depDiagPublisher;
   const chatController = new ChatController(
@@ -170,6 +186,27 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const root = resolveWorkspaceRoot();
   if (!root) {
     treeViews.workspace!.message = "Open a workspace folder to begin";
+  }
+
+  // Persist the last profile so views are populated instantly (and in Restricted Mode).
+  const profileCache = new PersistentCache<WorkspaceProfile>(
+    context.workspaceState,
+    "nodeforge.cache.profile",
+    1,
+    PROFILE_CACHE_MAX_AGE_MS,
+    isCachedProfile
+  );
+  bus.subscribe("workspace.profiled", (e) => {
+    void profileCache.write(e.profile.root, e.profile).then(undefined, (err) =>
+      logger.warn(`Could not persist workspace profile: ${String(err)}`)
+    );
+  });
+  const cachedProfile = root ? profileCache.read(root) : undefined;
+  if (cachedProfile) {
+    workspaceView.render(cachedProfile);
+    treeViews.workspace!.message = isTrusted()
+      ? "Showing last known profile — refreshing"
+      : "Showing last known profile — trust this workspace to refresh";
   }
 
   context.subscriptions.push(
@@ -796,34 +833,56 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   // ─── Auto-run on activation ───
 
-  if (root && isTrusted()) {
-    logger.info(`Auto-running for workspace: ${root}`);
-
-    // Register the Task Provider after we have a workspace root.
-    const taskProviderImpl = new NodeForgeTaskProvider(root, "npm");
-    const taskProvider = vscode.tasks.registerTaskProvider(
-      NodeForgeTaskProvider.taskType,
-      taskProviderImpl
-    );
-    context.subscriptions.push(taskProvider);
-
-    // Register the Debug Configuration Provider for F5 debugging.
-    const debugProvider = new NodeForgeDebugConfigurationProvider(root, "npm");
+  // Task and debug providers only read package.json and generate configurations; VS Code
+  // itself blocks executing tasks and launching debuggers in untrusted workspaces.
+  const taskProviderImpl = root ? new NodeForgeTaskProvider(root, "npm") : undefined;
+  const debugProvider = root ? new NodeForgeDebugConfigurationProvider(root, "npm") : undefined;
+  if (taskProviderImpl && debugProvider) {
     context.subscriptions.push(
+      vscode.tasks.registerTaskProvider(NodeForgeTaskProvider.taskType, taskProviderImpl),
       vscode.debug.registerDebugConfigurationProvider("node", debugProvider)
     );
+  }
+  bus.subscribe("workspace.profiled", (e) => {
+    const pm =
+      e.profile.packageManager === "pnpm" || e.profile.packageManager === "yarn" ? e.profile.packageManager : "npm";
+    taskProviderImpl?.setPackageManager(pm);
+    debugProvider?.setPackageManager(pm);
+  });
+
+  // NodeForge terminal profile (new-terminal dropdown); a shell is a process launch, so trusted only.
+  context.subscriptions.push(
+    vscode.window.registerTerminalProfileProvider("nodeforge.terminal", {
+      provideTerminalProfile: () => {
+        const r = resolveWorkspaceRoot();
+        if (!r || !isTrusted()) return undefined;
+        return new vscode.TerminalProfile(terminalProfileOptions(r));
+      }
+    }),
+    // Trust can be granted after activation: run the analysis that was skipped.
+    vscode.workspace.onDidGrantWorkspaceTrust(() => {
+      const r = resolveWorkspaceRoot();
+      if (!r) return;
+      session.bindRoot(r);
+      void manager.analyze(r).then(
+        (profile) => {
+          workspaceView.render(profile);
+          treeViews.workspace!.message = undefined;
+          devDocs.setProfile(profile);
+        },
+        (err) => logger.error("Analysis after workspace trust failed", err)
+      );
+    })
+  );
+
+
+  if (root && isTrusted()) {
+    logger.info(`Auto-running for workspace: ${root}`);
 
     // Test discovery is demand-driven. Do not execute the entire suite during activation.
     session.bindRoot(root);
     void manager.analyze(root).then(
       (profile) => {
-        const packageManager =
-          profile.packageManager === "pnpm" || profile.packageManager === "yarn"
-            ? profile.packageManager
-            : "npm";
-        taskProviderImpl.setPackageManager(packageManager);
-        debugProvider.setPackageManager(packageManager);
-
         workspaceView.render(profile);
         treeViews.workspace!.message = undefined;
         devDocs.setProfile(profile);

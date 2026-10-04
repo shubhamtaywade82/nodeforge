@@ -13,6 +13,7 @@
 import * as vscode from "vscode";
 import * as path from "node:path";
 import { logger } from "./Logger.js";
+import { classifyScript, scriptInvocation, type PackageManager } from "./taskMeta.js";
 
 interface PackageJson {
   scripts?: Record<string, string>;
@@ -23,10 +24,10 @@ export class NodeForgeTaskProvider implements vscode.TaskProvider {
 
   constructor(
     private readonly workspaceRoot: string,
-    private packageManager: "npm" | "pnpm" | "yarn"
+    private packageManager: PackageManager
   ) {}
 
-  setPackageManager(packageManager: "npm" | "pnpm" | "yarn"): void {
+  setPackageManager(packageManager: PackageManager): void {
     this.packageManager = packageManager;
   }
 
@@ -35,55 +36,52 @@ export class NodeForgeTaskProvider implements vscode.TaskProvider {
       const pkg = await this.readPackageJson();
       if (!pkg.scripts) return [];
 
-      const tasks: vscode.Task[] = [];
-      const pm = this.packageManager;
-
-      for (const [scriptName, scriptCommand] of Object.entries(pkg.scripts)) {
-        // For yarn: `yarn <script>`. For npm/pnpm: `npm/pnpm run <script>`.
-        const task = new vscode.Task(
-          { type: NodeForgeTaskProvider.taskType, script: scriptName },
-          vscode.TaskScope.Workspace,
-          `${pm}: ${scriptName}`,
-          "NodeForge",
-          new vscode.ProcessExecution(
-            pm,
-            pm === "yarn" ? [scriptName] : ["run", scriptName],
-            { cwd: this.workspaceRoot }
-          ),
-          undefined // problemMatchers — will be auto-detected by VS Code
-        );
-
-        task.detail = scriptCommand;
-        tasks.push(task);
-      }
-
-      return tasks;
+      return Object.entries(pkg.scripts).map(([scriptName, scriptCommand]) =>
+        this.createTask({ type: NodeForgeTaskProvider.taskType, script: scriptName }, scriptName, scriptCommand)
+      );
     } catch (err) {
       logger.error("Failed to provide tasks", err);
       return [];
     }
   }
 
-  resolveTask(task: vscode.Task): vscode.Task | undefined {
-    // Resolve a task definition to a concrete Task.
-    const definition = task.definition as { type: string; script: string };
-    if (definition.type !== NodeForgeTaskProvider.taskType) {
+  async resolveTask(task: vscode.Task): Promise<vscode.Task | undefined> {
+    const definition = task.definition as { type: string; script?: string };
+    if (definition.type !== NodeForgeTaskProvider.taskType || !definition.script) {
       return undefined;
     }
+    let command = "";
+    try {
+      command = (await this.readPackageJson()).scripts?.[definition.script] ?? "";
+    } catch (err) {
+      logger.warn(`Could not read package.json while resolving task: ${String(err)}`);
+    }
+    return this.createTask(definition, definition.script, command);
+  }
 
+  private createTask(
+    definition: vscode.TaskDefinition,
+    scriptName: string,
+    scriptCommand: string
+  ): vscode.Task {
     const pm = this.packageManager;
-    return new vscode.Task(
+    const meta = classifyScript(scriptName, scriptCommand);
+    const invocation = scriptInvocation(pm, scriptName);
+    const task = new vscode.Task(
       definition,
       vscode.TaskScope.Workspace,
-      `${pm}: ${definition.script}`,
+      `${pm}: ${scriptName}`,
       "NodeForge",
-      new vscode.ProcessExecution(
-        pm,
-        pm === "yarn" ? [definition.script] : ["run", definition.script],
-        { cwd: this.workspaceRoot }
-      ),
-      undefined
+      new vscode.ProcessExecution(invocation.command, invocation.args, { cwd: this.workspaceRoot }),
+      meta.problemMatchers
     );
+    if (scriptCommand) task.detail = scriptCommand;
+    task.isBackground = meta.isBackground;
+    // TaskGroup.isDefault is read-only, so the default build/test task is chosen by the user.
+    if (meta.group === "build") task.group = vscode.TaskGroup.Build;
+    else if (meta.group === "test") task.group = vscode.TaskGroup.Test;
+    else if (meta.group === "clean") task.group = vscode.TaskGroup.Clean;
+    return task;
   }
 
   private async readPackageJson(): Promise<PackageJson> {
@@ -91,10 +89,5 @@ export class NodeForgeTaskProvider implements vscode.TaskProvider {
     const pkgPath = path.join(this.workspaceRoot, "package.json");
     const raw = await fs.readFile(pkgPath, "utf8");
     return JSON.parse(raw) as PackageJson;
-  }
-
-  /** Map common script names to VS Code's built-in problem matchers. */
-  private matchProblemMatcher(_scriptName: string): string | undefined {
-    return undefined; // VS Code auto-detects problem matchers
   }
 }
