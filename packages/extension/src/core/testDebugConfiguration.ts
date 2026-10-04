@@ -22,6 +22,13 @@ export interface TestDebugConfiguration {
   readonly env: Record<string, string>;
 }
 
+/** Entry point of a locally installed runner. Debug never falls back to downloading one. */
+export function runnerEntryPath(runner: "vitest" | "jest", workspaceRoot: string): string {
+  return runner === "vitest"
+    ? path.join(workspaceRoot, "node_modules", "vitest", "vitest.mjs")
+    : path.join(workspaceRoot, "node_modules", "jest", "bin", "jest.js");
+}
+
 export function buildTestDebugConfiguration(target: TestDebugTarget): TestDebugConfiguration {
   const common = {
     type: "node" as const,
@@ -52,9 +59,7 @@ export function buildTestDebugConfiguration(target: TestDebugTarget): TestDebugC
     };
   }
 
-  const runnerEntry = target.runner === "vitest"
-    ? path.join(target.workspaceRoot, "node_modules", "vitest", "vitest.mjs")
-    : path.join(target.workspaceRoot, "node_modules", "jest", "bin", "jest.js");
+  const runnerEntry = runnerEntryPath(target.runner, target.workspaceRoot);
 
   const runtimeArgs = ["--inspect-brk", runnerEntry];
 

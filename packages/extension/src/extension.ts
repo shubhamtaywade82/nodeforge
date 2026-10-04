@@ -67,6 +67,7 @@ import { terminalProfileOptions } from "./core/terminalProfile.js";
 import { PersistentCache } from "./core/PersistentCache.js";
 import { registerOllamaLanguageModelChatProvider } from "./ai/OllamaLanguageModelChatProvider.js";
 import { isWorkspaceTrusted } from "./core/workspaceTrust.js";
+import { buildTestDebugConfiguration, runnerEntryPath } from "./core/testDebugConfiguration.js";
 
 let workspaceManager: WorkspaceManager | undefined;
 let diagnosticManager: DiagnosticManager | undefined;
@@ -647,26 +648,21 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       }
 
       const runner = profile.testRunner;
-      const runtimeArgs = runner === "vitest"
-        ? ["vitest", "run", filePath]
-        : runner === "jest"
-          ? ["jest", filePath]
-          : ["--test", filePath];
-      const runtimeExecutable = runner === "node" ? "node" : "npx";
+      if (runner !== "node") {
+        // Debugging uses the project's own runner. Never fall back to npx (it would download and run code).
+        try {
+          await import("node:fs/promises").then((fs) => fs.access(runnerEntryPath(runner, r)));
+        } catch {
+          void vscode.window.showErrorMessage(
+            `NodeForge: ${runner} is not installed in this workspace. Install dependencies, then try again.`
+          );
+          return;
+        }
+      }
 
-      const config: vscode.DebugConfiguration = {
-        name: "Debug " + runner + " file",
-        type: "node",
-        request: "launch",
-        runtimeExecutable,
-        runtimeArgs,
-        cwd: r,
-        console: "integratedTerminal",
-        skipFiles: ["<node_internals>/**"],
-        env: {}
-      };
-
-      await vscode.debug.startDebugging(vscode.workspace.workspaceFolders?.[0], config);
+      const config = buildTestDebugConfiguration({ runner, workspaceRoot: r, file: filePath });
+      const folder = vscode.workspace.getWorkspaceFolder(vscode.Uri.file(filePath)) ?? vscode.workspace.workspaceFolders?.[0];
+      await vscode.debug.startDebugging(folder, config as unknown as vscode.DebugConfiguration);
       logger.info("Debug test file triggered for " + filePath + ":" + line);
     }),
     // Runtime terminal: start a dev server in a real terminal.

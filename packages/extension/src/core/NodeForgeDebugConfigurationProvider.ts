@@ -21,10 +21,11 @@
 
 import * as vscode from "vscode";
 import * as path from "node:path";
+import { buildCurrentTsFileConfig, type PackageJsonDeps } from "./debugConfigs.js";
 import { logger } from "./Logger.js";
 import { isWorkspaceTrusted } from "./workspaceTrust.js";
 
-interface PackageJson {
+interface PackageJson extends PackageJsonDeps {
   scripts?: Record<string, string>;
   type?: string;
 }
@@ -66,18 +67,8 @@ export class NodeForgeDebugConfigurationProvider implements vscode.DebugConfigur
         configs.push(this.createScriptConfig("Debug: start", "start"));
       }
 
-      // Always offer "Debug current TS file" (uses tsx)
-      configs.push({
-        name: "Debug: Current TS File",
-        type: "node",
-        request: "launch",
-        runtimeExecutable: this.packageManager === "pnpm" ? "pnpm" : "npx",
-        runtimeArgs: ["tsx", "${file}"],
-        cwd: "${workspaceFolder}",
-        console: "integratedTerminal",
-        skipFiles: ["<node_internals>/**", "${workspaceFolder}/node_modules/**"],
-        env: {}
-      });
+      // Debug the current TS file with the project's own tsx or Node type stripping — never npx.
+      configs.push(buildCurrentTsFileConfig(pkg));
 
       // Always offer "Debug current JS file"
       configs.push({
