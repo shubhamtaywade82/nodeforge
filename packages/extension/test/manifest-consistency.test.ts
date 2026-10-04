@@ -4,7 +4,7 @@
  */
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { PARTICIPANT_COMMANDS } from "../src/ai/participantCommands.ts";
 
@@ -12,9 +12,11 @@ const root = join(import.meta.dirname, "..");
 const c = (JSON.parse(readFileSync(join(root, "package.json"), "utf8")) as { contributes: Record<string, unknown> }).contributes;
 
 function sources(dir: string): string[] {
-  return readdirSync(dir).flatMap((name) => {
-    const p = join(dir, name);
-    return statSync(p).isDirectory() ? sources(p) : p.endsWith(".ts") ? [readFileSync(p, "utf8")] : [];
+  // Dirent types come from the directory listing itself, so there is no stat-then-read window.
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const p = join(dir, entry.name);
+    if (entry.isDirectory()) return sources(p);
+    return entry.isFile() && p.endsWith(".ts") ? [readFileSync(p, "utf8")] : [];
   });
 }
 const code = sources(join(root, "src")).join("\n");
