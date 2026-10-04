@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import { executeTool } from "@nodeforge/agent";
 import type { ExtensionWorkspaceSession } from "../core/ExtensionWorkspaceSession.js";
+import { isWorkspaceTrusted } from "../core/workspaceTrust.js";
 
 type EmptyInput = Record<string, never>;
 
@@ -180,11 +181,4 @@ export function registerNodeForgeLanguageModelTools(
     toolName: "validateWorkspace",
     invocationMessage: "Running workspace verification"
   });
-}
-
-function isWorkspaceTrusted(): boolean {
-  const workspace = vscode.workspace as typeof vscode.workspace & {
-    isTrusted?: boolean;
-  };
-  return workspace.isTrusted === true;
 }

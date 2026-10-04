@@ -61,6 +61,7 @@ import { DatabaseSchemaPanel } from "./core/DatabaseSchemaPanel.js";
 import { logger } from "./core/Logger.js";
 import { registerNodeForgeLanguageModelTools } from "./ai/LanguageModelTools.js";
 import { registerOllamaLanguageModelChatProvider } from "./ai/OllamaLanguageModelChatProvider.js";
+import { isWorkspaceTrusted } from "./core/workspaceTrust.js";
 
 let workspaceManager: WorkspaceManager | undefined;
 let diagnosticManager: DiagnosticManager | undefined;
@@ -864,9 +865,7 @@ export function deactivate(): void {
 }
 
 function isTrusted(): boolean {
-  // isWorkspaceTrusted is stable since VS Code 1.83 but not yet in @types/vscode.
-  const ws = vscode.workspace as typeof vscode.workspace & { isWorkspaceTrusted?: boolean };
-  return typeof ws.isWorkspaceTrusted === "boolean" ? ws.isWorkspaceTrusted : true;
+  return isWorkspaceTrusted();
 }
 
 function resolveWorkspaceRoot(): string | undefined {

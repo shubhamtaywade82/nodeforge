@@ -22,6 +22,7 @@
 import * as vscode from "vscode";
 import * as path from "node:path";
 import { logger } from "./Logger.js";
+import { isWorkspaceTrusted } from "./workspaceTrust.js";
 
 interface PackageJson {
   scripts?: Record<string, string>;
@@ -187,12 +188,4 @@ export class NodeForgeDebugConfigurationProvider implements vscode.DebugConfigur
       return {};
     }
   }
-}
-
-
-function isWorkspaceTrusted(): boolean {
-  const workspace = vscode.workspace as typeof vscode.workspace & {
-    isTrusted?: boolean;
-  };
-  return workspace.isTrusted === true;
 }
