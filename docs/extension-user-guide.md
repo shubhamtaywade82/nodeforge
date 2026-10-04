@@ -17,10 +17,10 @@ NodeForge is a **control plane** for Node.js, JavaScript, and TypeScript project
 
 ## Installation
 
-1. Build or obtain `nodeforge-0.1.0.vsix` (see [INSTALL.md](../INSTALL.md)).
+1. Build or obtain `nodeforge.vsix` (see [INSTALL.md](./INSTALL.md)).
 2. Install via CLI or UI:
-   - In Cursor: `cursor --install-extension /home/nemesis/projects/developer-tools/nodeforge/packages/extension/nodeforge-0.1.0.vsix`
-   - In VS Code: `code --install-extension /home/nemesis/projects/developer-tools/nodeforge/packages/extension/nodeforge-0.1.0.vsix`
+   - In Cursor: `cursor --install-extension /home/nemesis/projects/developer-tools/nodeforge/nodeforge.vsix`
+   - In VS Code: `code --install-extension /home/nemesis/projects/developer-tools/nodeforge/nodeforge.vsix`
    - Or UI: **Extensions → … → Install from VSIX...**
 3. Reload the window (`Ctrl+Shift+P` → **Developer: Reload Window**).
 4. In your target project, ensure dev dependencies are installed (`npm install` / `pnpm install`) so local tools (`tsc`, `eslint`, etc.) resolve.
@@ -132,7 +132,7 @@ See [devdocs.md](./devdocs.md). Summary:
 
 ## Optional: MCP agent server
 
-Built-in Chat does **not** require MCP. To connect Claude Code or another MCP client, build `packages/agent` and add `.cursor/mcp.json` — see [INSTALL.md](../INSTALL.md) and [packages/agent/README.md](../packages/agent/README.md).
+Built-in Chat does **not** require MCP. To connect Claude Code or another MCP client, build `packages/agent` and add `.cursor/mcp.json` — see [INSTALL.md](./INSTALL.md) and [packages/agent/README.md](../packages/agent/README.md).
 
 ---
 
@@ -148,6 +148,6 @@ Built-in Chat does **not** require MCP. To connect Claude Code or another MCP cl
 
 ## Getting help
 
-- Manual QA checklist: [TESTING.md](../TESTING.md)
-- Architecture / contributing: [CLAUDE.md](../CLAUDE.md)
+- Manual QA checklist: [TESTING.md](./TESTING.md)
+- Architecture / contributing: [CLAUDE.md](./CLAUDE.md)
 - Report issues in your project’s issue tracker (if published)

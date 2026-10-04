@@ -120,8 +120,8 @@ export class AgentViewProvider implements vscode.TreeDataProvider<TreeNode> {
         {
           kind: "field",
           label: "Docs",
-          description: "See INSTALL.md",
-          tooltip: "Full setup instructions are in the INSTALL.md file at the repo root."
+          description: "See docs/INSTALL.md",
+          tooltip: "Full setup instructions are in docs/INSTALL.md."
         }
       ];
     }

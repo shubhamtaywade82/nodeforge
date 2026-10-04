@@ -3,7 +3,7 @@
 Use this document to smoke-test every NodeForge feature after installing the
 extension or before a release. Check off each item as you go.
 
-**Related docs:** [INSTALL.md](./INSTALL.md) (installation), [README.md](./README.md) (architecture)
+**Related docs:** [INSTALL.md](./INSTALL.md) (installation), [README.md](../README.md) (architecture)
 
 ---
 

@@ -60,7 +60,7 @@ nodeforge/
 ├── pnpm-workspace.yaml
 ├── tsconfig.json
 ├── tsconfig.base.json
-├── CLAUDE.md
+├── docs/                   # Documentation, guides, architecture rules, changelog
 └── README.md
 ```
 
@@ -197,15 +197,15 @@ Phase 11:
 | **[docs/extension-user-guide.md](./docs/extension-user-guide.md)** | Full guide for the VS Code / Cursor extension |
 | **[docs/devdocs.md](./docs/devdocs.md)** | DevDocs.io integration in the sidebar |
 | **[docs/README.md](./docs/README.md)** | Documentation index |
-| **[INSTALL.md](./INSTALL.md)** | Install `.vsix`, optional MCP |
-| **[TESTING.md](./TESTING.md)** | Manual QA checklists |
-| **[SECURITY.md](./SECURITY.md)** | Security model, trust boundaries, and MCP capability controls |
+| **[docs/INSTALL.md](./docs/INSTALL.md)** | Install `.vsix`, optional MCP |
+| **[docs/TESTING.md](./docs/TESTING.md)** | Manual QA checklists |
+| **[docs/SECURITY.md](./docs/SECURITY.md)** | Security model, trust boundaries, and MCP capability controls |
 | **[docs/security-and-privacy.md](./docs/security-and-privacy.md)** | Built-in chat, Ollama, prompt-injection, and model data flow |
 | **[packages/extension/README.md](./packages/extension/README.md)** | Extension package + F5 dev loop |
 
 ## Installation
 
-See **[INSTALL.md](./INSTALL.md)** for step-by-step instructions on:
+See **[docs/INSTALL.md](./docs/INSTALL.md)** for step-by-step instructions on:
 
 - Installing the VS Code / Cursor extension from .vsix
 - Configuring the MCP agent server in Cursor

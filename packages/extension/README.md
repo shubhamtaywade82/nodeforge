@@ -6,8 +6,8 @@ Autonomous Node.js / TypeScript engineering sidebar for VS Code and Cursor.
 
 - **[Extension user guide](../../docs/extension-user-guide.md)** — install, views, commands, chat, settings
 - **[DevDocs integration](../../docs/devdocs.md)** — embedded documentation
-- **[INSTALL.md](../../INSTALL.md)** — quick install and optional MCP
-- **[TESTING.md](../../TESTING.md)** — manual test checklist
+- **[INSTALL.md](../../docs/INSTALL.md)** — quick install and optional MCP
+- **[TESTING.md](../../docs/TESTING.md)** — manual test checklist
 
 ## Native VS Code integrations
 
