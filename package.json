@@ -16,6 +16,7 @@
     "typecheck": "tsc -b --pretty false",
     "test": "pnpm -r --filter \"./packages/**\" run test",
     "test:unit": "pnpm -r --filter \"./packages/**\" run test:unit",
+    "test:e2e": "pnpm -C packages/extension-vscode-tests test",
     "clean": "pnpm -r --filter \"./packages/**\" exec rm -rf dist *.tsbuildinfo .turbo",
     "package": "pnpm -C packages/extension run package",
     "vsce-package": "pnpm -C packages/extension run vsce-package",
