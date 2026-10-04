@@ -54,4 +54,17 @@ suite("Restricted Mode (untrusted workspace)", () => {
     assert.match(text, /disabled|not trusted/i);
     assert.strictEqual(fs.existsSync(target), false);
   });
+
+  test("the @nodeforge participant refuses slash commands that need execution in Restricted Mode", async () => {
+    const ext = await activateExtension();
+    const model = { sendRequest: async () => { throw new Error("the model must not be called"); } };
+    const result = await ext.exports.__testing.handleParticipantRequest(
+      { prompt: "go", command: "diagnostics", model, references: [], toolInvocationToken: undefined },
+      { history: [] },
+      { markdown() {}, progress() {} },
+      new vscode.CancellationTokenSource().token,
+      vscode.workspace.isTrusted
+    );
+    assert.strictEqual(result.metadata.blocked, "untrusted");
+  });
 });
