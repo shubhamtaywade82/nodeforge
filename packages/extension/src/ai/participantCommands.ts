@@ -8,7 +8,11 @@
 export const NODEFORGE_TOOL_PREFIX = "nodeforge_";
 
 /** Tools that only read workspace files and are safe in Restricted Mode. */
-export const RESTRICTED_MODE_TOOLS: ReadonlySet<string> = new Set(["nodeforge_get_project_context"]);
+export const RESTRICTED_MODE_TOOLS: ReadonlySet<string> = new Set([
+  "nodeforge_get_project_context",
+  "nodeforge_read_file",
+  "nodeforge_search_code"
+]);
 
 export interface ParticipantCommand {
   readonly name: string;
@@ -27,15 +31,21 @@ export const PARTICIPANT_COMMANDS: readonly ParticipantCommand[] = [
   {
     name: "diagnostics",
     description: "Run compiler and lint checks and explain the findings",
-    toolNames: ["nodeforge_get_diagnostics", "nodeforge_run_typecheck", "nodeforge_run_linter"],
+    toolNames: [
+      "nodeforge_get_diagnostics",
+      "nodeforge_run_typecheck",
+      "nodeforge_run_linter",
+      "nodeforge_read_file",
+      "nodeforge_search_code"
+    ],
     instruction:
       "Collect diagnostics, group them by root cause, and propose the smallest fix for each group. Do not edit files unless asked."
   },
   {
     name: "tests",
     description: "Run the test suite and analyze failures",
-    toolNames: ["nodeforge_get_tests"],
-    instruction: "Run the tests and explain each failure with the most likely cause and a concrete fix."
+    toolNames: ["nodeforge_get_tests", "nodeforge_read_file", "nodeforge_search_code"],
+    instruction: "Run the tests and explain each failure with the most likely cause and a concrete fix. Read the failing code before diagnosing; do not edit files unless asked."
   },
   {
     name: "deps",
@@ -53,8 +63,38 @@ export const PARTICIPANT_COMMANDS: readonly ParticipantCommand[] = [
   {
     name: "git",
     description: "Review the current Git changes",
-    toolNames: ["nodeforge_get_git_diff"],
+    toolNames: ["nodeforge_get_git_diff", "nodeforge_read_file", "nodeforge_search_code"],
     instruction: "Review the diff for correctness, regressions, and missing tests."
+  },
+  {
+    name: "fix",
+    description: "Diagnose and fix problems with small, verified edits",
+    toolNames: [
+      "nodeforge_get_diagnostics",
+      "nodeforge_run_typecheck",
+      "nodeforge_run_linter",
+      "nodeforge_get_tests",
+      "nodeforge_get_git_diff",
+      "nodeforge_read_file",
+      "nodeforge_search_code",
+      "nodeforge_apply_patch",
+      "nodeforge_validate_workspace"
+    ],
+    instruction:
+      "Reproduce the problem with the diagnostic or test tools, read the relevant source, then fix it with the smallest exact-match patch. Copy oldText exactly from a fresh read. After patching, re-run the narrowest check and report the real result. A patch that returns ok=false changed nothing."
+  },
+  {
+    name: "addtests",
+    description: "Add tests for a file or behavior and verify them",
+    toolNames: [
+      "nodeforge_get_project_context",
+      "nodeforge_read_file",
+      "nodeforge_search_code",
+      "nodeforge_apply_patch",
+      "nodeforge_get_tests"
+    ],
+    instruction:
+      "Detect the test runner, read the code under test and one or two existing tests to match conventions, then create or extend a test file with apply_patch (an empty oldText creates a new file). Run the tests and fix failures. Report only what actually ran."
   },
   {
     name: "validate",

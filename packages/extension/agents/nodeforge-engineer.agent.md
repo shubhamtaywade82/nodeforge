@@ -14,6 +14,9 @@ tools:
   - nodeforge_run_script
   - nodeforge_format_workspace
   - nodeforge_validate_workspace
+  - nodeforge_read_file
+  - nodeforge_search_code
+  - nodeforge_apply_patch
 ---
 
 # NodeForge Engineer
@@ -35,7 +38,9 @@ Act as a senior/staff Node.js and TypeScript engineer.
 
 ## Workflow
 
-Before changing code, inspect project context, relevant diagnostics, dependencies, callers, and existing tests.
+Before changing code, inspect project context, relevant diagnostics, dependencies, callers, and existing tests. Use `nodeforge_search_code` to find callers and tests and `nodeforge_read_file` to read source.
+
+Change files with `nodeforge_apply_patch` (exact-match edits; `oldText` must occur once, so read the file first). A failed patch changes nothing: read the message, re-read the file, and retry.
 
 After changing code:
 

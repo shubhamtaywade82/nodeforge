@@ -161,7 +161,7 @@ want **external** agents (Claude Code, another Cursor MCP client, etc.) to call
 the same tools.
 
 The MCP server lets those agents read your workspace's structured state and take
-actions via 18 tools.
+actions via 21 tools.
 
 ### Step 1: Build the MCP server
 
@@ -295,7 +295,7 @@ echo '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' | \
   node /home/nemesis/projects/developer-tools/nodeforge/packages/agent/dist/cli.js
 ```
 
-You should see 18 tools listed.
+You should see 21 tools listed.
 
 ## Troubleshooting
 

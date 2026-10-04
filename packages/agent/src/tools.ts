@@ -12,6 +12,7 @@
  */
 
 import type { NodeForgeContext } from "./NodeForgeContext.js";
+import { SourceAccessDeniedError } from "./sourceFiles.js";
 
 export interface McpToolDefinition {
   name: string;
@@ -277,6 +278,87 @@ export const TOOLS: McpTool[] = [
   },
   {
     definition: {
+      name: "readFile",
+      description:
+        "Read a workspace source file (text only, up to ~200 KB per call). Use startLine/endLine (1-based, inclusive) for large files; the result reports totalLines and whether it was truncated. Secrets (.env, keys, credentials), .git and node_modules are refused. Read-only.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          path: { type: "string", description: "Workspace-relative file path, e.g. `src/index.ts`." },
+          startLine: { type: "number", description: "First line to return (1-based). Default 1." },
+          endLine: { type: "number", description: "Last line to return (inclusive). Default end of file." }
+        },
+        required: ["path"]
+      }
+    },
+    handler: async (args, ctx) => {
+      const options = {
+        ...(typeof args["startLine"] === "number" ? { startLine: args["startLine"] } : {}),
+        ...(typeof args["endLine"] === "number" ? { endLine: args["endLine"] } : {})
+      };
+      return sourceResult(() => ctx.readFile(String(args["path"]), options));
+    }
+  },
+  {
+    definition: {
+      name: "searchCode",
+      description:
+        "Search workspace source text for a literal string (or a regular expression with regex=true). Returns up to maxResults matches (default 50, max 100) with workspace-relative path, 1-based line and a trimmed snippet. Skips node_modules, .git, build output, binaries and secret files. Read-only.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Text to find (max 200 characters)." },
+          regex: { type: "boolean", description: "Treat the query as a JavaScript regular expression." },
+          caseSensitive: { type: "boolean", description: "Match case exactly. Default false." },
+          extensions: {
+            type: "array",
+            items: { type: "string" },
+            description: "Only search files with these extensions, e.g. [\".ts\", \".tsx\"]."
+          },
+          maxResults: { type: "number", description: "Maximum matches to return (1-100). Default 50." }
+        },
+        required: ["query"]
+      }
+    },
+    handler: async (args, ctx) => {
+      const options = {
+        ...(typeof args["regex"] === "boolean" ? { regex: args["regex"] } : {}),
+        ...(typeof args["caseSensitive"] === "boolean" ? { caseSensitive: args["caseSensitive"] } : {}),
+        ...(Array.isArray(args["extensions"]) ? { extensions: args["extensions"].map(String) } : {}),
+        ...(typeof args["maxResults"] === "number" ? { maxResults: args["maxResults"] } : {})
+      };
+      return sourceResult(() => ctx.searchCode(String(args["query"]), options));
+    }
+  },
+  {
+    definition: {
+      name: "applyPatch",
+      description:
+        "Edit workspace files with exact-match replacements, applied atomically: if any edit is invalid, nothing is written. Each edit replaces `oldText` (which must occur EXACTLY ONCE in the file at that point — include enough surrounding context) with `newText`. An empty `oldText` creates a new file (it must not exist yet; parent directories are created). Read the file first and copy text exactly. Secrets, .git and node_modules are refused. This is a write operation — it modifies files on disk and requires approval.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          edits: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                path: { type: "string", description: "Workspace-relative file path." },
+                oldText: { type: "string", description: "Exact existing text to replace (unique in the file), or \"\" to create the file." },
+                newText: { type: "string", description: "Replacement text, or the full content of a new file." }
+              },
+              required: ["path", "oldText", "newText"]
+            },
+            description: "One or more edits (max 50), applied in order."
+          }
+        },
+        required: ["edits"]
+      }
+    },
+    handler: async (args, ctx) => sourceResult(() => ctx.applyPatch(args["edits"]))
+  },
+  {
+    definition: {
       name: "formatFiles",
       description:
         "Format source files using the detected formatter. If Biome is the formatter, runs `biome format --write`. Otherwise, if Prettier is configured, runs `prettier --write`. Returns the number of files formatted. This is a write operation — it modifies files on disk.",
@@ -321,4 +403,16 @@ export function findTool(name: string): McpTool | undefined {
 /** Return all tool definitions (for the tools/list response). */
 export function listToolDefinitions(): McpToolDefinition[] {
   return TOOLS.map((t) => t.definition);
+}
+
+/** Source-access failures are expected outcomes the model can act on: return them as data, not as protocol errors. */
+async function sourceResult(run: () => Promise<unknown>): Promise<string> {
+  try {
+    return JSON.stringify(await run(), null, 2);
+  } catch (error) {
+    if (error instanceof SourceAccessDeniedError) {
+      return JSON.stringify({ ok: false, error: error.code, message: error.message }, null, 2);
+    }
+    throw error;
+  }
 }

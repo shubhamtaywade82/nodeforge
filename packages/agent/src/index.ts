@@ -40,3 +40,11 @@ export type {
   LlmMessage,
   LlmToolDefinition
 } from "./llm/types.js";
+export {
+  SourceAccessDeniedError,
+  applySourcePatch,
+  denyReason,
+  readSourceFile,
+  searchSourceCode
+} from "./sourceFiles.js";
+export type { PatchEdit, PatchResult, ReadFileResult, SearchMatch, SearchResult } from "./sourceFiles.js";
