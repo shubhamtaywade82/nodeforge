@@ -1,8 +1,10 @@
 # NodeForge
 
-> An autonomous Node.js/TypeScript engineering workspace — orchestration core for VS Code and Cursor.
+> Node.js/TypeScript project analysis and agent-assisted remediation for VS Code and Cursor.
 
-NodeForge is **not** an extension bundle. It is a control plane that wraps existing
+NodeForge detects your project's tooling, runs it through normalized adapters, and gives AI agents
+a policy-gated set of tools (read/search/patch source, diagnostics, tests, git, dependencies). It is
+**not** an extension bundle. It is a control plane that wraps existing
 engineering tools (TypeScript, ESLint, Biome, Prettier, Vitest, Jest, Node test runner, Prisma, Drizzle,
 Docker, Git, etc.) behind a single normalized engineering model and exposes that model
 both to the IDE (VS Code / Cursor) and to AI coding agents.
@@ -244,6 +246,13 @@ pnpm test
 pnpm build
 ```
 
+### Workspaces and trust
+
+- **Multi-root:** NodeForge operates on one *active* folder (default: the first; change it with
+  `NodeForge: Select Workspace Folder`). Agent tools never reach outside the active folder.
+- **Restricted Mode:** inspection, read/search of source and read-only reports work; running
+  commands, tests, processes, patching, the MCP server and the terminal profile require Workspace Trust.
+
 ## License
 
 MIT
@@ -261,7 +270,7 @@ pnpm build
 pnpm package
 ```
 
-The test suite includes a real VS Code extension-host integration suite under `packages/extension-vscode-tests`. It launches the extension against the included TypeScript fixture using Microsoft's VS Code Test CLI. The test runner uses a stable VS Code desktop build in CI.
+The test suite includes real VS Code extension-host integration suites (`host`, `trusted`, `multiroot`, `untrusted`) under `packages/extension-vscode-tests`. They launch the extension against the included fixtures using Microsoft's VS Code Test CLI. The test runner uses a stable VS Code desktop build in CI.
 
 
 ### Release artifact verification

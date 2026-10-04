@@ -8,7 +8,7 @@
  */
 import { defineConfig } from "@vscode/test-cli";
 import { downloadAndUnzipVSCode } from "@vscode/test-electron";
-import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
+import { chmodSync, cpSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
@@ -68,12 +68,20 @@ const trusted = {
   mocha
 };
 
+// The multi-root test removes a folder, which makes VS Code rewrite the .code-workspace file.
+// Run against a throwaway copy so the checked-in fixture is never modified.
+// The path is unique per run: VS Code keys per-workspace state (including folder edits) by path.
+const multirootRoot = path.join(here, ".vscode-test", "multiroot-fixtures");
+rmSync(multirootRoot, { recursive: true, force: true });
+const multirootCopy = path.join(multirootRoot, String(Date.now()));
+cpSync(path.join(here, "test", "fixtures", "multiroot"), multirootCopy, { recursive: true });
+
 const multiroot = {
   label: "multiroot",
   files: "test/suites/multiroot/*.test.js",
   version,
   extensionDevelopmentPath,
-  workspaceFolder: "./test/fixtures/multiroot/multiroot.code-workspace",
+  workspaceFolder: path.join(multirootCopy, "multiroot.code-workspace"),
   launchArgs: ["--disable-gpu", ...sandbox],
   mocha
 };

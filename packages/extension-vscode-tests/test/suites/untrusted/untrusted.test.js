@@ -26,6 +26,30 @@ suite("Restricted Mode (untrusted workspace)", () => {
     }
   });
 
+  test("every execution or write tool in the manifest is refused, and none runs or writes", async () => {
+    const readOnly = new Set([
+      "nodeforge_get_project_context",
+      "nodeforge_get_git_diff",
+      "nodeforge_get_dependency_graph",
+      "nodeforge_get_database_schema",
+      "nodeforge_read_file",
+      "nodeforge_search_code"
+    ]);
+    const manifest = require(path.join(__dirname, "..", "..", "..", "..", "extension", "package.json"));
+    const names = manifest.contributes.languageModelTools.map((t) => t.name);
+    const guarded = names.filter((n) => !readOnly.has(n));
+    assert.ok(guarded.length >= 8, `expected the guarded tool set to be non-trivial, got ${guarded.join(", ")}`);
+    const inputs = {
+      nodeforge_run_script: { script: "build" },
+      nodeforge_apply_patch: { edits: [{ path: "src/never.ts", oldText: "", newText: "x" }] }
+    };
+    for (const name of guarded) {
+      const text = await invokeTool(name, inputs[name] ?? {});
+      assert.match(text, /disabled|not trusted/i, `${name} was not refused: ${text.slice(0, 200)}`);
+    }
+    assert.strictEqual(fs.existsSync(path.join(workspaceRoot(), "src", "never.ts")), false);
+  });
+
   test("the diagnostics report refuses to run tooling", async () => {
     const doc = await vscode.workspace.openTextDocument(vscode.Uri.from({ scheme: "nodeforge", path: "/diagnostics.md" }));
     assert.match(doc.getText(), /Restricted Mode/);

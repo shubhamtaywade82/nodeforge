@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import { describeScriptRisk, executeTool, type NodeForgeContext } from "@nodeforge/agent";
 import type { ExtensionWorkspaceSession } from "../core/ExtensionWorkspaceSession.js";
 import { isWorkspaceTrusted } from "../core/workspaceTrust.js";
+import { logger } from "../core/Logger.js";
 import { summarizePatch } from "./patchSummary.js";
 
 type EmptyInput = Record<string, never>;
@@ -54,6 +55,7 @@ class NodeForgeLanguageModelTool<TInput extends object>
     }
 
     const trusted = isWorkspaceTrusted();
+    const startedAt = Date.now();
 
     try {
       const result = await executeTool(
@@ -71,8 +73,10 @@ class NodeForgeLanguageModelTool<TInput extends object>
           approvalGranted: true
         }
       );
+      logger.info(`tool ${this.spec.toolName} finished in ${Date.now() - startedAt}ms`);
       return this.textResult(result);
     } catch (error) {
+      logger.warn(`tool ${this.spec.toolName} failed after ${Date.now() - startedAt}ms`);
       return this.textResult({
         error: error instanceof Error ? error.message : String(error)
       });

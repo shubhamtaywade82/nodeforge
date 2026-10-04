@@ -5,6 +5,15 @@
   "version": "0.1.0",
   "publisher": "nodeforge",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/shubhamtaywade82/nodeforge.git",
+    "directory": "packages/extension"
+  },
+  "bugs": {
+    "url": "https://github.com/shubhamtaywade82/nodeforge/issues"
+  },
+  "homepage": "https://github.com/shubhamtaywade82/nodeforge#readme",
   "private": true,
   "type": "module",
   "engines": {
