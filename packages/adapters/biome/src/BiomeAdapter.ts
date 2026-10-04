@@ -239,17 +239,52 @@ interface BiomeJsonResult {
   command?: string;
 }
 
+/**
+ * One diagnostic from `biome ci --reporter=json`. Biome 1.x and 2.x differ:
+ *
+ *   1.x  location.path = { file }, byte `span` + `sourceCode`, `description`, `tags: ["fixable"]`
+ *   2.x  location.path = "relative/path", `start`/`end` as 1-based { line, column },
+ *        `message` is a plain string, fixes appear as "Safe fix: ..." advice text
+ */
 interface BiomeDiagnostic {
   category: string;
   severity: "error" | "warning" | "info";
-  description: string;
-  message?: Array<{ content: string }>;
+  description?: string;
+  message?: string | Array<{ content: string }>;
   location?: {
-    path?: { file?: string };
+    path?: string | { file?: string };
     span?: [number, number] | null;
     sourceCode?: string;
+    start?: { line?: number; column?: number };
   };
   tags?: string[];
+  advices?: Array<{ text?: string }>;
+}
+
+function biomeFilePath(bio: BiomeDiagnostic): string | undefined {
+  const p = bio.location?.path;
+  if (typeof p === "string") return p || undefined;
+  return p?.file || undefined;
+}
+
+function biomeMessage(bio: BiomeDiagnostic): string {
+  if (bio.description) return bio.description;
+  if (typeof bio.message === "string") return bio.message;
+  return bio.message?.map((m) => m.content).join("") ?? "";
+}
+
+function biomePosition(bio: BiomeDiagnostic): { line: number; column: number } {
+  const start = bio.location?.start;
+  if (start && typeof start.line === "number" && typeof start.column === "number") {
+    // Whole-file findings (e.g. "format") report 0:0; clamp to the LSP-style 1:1.
+    return { line: Math.max(1, start.line), column: Math.max(1, start.column) };
+  }
+  return spanToLineCol(bio.location?.span ?? null, bio.location?.sourceCode ?? "");
+}
+
+function biomeFixable(bio: BiomeDiagnostic): boolean {
+  if (Array.isArray(bio.tags) && bio.tags.includes("fixable")) return true;
+  return (bio.advices ?? []).some((a) => typeof a.text === "string" && /^(Safe|Unsafe) fix\b/.test(a.text));
 }
 
 /**
@@ -289,7 +324,7 @@ export function parseBiomeJsonOutput(
 
   const diagnostics: Diagnostic[] = [];
   for (const bio of parsed.diagnostics) {
-    const relFile = bio.location?.path?.file;
+    const relFile = biomeFilePath(bio);
     if (!relFile) {
       // Skip diagnostics without a file (rare — usually system errors).
       continue;
@@ -297,16 +332,13 @@ export function parseBiomeJsonOutput(
     const absFile = path.resolve(workspaceRoot, relFile);
     const severity = mapSeverity(bio.severity);
     const rule = extractRuleName(bio.category);
-    const span = bio.location?.span ?? null;
-    const source = bio.location?.sourceCode ?? "";
-    const { line, column } = spanToLineCol(span, source);
-    const message = bio.description || (bio.message?.map((m) => m.content).join("") ?? "");
+    const { line, column } = biomePosition(bio);
 
     diagnostics.push({
       id: `biome:${rule}:${absFile}:${line}:${column}`,
       source: "biome",
       severity,
-      message,
+      message: biomeMessage(bio),
       file: absFile,
       range: {
         line,
@@ -314,7 +346,7 @@ export function parseBiomeJsonOutput(
       },
       rule,
       code: bio.category,
-      fixable: Array.isArray(bio.tags) && bio.tags.includes("fixable")
+      fixable: biomeFixable(bio)
     });
   }
 
