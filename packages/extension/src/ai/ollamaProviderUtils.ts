@@ -92,3 +92,93 @@ export function buildOllamaModelMetadata(
 function stripTrailingSlash(value: string): string {
   return value.replace(/\/+$/, "");
 }
+
+// ─── Image input ───
+
+export const SUPPORTED_IMAGE_MIME_TYPES: ReadonlySet<string> = new Set([
+  "image/png",
+  "image/jpeg",
+  "image/gif",
+  "image/webp"
+]);
+/** Ollama decodes images in memory; refuse absurdly large attachments up front. */
+export const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+
+/** Encodes an image as a `data:` URL, validating type and size. */
+export function toImageDataUrl(mimeType: string, data: Uint8Array): string {
+  const mime = mimeType.toLowerCase();
+  if (!SUPPORTED_IMAGE_MIME_TYPES.has(mime)) {
+    throw new Error(
+      `Unsupported image type "${mimeType}". Supported: ${[...SUPPORTED_IMAGE_MIME_TYPES].join(", ")}.`
+    );
+  }
+  if (data.byteLength === 0) throw new Error("Image attachment is empty.");
+  if (data.byteLength > MAX_IMAGE_BYTES) {
+    throw new Error(`Image attachment is ${data.byteLength} bytes; the limit is ${MAX_IMAGE_BYTES}.`);
+  }
+  return `data:${mime};base64,${Buffer.from(data).toString("base64")}`;
+}
+
+// ─── Short-lived cache for model discovery ───
+
+/** Tiny TTL cache with an injectable clock. Failed loads are never cached. */
+export class TtlCache<T> {
+  private readonly entries = new Map<string, { readonly value: Promise<T>; readonly expires: number }>();
+  private readonly ttlMs: number;
+  private readonly now: () => number;
+
+  // No parameter properties: this file runs under Node's strip-only TypeScript mode in tests.
+  constructor(ttlMs: number, now: () => number = Date.now) {
+    this.ttlMs = ttlMs;
+    this.now = now;
+  }
+
+  /** Concurrent callers share one in-flight load. */
+  get(key: string, load: () => Promise<T>): Promise<T> {
+    const hit = this.entries.get(key);
+    if (hit && hit.expires > this.now()) return hit.value;
+
+    const value = load();
+    this.entries.set(key, { value, expires: this.now() + this.ttlMs });
+    value.catch(() => {
+      if (this.entries.get(key)?.value === value) this.entries.delete(key);
+    });
+    return value;
+  }
+
+  clear(): void {
+    this.entries.clear();
+  }
+}
+
+// ─── Connection test ───
+
+export interface OllamaConnectionResult {
+  readonly ok: boolean;
+  readonly modelCount: number;
+  readonly message: string;
+}
+
+export async function testOllamaConnection(
+  baseUrl: string,
+  fetchImpl: typeof fetch = fetch,
+  timeoutMs = 5000
+): Promise<OllamaConnectionResult> {
+  const url = toOllamaApiBaseUrl(baseUrl) + "/tags";
+  try {
+    const response = await fetchImpl(url, { method: "GET", signal: AbortSignal.timeout(timeoutMs) });
+    if (!response.ok) {
+      return { ok: false, modelCount: 0, message: `Ollama answered HTTP ${response.status} at ${url}.` };
+    }
+    const body = (await response.json()) as { models?: unknown[] };
+    const modelCount = Array.isArray(body.models) ? body.models.length : 0;
+    return {
+      ok: true,
+      modelCount,
+      message: `Connected to Ollama at ${baseUrl} (${modelCount} model${modelCount === 1 ? "" : "s"}).`
+    };
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    return { ok: false, modelCount: 0, message: `Could not reach Ollama at ${baseUrl}: ${detail}` };
+  }
+}

@@ -16,6 +16,8 @@ export interface LlmMessage {
     function: { name: string; arguments: string };
   }>;
   tool_call_id?: string;
+  /** `data:` URLs of images attached to a user message; sent as OpenAI `image_url` content parts. */
+  images?: string[];
 }
 
 export interface LlmCompletionRequest {

@@ -441,6 +441,11 @@
         "title": "NodeForge: Open Report",
         "category": "NodeForge",
         "icon": "$(file-code)"
+      },
+      {
+        "command": "nodeforge.ollama.configure",
+        "title": "NodeForge: Configure Ollama",
+        "category": "NodeForge"
       }
     ],
     "configuration": {

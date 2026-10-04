@@ -1,3 +1,4 @@
+import { toWireMessages } from "./wireMessages.js";
 import type { LlmClient, LlmClientConfig, LlmCompletionRequest, LlmCompletionResult } from "./types.js";
 
 interface StreamChunk {
@@ -22,7 +23,7 @@ export class OpenAICompatibleClient implements LlmClient {
     const body = {
       ...(request.modelOptions ?? {}),
       model: request.model || this.config.model,
-      messages: request.messages,
+      messages: toWireMessages(request.messages),
       tools: request.tools,
       ...(request.toolChoice ? { tool_choice: request.toolChoice } : {}),
       stream: Boolean(request.onTextDelta)
