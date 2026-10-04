@@ -112,6 +112,7 @@ const SELECTED_FOLDER_KEY = "nodeforge.activeFolder";
 let selectedRoot: string | undefined;
 
 export async function activate(context: vscode.ExtensionContext): Promise<NodeForgeExtensionExports> {
+  const activationStartedAt = Date.now();
   logger.info("NodeForge extension activating");
 
   const bus: EventBus = new InMemoryEventBus();
@@ -980,7 +981,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<NodeFo
     );
   }
 
-  logger.info("NodeForge extension activated");
+  logger.info(`NodeForge extension activated in ${Date.now() - activationStartedAt}ms`);
   return { __testing: { handleParticipantRequest, activeRoot: resolveWorkspaceRoot, selectFolder } };
 }
 

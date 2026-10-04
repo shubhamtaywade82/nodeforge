@@ -63,7 +63,7 @@ suite("Trusted workspace", () => {
     }
   });
 
-  test("F5 debug sessions get .env values injected by the NodeForge debug provider", async () => {
+  async function debugWithDotenv() {
     const out = path.join(workspaceRoot(), "out.txt");
     const dotenv = path.join(workspaceRoot(), ".env");
     fs.rmSync(out, { force: true });
@@ -80,11 +80,26 @@ suite("Trusted workspace", () => {
     });
     try {
       assert.strictEqual(started, true, "debug session did not start");
-      const content = await waitFor(() => readIfPresent(out), "debuggee output", 30000);
-      assert.strictEqual(content, "from-dotenv");
+      return await waitFor(() => readIfPresent(out), "debuggee output", 30000);
     } finally {
       fs.rmSync(out, { force: true });
       fs.rmSync(dotenv, { force: true });
+    }
+  }
+
+  test("F5 debug sessions do NOT read .env unless nodeforge.debug.loadDotEnv is enabled", async () => {
+    const config = vscode.workspace.getConfiguration("nodeforge.debug");
+    assert.strictEqual(config.get("loadDotEnv"), false);
+    assert.strictEqual(await debugWithDotenv(), "missing");
+  });
+
+  test("F5 debug sessions get .env values injected when nodeforge.debug.loadDotEnv is enabled", async () => {
+    const config = vscode.workspace.getConfiguration("nodeforge.debug");
+    await config.update("loadDotEnv", true, vscode.ConfigurationTarget.Global);
+    try {
+      assert.strictEqual(await debugWithDotenv(), "from-dotenv");
+    } finally {
+      await config.update("loadDotEnv", undefined, vscode.ConfigurationTarget.Global);
     }
   });
 });
