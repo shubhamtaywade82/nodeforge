@@ -48,3 +48,5 @@ export {
   searchSourceCode
 } from "./sourceFiles.js";
 export type { PatchEdit, PatchResult, ReadFileResult, SearchMatch, SearchResult } from "./sourceFiles.js";
+export { classifyPackageScript, describeScriptRisk } from "./scriptRisk.js";
+export type { ScriptRisk, ScriptRiskLevel, ScriptCategory } from "./scriptRisk.js";

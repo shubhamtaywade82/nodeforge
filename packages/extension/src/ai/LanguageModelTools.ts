@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { executeTool } from "@nodeforge/agent";
+import { describeScriptRisk, executeTool, type NodeForgeContext } from "@nodeforge/agent";
 import type { ExtensionWorkspaceSession } from "../core/ExtensionWorkspaceSession.js";
 import { isWorkspaceTrusted } from "../core/workspaceTrust.js";
 import { summarizePatch } from "./patchSummary.js";
@@ -15,8 +15,9 @@ interface ToolSpec<TInput extends object> {
   readonly toolName: string;
   readonly invocationMessage: string;
   readonly confirmation?: (
-    input: TInput
-  ) => { title: string; message: vscode.MarkdownString };
+    input: TInput,
+    context: NodeForgeContext | undefined
+  ) => Promise<{ title: string; message: vscode.MarkdownString }> | { title: string; message: vscode.MarkdownString };
 }
 
 class NodeForgeLanguageModelTool<TInput extends object>
@@ -32,7 +33,7 @@ class NodeForgeLanguageModelTool<TInput extends object>
     const prepared: vscode.PreparedToolInvocation = {
       invocationMessage: this.spec.invocationMessage
     };
-    const confirmation = this.spec.confirmation?.(options.input);
+    const confirmation = await this.spec.confirmation?.(options.input, this.session.getContext());
     if (confirmation) prepared.confirmationMessages = confirmation;
     return prepared;
   }
@@ -154,17 +155,20 @@ export function registerNodeForgeLanguageModelTools(
   register<RunScriptInput>("nodeforge_run_script", {
     toolName: "runScript",
     invocationMessage: "Running package script",
-    confirmation: (input) => ({
-      title: "Run package script",
-      message: new vscode.MarkdownString(
-        "Run package script **" +
-          input.script +
-          "**?" +
-          (input.args?.length
-            ? "\n\nArguments: " + input.args.join(" ") + "."
-            : "")
-      )
-    })
+    confirmation: async (input, nodeforge) => {
+      const args = input.args?.length ? `\n\nArguments: \`${input.args.join(" ").replace(/`/g, "'")}\`` : "";
+      if (!nodeforge) {
+        return {
+          title: "Run package script",
+          message: new vscode.MarkdownString(`Run package script **${input.script.replace(/[*_`]/g, "")}**?${args}`)
+        };
+      }
+      const { risk, packageManager } = await nodeforge.getScriptRisk(input.script);
+      return {
+        title: `Run script "${input.script.replace(/[*_`"]/g, "")}" — ${risk.level} risk`,
+        message: new vscode.MarkdownString(describeScriptRisk(risk, packageManager) + args)
+      };
+    }
   });
 
   register<{ path: string; startLine?: number; endLine?: number }>("nodeforge_read_file", {
