@@ -92,6 +92,9 @@ function isCachedProfile(data: unknown): data is WorkspaceProfile {
 const CHAT_API_KEY_SECRET = "nodeforge.chat.apiKey";
 let depAuditTimer: ReturnType<typeof setTimeout> | undefined;
 let depGraphTimer: ReturnType<typeof setTimeout> | undefined;
+/** Latest-wins: a newer schedule or deactivation aborts the in-flight background run. */
+let depAuditAbort: AbortController | undefined;
+let depGraphAbort: AbortController | undefined;
 
 /** Internal hooks for the extension-host tests. Not a supported API. */
 export interface NodeForgeExtensionExports {
@@ -925,6 +928,10 @@ export function deactivate(): void {
     clearTimeout(depGraphTimer);
     depGraphTimer = undefined;
   }
+  depAuditAbort?.abort();
+  depAuditAbort = undefined;
+  depGraphAbort?.abort();
+  depGraphAbort = undefined;
 }
 
 function isTrusted(): boolean {
@@ -995,9 +1002,12 @@ function scheduleBackgroundDependencyAudit(
   if (!enabled || !isTrusted()) return;
 
   if (depAuditTimer) clearTimeout(depAuditTimer);
+  depAuditAbort?.abort();
+  const abort = new AbortController();
+  depAuditAbort = abort;
   depAuditTimer = setTimeout(() => {
-    void depManager.audit().then((report) => {
-      if (report) {
+    void depManager.audit(abort.signal).then((report) => {
+      if (report && !abort.signal.aborted) {
         session.setDependencyReport(report);
       }
     });
@@ -1017,9 +1027,12 @@ function scheduleBackgroundDependencyGraph(
   if (!enabled || !isTrusted()) return;
 
   if (depGraphTimer) clearTimeout(depGraphTimer);
+  depGraphAbort?.abort();
+  const abort = new AbortController();
+  depGraphAbort = abort;
   depGraphTimer = setTimeout(() => {
-    void graphManager.analyze().then((analysis) => {
-      if (!analysis) return;
+    void graphManager.analyze(abort.signal).then((analysis) => {
+      if (!analysis || abort.signal.aborted) return;
       dependencyView.setGraphAnalysis(analysis);
       session.setGraphAnalysis(analysis);
       depDiagPublisher.publishGraph(analysis, root);

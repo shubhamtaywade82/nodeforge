@@ -73,7 +73,7 @@ export class DependencyGraphAdapter {
    * Analyze the dependency graph for `workspaceRoot`. Returns the full graph
    * plus unused/circular/missing analysis.
    */
-  async analyze(workspaceRoot: string): Promise<DependencyGraphAnalysis> {
+  async analyze(workspaceRoot: string, signal?: AbortSignal): Promise<DependencyGraphAnalysis> {
     const fs = await import("node:fs/promises");
 
     // 1. Read package.json declared deps.
@@ -122,6 +122,7 @@ export class DependencyGraphAdapter {
     }
 
     for (const file of sourceFiles) {
+      signal?.throwIfAborted();
       const fileNode: DependencyGraphNode = {
         id: file,
         kind: "file",

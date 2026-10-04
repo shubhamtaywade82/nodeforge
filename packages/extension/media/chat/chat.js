@@ -12,28 +12,7 @@
   let streamingContentEl = null;
   let streamRaw = "";
 
-  function escapeHtml(text) {
-    return text
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
-  }
-
-  function renderMarkdown(text) {
-    let html = escapeHtml(text);
-    html = html.replace(/```([\w-]*)\n([\s\S]*?)```/g, (_m, _lang, code) => {
-      return `<pre class="code-block"><code>${code.trim()}</code></pre>`;
-    });
-    html = html.replace(/`([^`\n]+)`/g, "<code class=\"inline-code\">$1</code>");
-    html = html.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
-    html = html.replace(/^### (.+)$/gm, "<h3>$1</h3>");
-    html = html.replace(/^## (.+)$/gm, "<h2>$1</h2>");
-    html = html.replace(/^- (.+)$/gm, "<li>$1</li>");
-    html = html.replace(/(<li>[\s\S]*?<\/li>)+/g, (block) => `<ul>${block}</ul>`);
-    const parts = html.split(/\n\n+/).map((p) => (p.startsWith("<") ? p : `<p>${p.replace(/\n/g, "<br>")}</p>`));
-    return parts.join("");
-  }
+  const { escapeHtml, renderMarkdown } = window.NodeForgeMarkdown;
 
   function nowLabel() {
     const d = new Date();

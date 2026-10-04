@@ -44,17 +44,18 @@ export class DependencyManager {
   }
 
   /** Run audit + outdated and return the combined report. */
-  async audit(): Promise<DependencyReport | undefined> {
+  async audit(signal?: AbortSignal): Promise<DependencyReport | undefined> {
     if (!this.profile || !this.adapter) return undefined;
     try {
-      const result = await this.adapter.run(this.profile.root);
+      const result = await this.adapter.run(this.profile.root, signal);
       // Also fetch outdated (best-effort — may fail on some package managers).
       let outdated: DependencyReport["outdated"] = [];
       try {
-        outdated = await this.adapter.outdated(this.profile.root);
+        outdated = await this.adapter.outdated(this.profile.root, signal);
       } catch {
         // npm outdated may exit non-zero even with output; ignore.
       }
+      if (signal?.aborted) return undefined;
       this.currentReport = {
         ...result.report,
         outdated
@@ -62,6 +63,7 @@ export class DependencyManager {
       this.bus.publish({ type: "dependencies.reported", report: this.currentReport });
       return this.currentReport;
     } catch (err) {
+      if (signal?.aborted) return undefined;
       // eslint-disable-next-line no-console
       console.error("[nodeforge:dependency-manager] audit failed", err);
       return undefined;
