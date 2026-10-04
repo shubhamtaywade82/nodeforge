@@ -23,7 +23,9 @@ import {
   type SearchOptions,
   type SearchResult
 } from "./sourceFiles.js";
+import { classifyPackageScript, type ScriptRisk } from "./scriptRisk.js";
 import { resolveContainedPath } from "./safePath.js";
+import * as path from "node:path";
 import { detectWorkspaceProfile, NodeFilesystemReader } from "@nodeforge/core";
 import { ProcessRunner } from "@nodeforge/runner";
 import { TypescriptAdapter } from "@nodeforge/adapter-typescript";
@@ -159,6 +161,22 @@ export class NodeForgeContext {
   /** Detect Git state. Returns undefined if not a git repo. */
   async getGitState(): Promise<GitState | undefined> {
     return new GitAdapter(this.runner).detect(this.workspaceRoot);
+  }
+
+  /** Classify a package.json script's risk for the confirmation dialog (reads package.json only). */
+  async getScriptRisk(script: string): Promise<{ risk: ScriptRisk; packageManager: string }> {
+    const fs = await import("node:fs/promises");
+    let scripts: Record<string, string> = {};
+    try {
+      const pkg = JSON.parse(await fs.readFile(path.join(this.workspaceRoot, "package.json"), "utf8")) as { scripts?: unknown };
+      if (pkg.scripts && typeof pkg.scripts === "object") {
+        scripts = Object.fromEntries(Object.entries(pkg.scripts).filter((e): e is [string, string] => typeof e[1] === "string"));
+      }
+    } catch {
+      // No readable package.json: the classifier reports the script as unknown.
+    }
+    const profile = await this.getProfile();
+    return { risk: classifyPackageScript(script, scripts), packageManager: profile.packageManager };
   }
 
   /** Read a workspace source file (bounded; secrets, .git and node_modules are refused). */
