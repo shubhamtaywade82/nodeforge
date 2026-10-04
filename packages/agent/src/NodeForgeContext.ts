@@ -13,6 +13,16 @@
  * version can add caching with file-watch invalidation.
  */
 
+import {
+  applySourcePatch,
+  readSourceFile,
+  searchSourceCode,
+  type PatchResult,
+  type ReadFileOptions,
+  type ReadFileResult,
+  type SearchOptions,
+  type SearchResult
+} from "./sourceFiles.js";
 import { resolveContainedPath } from "./safePath.js";
 import { detectWorkspaceProfile, NodeFilesystemReader } from "@nodeforge/core";
 import { ProcessRunner } from "@nodeforge/runner";
@@ -149,6 +159,21 @@ export class NodeForgeContext {
   /** Detect Git state. Returns undefined if not a git repo. */
   async getGitState(): Promise<GitState | undefined> {
     return new GitAdapter(this.runner).detect(this.workspaceRoot);
+  }
+
+  /** Read a workspace source file (bounded; secrets, .git and node_modules are refused). */
+  async readFile(filePath: string, options: ReadFileOptions = {}): Promise<ReadFileResult> {
+    return readSourceFile(this.workspaceRoot, filePath, options);
+  }
+
+  /** Search workspace source text (bounded; skips secrets, binaries, .git and node_modules). */
+  async searchCode(query: string, options: SearchOptions = {}): Promise<SearchResult> {
+    return searchSourceCode(this.workspaceRoot, query, options);
+  }
+
+  /** Apply exact-match edits atomically. Callers must have passed the write policy. */
+  async applyPatch(edits: unknown): Promise<PatchResult> {
+    return applySourcePatch(this.workspaceRoot, edits);
   }
 
   /** Read a bounded Git diff for change review. */

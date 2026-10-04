@@ -66,6 +66,9 @@ back — not terminal text.
 | `getDiagnostics` | Execute | Runs TypeScript plus detected ESLint/Biome checks. Requires execution capability. |
 | `runTypeCheck` | Execute | Runs the project's TypeScript compiler. Requires execution capability. |
 | `runLinter` | Execute | Runs the project's detected linter. Requires execution capability. |
+| `readFile` | Read | Reads a workspace text file (bounded, line ranges). Refuses secrets (`.env`, keys), `.git`, `node_modules`, binaries, and anything outside the workspace. |
+| `searchCode` | Read | Literal or regex search over workspace source (bounded). Skips secrets, binaries, `.git`, `node_modules`, build output; never follows symlinks. |
+| `applyPatch` | Write | Atomic exact-match edits (`oldText` must occur once; empty `oldText` creates a file). All-or-nothing, same path rules as `readFile`, requires write capability. |
 | `getTestResults` / `runTests` | Execute | Runs the detected Vitest, Jest, or built-in Node test suite. Requires execution capability. |
 | `getDependencyReport` | Execute + Network | Runs dependency audit/outdated checks. Requires execution and network capability. |
 | `validateWorkspace` | Execute + Network | Runs typecheck, lint, tests, and dependency audit. Requires execution and network capability. |

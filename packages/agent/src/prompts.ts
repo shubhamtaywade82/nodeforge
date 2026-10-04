@@ -23,14 +23,15 @@ export const PROMPTS: McpPrompt[] = [
   {
     name: "fix-lint-errors",
     description:
-      "Run ESLint with --fix, then show remaining diagnostics and suggest manual fixes for issues that couldn't be auto-fixed.",
+      "Run ESLint with --fix, then fix the remaining diagnostics by hand (reading the code and applying small exact-match patches).",
     arguments: [],
     message: `Run the following NodeForge tools in sequence to fix lint errors in this workspace:
 
 1. Call the "applyEslintFix" tool to auto-fix what can be fixed automatically.
 2. Call the "getDiagnostics" tool to see what diagnostics remain.
-3. For each remaining ESLint diagnostic, analyze the issue and suggest a manual fix. Consider the rule name, the code context, and the severity.
-4. Present a summary: how many issues were auto-fixed, how many remain, and your recommended manual fixes for each remaining issue.`
+3. For each remaining ESLint diagnostic, call "readFile" on the reported file and a line range around it, analyze the issue (rule name, code context, severity), and fix it with "applyPatch" using the smallest exact-match edit. If "applyPatch" returns ok=false, re-read the file and retry. Never claim a file was changed unless "applyPatch" returned ok=true.
+4. Call "getDiagnostics" again to confirm the result.
+5. Present a summary: how many issues were auto-fixed, how many you fixed by hand, and any that remain with the reason.`
   },
   {
     name: "audit-and-upgrade-deps",
@@ -56,12 +57,13 @@ export const PROMPTS: McpPrompt[] = [
 
 1. Call the "validateWorkspace" tool to run typecheck + lint + tests + audit in one pass.
 2. Analyze the result:
-   - If typecheck failed: call "runTypeCheck" to get the specific errors, then fix each one.
-   - If lint failed: call "applyEslintFix" to auto-fix, then "getDiagnostics" to see remaining issues.
-   - If tests failed: call "getTestResults" to see which tests failed and why, then fix the code or the test.
+   - If typecheck failed: call "runTypeCheck" to get the specific errors. For each one, call "readFile" on the reported file and line range, then fix it with "applyPatch" (copy "oldText" exactly from the file; make the smallest change).
+   - If lint failed: call "applyEslintFix" to auto-fix, then "getDiagnostics" to see remaining issues, and fix those with "readFile" + "applyPatch".
+   - If tests failed: call "getTestResults" to see which tests failed and why, use "searchCode" and "readFile" to find the code under test, then fix the code or the test with "applyPatch".
    - If audit found vulnerabilities: recommend upgrades (but don't fail the overall validation).
-3. After making fixes, call "validateWorkspace" again to confirm the workspace is now healthy.
-4. Present a summary of what was fixed and the final validation status.`
+3. If "applyPatch" returns ok=false, read the message, re-read the file, and retry with corrected text. Never claim a file was changed unless "applyPatch" returned ok=true.
+4. After making fixes, call "validateWorkspace" again to confirm the workspace is now healthy.
+5. Present a summary of what was fixed and the final validation status.`
   },
   {
     name: "onboard-to-project",
@@ -98,13 +100,14 @@ Then present a structured onboarding document covering:
     message: `Generate tests for the file at {{filePath}}.
 
 1. Call "getProjectContext" to determine which test runner (Vitest, Jest, or Node test runner) and assertion library this project uses.
-2. Read the source file to understand its exports, functions, and behavior.
-3. Look at existing test files in the project to match the testing style and conventions.
-4. Generate a test file that covers:
+2. Call "readFile" with the path {{filePath}} to understand its exports, functions, and behavior.
+3. Call "searchCode" (for example for the module name or its exports) to find existing tests, then "readFile" one or two of them to match the testing style and conventions.
+4. Design a test file that covers:
    - Happy path for each exported function
    - Edge cases (empty inputs, null, undefined, boundary values)
    - Error cases (invalid inputs that should throw)
-5. Present the generated test file and explain the test cases. Note: do NOT write the file to disk — just present it for the user to review and save.`
+5. Create the test file with "applyPatch" using an edit whose "oldText" is "" and whose "path" is the new test file path next to the project's existing tests. If the file already exists, extend it with exact-match edits instead. Writing requires the user's approval.
+6. Call "getTestResults" to run the tests, and fix failures with "readFile" + "applyPatch". Report the final result accurately.`
   },
   {
     name: "explain-errors",
@@ -117,7 +120,7 @@ Then present a structured onboarding document covering:
 2. For each diagnostic:
    - Identify the source (TypeScript, ESLint, Biome)
    - Explain what the error means in plain English
-   - Show the relevant code snippet (file + line)
+   - Show the relevant code snippet (use "readFile" with the file and a line range around the diagnostic)
    - Suggest a specific fix, considering the rule name and context
 3. Group diagnostics by file and present them in a clear, actionable format.
 4. If there are auto-fixable issues, mention that the "applyEslintFix" tool can fix them automatically.`

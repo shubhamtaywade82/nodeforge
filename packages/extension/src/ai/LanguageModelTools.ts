@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import { executeTool } from "@nodeforge/agent";
 import type { ExtensionWorkspaceSession } from "../core/ExtensionWorkspaceSession.js";
 import { isWorkspaceTrusted } from "../core/workspaceTrust.js";
+import { summarizePatch } from "./patchSummary.js";
 
 type EmptyInput = Record<string, never>;
 
@@ -164,6 +165,31 @@ export function registerNodeForgeLanguageModelTools(
             : "")
       )
     })
+  });
+
+  register<{ path: string; startLine?: number; endLine?: number }>("nodeforge_read_file", {
+    toolName: "readFile",
+    invocationMessage: "Reading source file"
+  });
+
+  register<{
+    query: string;
+    regex?: boolean;
+    caseSensitive?: boolean;
+    extensions?: string[];
+    maxResults?: number;
+  }>("nodeforge_search_code", {
+    toolName: "searchCode",
+    invocationMessage: "Searching source code"
+  });
+
+  register<{ edits: Array<{ path: string; oldText: string; newText: string }> }>("nodeforge_apply_patch", {
+    toolName: "applyPatch",
+    invocationMessage: "Applying source edits",
+    confirmation: (input) => {
+      const summary = summarizePatch(input);
+      return { title: summary.title, message: new vscode.MarkdownString(summary.markdown) };
+    }
   });
 
   register<EmptyInput>("nodeforge_format_workspace", {

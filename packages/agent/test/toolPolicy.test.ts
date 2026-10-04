@@ -22,7 +22,7 @@ describe("tool execution policy", () => {
 
   it("keeps mutating tools in the write-tool set", () => {
     expect(WRITE_TOOL_NAMES).toEqual(
-      new Set(["runScript", "formatFiles", "applyEslintFix"])
+      new Set(["runScript", "formatFiles", "applyEslintFix", "applyPatch"])
     );
   });
 

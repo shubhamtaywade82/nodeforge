@@ -50,7 +50,9 @@ const READ_TOOLS = new Set([
   "getDockerConfig",
   "getKubernetesManifests",
   "getGitHubWorkflows",
-  "getDependencyGraph"
+  "getDependencyGraph",
+  "readFile",
+  "searchCode"
 ]);
 
 const EXECUTE_TOOLS = new Set([
@@ -65,7 +67,8 @@ const EXECUTE_TOOLS = new Set([
 
 const WRITE_TOOLS = new Set([
   "formatFiles",
-  "applyEslintFix"
+  "applyEslintFix",
+  "applyPatch"
 ]);
 
 export const TOOL_POLICIES: Readonly<Record<string, ToolPolicy>> = Object.freeze({

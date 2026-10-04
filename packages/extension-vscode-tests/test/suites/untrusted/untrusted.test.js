@@ -1,4 +1,6 @@
 const assert = require("node:assert");
+const fs = require("node:fs");
+const path = require("node:path");
 const vscode = require("vscode");
 const { activateExtension, invokeTool, workspaceRoot } = require("../../lib/helpers");
 
@@ -32,5 +34,24 @@ suite("Restricted Mode (untrusted workspace)", () => {
   test("the profile report still renders", async () => {
     const doc = await vscode.workspace.openTextDocument(vscode.Uri.from({ scheme: "nodeforge", path: "/profile.json" }));
     assert.doesNotThrow(() => JSON.parse(doc.getText()));
+  });
+
+  test("read-only source tools still work in Restricted Mode", async () => {
+    const read = JSON.parse(await invokeTool("nodeforge_read_file", { path: "src/index.ts" }));
+    assert.match(read.content, /export function add/);
+    const search = JSON.parse(await invokeTool("nodeforge_search_code", { query: "add" }));
+    assert.ok(search.matches.length > 0);
+  });
+
+  test("source tools still refuse secrets in Restricted Mode", async () => {
+    const result = JSON.parse(await invokeTool("nodeforge_read_file", { path: ".env" }));
+    assert.strictEqual(result.ok, false);
+  });
+
+  test("nodeforge_apply_patch is refused and writes nothing in Restricted Mode", async () => {
+    const target = path.join(workspaceRoot(), "src", "should-not-exist.ts");
+    const text = await invokeTool("nodeforge_apply_patch", { edits: [{ path: "src/should-not-exist.ts", oldText: "", newText: "x" }] });
+    assert.match(text, /disabled|not trusted/i);
+    assert.strictEqual(fs.existsSync(target), false);
   });
 });

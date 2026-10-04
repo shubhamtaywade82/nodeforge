@@ -207,7 +207,7 @@ See **[INSTALL.md](./INSTALL.md)** for step-by-step instructions on:
 
 - Installing the VS Code / Cursor extension from .vsix
 - Configuring the MCP agent server in Cursor
-- Using all 18 MCP tools, 6 prompts, and config file resources
+- Using all 21 MCP tools, 6 prompts, and config file resources
 
 Quick install:
 
