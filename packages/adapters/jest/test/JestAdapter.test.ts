@@ -190,7 +190,7 @@ describe("JestAdapter (integration against fixture)", () => {
     expect(result.result.status).toBe("failed");
     expect(result.result.cases).toHaveLength(6);
     expect(result.result.cases?.find((test) => test.status === "failed")?.fullName).toBe(
-      "intentionally failing assertion"
+      "divide intentionally failing assertion"
     );
 
     // The fixture has one test file → one file-level suite.

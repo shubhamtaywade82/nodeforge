@@ -15,7 +15,11 @@ concurrency:
 
 jobs:
   dependency-review:
-    if: github.event_name == 'pull_request'
+    # actions/dependency-review-action fails outright ("Dependency review is not supported on this
+    # repository") unless the Dependency graph is enabled. Enable it under Settings > Code security,
+    # then set the repository variable DEPENDENCY_GRAPH_ENABLED=true to turn this gate on. Until
+    # then the job is skipped instead of failing every pull request.
+    if: github.event_name == 'pull_request' && vars.DEPENDENCY_GRAPH_ENABLED == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -55,10 +59,11 @@ jobs:
             node-ts-eslint \
             node-ts-with-errors \
             node-ts-biome-lint \
+            node-ts-docker \
             node-ts-jest \
             node-ts-vitest
           do
-            pnpm --dir "packages/test-fixtures/$fixture" install --no-frozen-lockfile --ignore-scripts
+            pnpm --dir "packages/test-fixtures/$fixture" install --ignore-workspace --lockfile=false --ignore-scripts
           done
 
       - name: Start Xvfb for VS Code extension-host tests

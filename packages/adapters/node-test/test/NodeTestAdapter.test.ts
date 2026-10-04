@@ -38,7 +38,9 @@ describe("parseNodeTestOutput", () => {
 
     const { suite, result } = parseNodeTestOutput(raw, FIXTURE);
 
-    expect(suite.tests[0]?.status).toBe("failed");
+    // Tests are grouped into one suite per file.
+    expect(suite.suites[0]?.name).toBe("test/math.test.js");
+    expect(suite.suites[0]?.tests[0]?.status).toBe("failed");
     expect(result.failures[0]?.location?.line).toBe(15);
     expect(result.failures[0]?.location?.column).toBe(4);
   });
