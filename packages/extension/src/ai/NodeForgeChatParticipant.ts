@@ -14,9 +14,18 @@ import {
   selectTools
 } from "./participantCommands.js";
 import { logger } from "../core/Logger.js";
+import {
+  boundTrace,
+  buildHistory,
+  makeRound,
+  parseToolTrace,
+  type HistoryTurn,
+  type NeutralMessage,
+  type TraceRound
+} from "./toolTrace.js";
 
 export const CHAT_PARTICIPANT_ID = "nodeforge.engineer";
-const MAX_HISTORY_TURNS = 6;
+const MAX_HISTORY_TURNS = 8;
 
 export function registerNodeForgeChatParticipant(
   context: vscode.ExtensionContext,
@@ -25,13 +34,17 @@ export function registerNodeForgeChatParticipant(
   const participant = vscode.chat.createChatParticipant(
     CHAT_PARTICIPANT_ID,
     (request, chatContext, stream, token) =>
-      handleRequest(request, chatContext, stream, token, isTrusted())
+      handleParticipantRequest(request, chatContext, stream, token, isTrusted())
   );
   participant.iconPath = vscode.Uri.joinPath(context.extensionUri, "media", "nodeforge.svg");
   context.subscriptions.push(participant);
 }
 
-async function handleRequest(
+/**
+ * The participant's request handler. Exported for the extension-host tests (via the extension's
+ * `exports.__testing`), which drive it with a fake model; not part of any public API.
+ */
+export async function handleParticipantRequest(
   request: vscode.ChatRequest,
   chatContext: vscode.ChatContext,
   stream: vscode.ChatResponseStream,
@@ -60,6 +73,12 @@ async function handleRequest(
     vscode.workspace.getConfiguration("nodeforge.chat").get<number>("maxToolRounds", 8)
   );
 
+  // Tool evidence is stored in the result metadata so later turns can replay it (see toolTrace.ts).
+  const traced: TraceRound[] = [];
+  const resultMeta = (extra: Record<string, unknown>): vscode.ChatResult => ({
+    metadata: { ...extra, ...(traced.length > 0 ? { toolTrace: boundTrace(traced) } : {}) }
+  });
+
   try {
     for (let round = 0; round < maxRounds; round++) {
       const response = await request.model.sendRequest(
@@ -79,7 +98,7 @@ async function handleRequest(
         }
       }
 
-      if (calls.length === 0) return { metadata: { command: request.command, rounds: round + 1 } };
+      if (calls.length === 0) return resultMeta({ command: request.command, rounds: round + 1 });
 
       messages.push(
         vscode.LanguageModelChatMessage.Assistant([
@@ -93,10 +112,16 @@ async function handleRequest(
         results.push(await invokeTool(call, request, stream, token));
       }
       messages.push(vscode.LanguageModelChatMessage.User(results));
+      traced.push(
+        makeRound(
+          calls.map((c) => ({ callId: c.callId, name: c.name, input: c.input })),
+          Object.fromEntries(results.map((r) => [r.callId, resultText(r)]))
+        )
+      );
     }
 
     stream.markdown(`\n\n_Stopped after ${maxRounds} tool rounds (nodeforge.chat.maxToolRounds)._`);
-    return { metadata: { command: request.command, truncated: true } };
+    return resultMeta({ command: request.command, truncated: true });
   } catch (err) {
     if (err instanceof vscode.CancellationError) return {};
     logger.error("@nodeforge request failed", err);
@@ -130,17 +155,45 @@ async function invokeTool(
   }
 }
 
+function resultText(part: vscode.LanguageModelToolResultPart): string {
+  return part.content
+    .map((c) => (c instanceof vscode.LanguageModelTextPart ? c.value : ""))
+    .join("");
+}
+
 function historyMessages(chatContext: vscode.ChatContext): vscode.LanguageModelChatMessage[] {
-  const out: vscode.LanguageModelChatMessage[] = [];
-  for (const turn of chatContext.history.slice(-MAX_HISTORY_TURNS)) {
+  const turns: HistoryTurn[] = [];
+  for (const turn of chatContext.history) {
+    // History includes turns addressed to other participants; only replay our own.
+    if (turn.participant !== CHAT_PARTICIPANT_ID) continue;
     if (turn instanceof vscode.ChatRequestTurn) {
-      out.push(vscode.LanguageModelChatMessage.User(turn.prompt));
+      turns.push({ kind: "request", prompt: turn.prompt });
     } else if (turn instanceof vscode.ChatResponseTurn) {
       const text = turn.response
         .map((part) => (part instanceof vscode.ChatResponseMarkdownPart ? part.value.value : ""))
         .join("");
-      if (text) out.push(vscode.LanguageModelChatMessage.Assistant(text));
+      turns.push({ kind: "response", text, trace: parseToolTrace(turn.result.metadata) });
     }
   }
-  return out;
+  return buildHistory(turns, MAX_HISTORY_TURNS).map(toChatMessage);
+}
+
+function toChatMessage(message: NeutralMessage): vscode.LanguageModelChatMessage {
+  if (message.role === "assistant") {
+    const parts: Array<vscode.LanguageModelTextPart | vscode.LanguageModelToolCallPart> = [];
+    for (const p of message.parts) {
+      if (p.kind === "text") parts.push(new vscode.LanguageModelTextPart(p.text));
+      else if (p.kind === "toolCall") parts.push(new vscode.LanguageModelToolCallPart(p.callId, p.name, p.input));
+    }
+    return vscode.LanguageModelChatMessage.Assistant(parts);
+  }
+
+  const parts: Array<vscode.LanguageModelTextPart | vscode.LanguageModelToolResultPart> = [];
+  for (const p of message.parts) {
+    if (p.kind === "text") parts.push(new vscode.LanguageModelTextPart(p.text));
+    else if (p.kind === "toolResult") {
+      parts.push(new vscode.LanguageModelToolResultPart(p.callId, [new vscode.LanguageModelTextPart(p.text)]));
+    }
+  }
+  return vscode.LanguageModelChatMessage.User(parts);
 }

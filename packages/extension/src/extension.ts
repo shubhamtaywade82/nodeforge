@@ -60,7 +60,7 @@ import { DependencyGraphPanel } from "./core/DependencyGraphPanel.js";
 import { DatabaseSchemaPanel } from "./core/DatabaseSchemaPanel.js";
 import { logger } from "./core/Logger.js";
 import { registerNodeForgeLanguageModelTools } from "./ai/LanguageModelTools.js";
-import { registerNodeForgeChatParticipant } from "./ai/NodeForgeChatParticipant.js";
+import { handleParticipantRequest, registerNodeForgeChatParticipant } from "./ai/NodeForgeChatParticipant.js";
 import { registerNodeForgeMcpProvider } from "./ai/NodeForgeMcpProvider.js";
 import { registerReports } from "./reports/ReportContentProvider.js";
 import { terminalProfileOptions } from "./core/terminalProfile.js";
@@ -93,7 +93,14 @@ const CHAT_API_KEY_SECRET = "nodeforge.chat.apiKey";
 let depAuditTimer: ReturnType<typeof setTimeout> | undefined;
 let depGraphTimer: ReturnType<typeof setTimeout> | undefined;
 
-export async function activate(context: vscode.ExtensionContext): Promise<void> {
+/** Internal hooks for the extension-host tests. Not a supported API. */
+export interface NodeForgeExtensionExports {
+  readonly __testing: {
+    readonly handleParticipantRequest: typeof handleParticipantRequest;
+  };
+}
+
+export async function activate(context: vscode.ExtensionContext): Promise<NodeForgeExtensionExports> {
   logger.info("NodeForge extension activating");
 
   const bus: EventBus = new InMemoryEventBus();
@@ -893,6 +900,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   }
 
   logger.info("NodeForge extension activated");
+  return { __testing: { handleParticipantRequest } };
 }
 
 export function deactivate(): void {
