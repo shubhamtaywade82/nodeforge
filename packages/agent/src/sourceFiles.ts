@@ -6,7 +6,8 @@
  */
 
 import * as path from "node:path";
-import { lstat, mkdir, open, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
+import { constants as fsConstants } from "node:fs";
+import { lstat, mkdir, open, readdir, rename, rm, writeFile } from "node:fs/promises";
 import { resolveContainedPath } from "./safePath.js";
 
 export const MAX_READ_BYTES = 200_000;
@@ -93,12 +94,24 @@ async function realRoot(root: string): Promise<string> {
   return realpath(root);
 }
 
-async function looksBinary(absolute: string): Promise<boolean> {
-  const handle = await open(absolute, "r");
+type CheckedRead =
+  | { readonly kind: "ok"; readonly content: string; readonly size: number }
+  | { readonly kind: "binary" }
+  | { readonly kind: "tooLarge"; readonly size: number };
+
+/**
+ * Opens once (never following a final symlink) and performs the type, size and binary checks on that
+ * same descriptor, so the file cannot change between "checked" and "read".
+ */
+async function readCheckedFile(absolute: string, maxBytes: number): Promise<CheckedRead> {
+  const handle = await open(absolute, fsConstants.O_RDONLY | (fsConstants.O_NOFOLLOW ?? 0));
   try {
-    const buffer = Buffer.alloc(8192);
-    const { bytesRead } = await handle.read(buffer, 0, buffer.length, 0);
-    return buffer.subarray(0, bytesRead).includes(0);
+    const info = await handle.stat();
+    if (!info.isFile()) throw new SourceAccessDeniedError("NOT_A_FILE", "Not a regular file.");
+    if (info.size > maxBytes) return { kind: "tooLarge", size: info.size };
+    const buffer = await handle.readFile();
+    if (buffer.subarray(0, 8192).includes(0)) return { kind: "binary" };
+    return { kind: "ok", content: buffer.toString("utf8"), size: info.size };
   } finally {
     await handle.close();
   }
@@ -123,14 +136,16 @@ export interface ReadFileResult {
 
 export async function readSourceFile(root: string, requested: string, options: ReadFileOptions = {}): Promise<ReadFileResult> {
   const { absolute, relative } = await resolveExistingFile(root, requested);
-  if (await looksBinary(absolute)) throw new SourceAccessDeniedError("BINARY_FILE", `"${relative}" is a binary file.`);
-
-  const info = await lstat(absolute);
-  if (info.size > MAX_EDIT_FILE_BYTES * 5 && options.startLine === undefined) {
-    throw new SourceAccessDeniedError("TOO_LARGE", `"${relative}" is ${info.size} bytes; request a line range.`);
+  const checked = await readCheckedFile(
+    absolute,
+    options.startLine === undefined ? MAX_EDIT_FILE_BYTES * 5 : Number.MAX_SAFE_INTEGER
+  );
+  if (checked.kind === "binary") throw new SourceAccessDeniedError("BINARY_FILE", `"${relative}" is a binary file.`);
+  if (checked.kind === "tooLarge") {
+    throw new SourceAccessDeniedError("TOO_LARGE", `"${relative}" is ${checked.size} bytes; request a line range.`);
   }
 
-  const lines = (await readFile(absolute, "utf8")).split("\n");
+  const lines = checked.content.split("\n");
   if (lines.at(-1) === "") lines.pop();
   const totalLines = lines.length;
 
@@ -239,12 +254,11 @@ export async function searchSourceCode(root: string, query: string, options: Sea
         truncated = true;
         return;
       }
-      const info = await lstat(full);
-      if (info.size > MAX_SEARCH_FILE_BYTES) continue;
-      if (await looksBinary(full)) continue;
+      const checked = await readCheckedFile(full, MAX_SEARCH_FILE_BYTES).catch(() => undefined);
+      if (checked?.kind !== "ok") continue;
       filesScanned++;
 
-      const lines = (await readFile(full, "utf8")).split("\n");
+      const lines = checked.content.split("\n");
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i] ?? "";
         // Bound per-line work so a pathological regex cannot stall on a minified bundle.
@@ -394,14 +408,14 @@ export async function applySourcePatch(root: string, rawEdits: unknown): Promise
           }
           throw error;
         });
-        if (await looksBinary(resolved.absolute)) {
+        const checked = await readCheckedFile(resolved.absolute, MAX_EDIT_FILE_BYTES);
+        if (checked.kind === "binary") {
           throw new SourceAccessDeniedError("BINARY_FILE", `${label}: binary files cannot be edited.`);
         }
-        const info = await lstat(resolved.absolute);
-        if (info.size > MAX_EDIT_FILE_BYTES) {
+        if (checked.kind === "tooLarge") {
           throw new SourceAccessDeniedError("TOO_LARGE", `${label}: file is larger than ${MAX_EDIT_FILE_BYTES} bytes.`);
         }
-        const before = await readFile(resolved.absolute, "utf8");
+        const before = checked.content;
         file = { absolute: resolved.absolute, relative: resolved.relative, created: false, before, after: before, edits: 0 };
       }
       planned.set(path.resolve(base, edit.path), file);
