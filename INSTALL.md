@@ -15,34 +15,28 @@ configuring the MCP agent server for Cursor.
 
 ## Part 1: Install the VS Code Extension
 
-### Step 1: Build and Package the VSIX (from source)
+### Step 1: Build, Package, and Install (One-Liner)
 
-If you are building the extension from the repository:
+From the repository root:
+
+```bash
+# Build, package, and install into both VS Code and Cursor:
+pnpm run install:local
+```
+
+Or run step-by-step:
 
 ```bash
 # 1. Install dependencies and build all packages
 pnpm install
-pnpm build
+pnpm run compile
 
-# 2. Package the extension VSIX
-cd packages/extension
-npx @vscode/vsce package --no-dependencies --no-git-tag-version --allow-missing-repository --baseContentUrl https://github.com/shubhamtaywade82/nodeforge/blob/main/packages/extension
-```
+# 2. Package the extension VSIX to root nodeforge.vsix
+pnpm run vsce-package
 
-This creates `packages/extension/nodeforge-0.1.0.vsix`.
-
-### Step 2: Install into Cursor or VS Code
-
-#### Via Command Line
-
-For **Cursor**:
-```bash
-cursor --install-extension /home/nemesis/projects/developer-tools/nodeforge/packages/extension/nodeforge-0.1.0.vsix
-```
-
-For **VS Code**:
-```bash
-code --install-extension /home/nemesis/projects/developer-tools/nodeforge/packages/extension/nodeforge-0.1.0.vsix
+# 3. Install into Cursor and/or VS Code
+code --install-extension nodeforge.vsix --force
+cursor --install-extension nodeforge.vsix --force
 ```
 
 #### Via Editor UI

@@ -12,11 +12,14 @@
   "packageManager": "pnpm@9.15.9",
   "scripts": {
     "build": "tsc -b --pretty false && pnpm -C packages/extension run build",
+    "compile": "pnpm run build",
     "typecheck": "tsc -b --pretty false",
     "test": "pnpm -r --filter \"./packages/**\" run test",
     "test:unit": "pnpm -r --filter \"./packages/**\" run test:unit",
     "clean": "pnpm -r --filter \"./packages/**\" exec rm -rf dist *.tsbuildinfo .turbo",
     "package": "pnpm -C packages/extension run package",
+    "vsce-package": "pnpm -C packages/extension run vsce-package",
+    "install:local": "pnpm run compile && pnpm run vsce-package && code --install-extension nodeforge.vsix --force && cursor --install-extension nodeforge.vsix --force",
     "lint": "pnpx @biomejs/biome@2.5.14 lint ."
   },
   "devDependencies": {

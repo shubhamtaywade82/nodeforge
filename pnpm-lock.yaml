@@ -457,7 +457,7 @@ importers:
         specifier: ^20.14.0
         version: 20.19.43
       '@types/vscode':
-        specifier: ^1.138.0
+        specifier: ^1.96.0
         version: 1.138.0
       esbuild:
         specifier: ^0.28.2
