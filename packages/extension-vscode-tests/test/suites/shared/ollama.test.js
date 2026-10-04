@@ -31,7 +31,7 @@ suite("Ollama model provider (stub server)", () => {
             JSON.stringify({
               details: { family: "stub", parameter_size: "1B" },
               model_info: { "stub.context_length": 32768 },
-              capabilities: ["completion", "tools"]
+              capabilities: ["completion", "tools", "vision"]
             })
           );
         } else if (req.url === "/v1/chat/completions") {
@@ -86,6 +86,31 @@ suite("Ollama model provider (stub server)", () => {
     const last = sent?.messages.at(-1);
     assert.strictEqual(last?.role, "user");
     assert.match(JSON.stringify(last?.content), /ping/);
+  });
+
+  test("forwards an attached image as an image_url part", async () => {
+    const [model] = await vscode.lm.selectChatModels({ vendor: OLLAMA_VENDOR });
+    assert.ok(model, "no Ollama model available");
+
+    // A real, decodable 1x1 PNG: VS Code decodes attached images before they reach the provider.
+    const png = Uint8Array.from(Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64"));
+    const source = new vscode.CancellationTokenSource();
+    const response = await model.sendRequest(
+      [vscode.LanguageModelChatMessage.User([new vscode.LanguageModelTextPart("what is this?"), vscode.LanguageModelDataPart.image(png, "image/png")])],
+      {},
+      source.token
+    );
+    for await (const _ of response.text) {
+      // drain
+    }
+    source.dispose();
+
+    const sent = chatBodies.at(-1);
+    const content = sent?.messages.at(-1)?.content;
+    assert.ok(Array.isArray(content), `expected content parts, got ${JSON.stringify(content)}`);
+    assert.deepStrictEqual(content[0], { type: "text", text: "what is this?" });
+    assert.strictEqual(content[1].type, "image_url");
+    assert.match(content[1].image_url.url, /^data:image\/png;base64,iVBORw0KGgo/);
   });
 
   test("counts tokens without calling the server", async () => {

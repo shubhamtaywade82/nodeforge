@@ -1,7 +1,11 @@
 import * as vscode from "vscode";
+import { logger } from "../core/Logger.js";
 import { OpenAICompatibleClient, type LlmMessage, type LlmToolDefinition } from "@nodeforge/agent";
 import {
+  TtlCache,
   buildOllamaModelMetadata,
+  testOllamaConnection,
+  toImageDataUrl,
   toOllamaApiBaseUrl,
   toOllamaOpenAiBaseUrl,
   type OllamaShowModel,
@@ -20,7 +24,29 @@ interface OllamaProviderConfig {
   readonly apiKey: string;
 }
 
-export class OllamaLanguageModelChatProvider implements vscode.LanguageModelChatProvider {
+const TAGS_TTL_MS = 10_000;
+const SHOW_TTL_MS = 60_000;
+const DISCOVERY_TIMEOUT_MS = 10_000;
+
+export class OllamaLanguageModelChatProvider implements vscode.LanguageModelChatProvider, vscode.Disposable {
+  // Discovery is 1 + N requests (tags, then show per model); cache it briefly. The cached
+  // requests are not tied to a caller's cancellation token because the result is shared.
+  private readonly tagsCache = new TtlCache<OllamaTagsResponse>(TAGS_TTL_MS);
+  private readonly showCache = new TtlCache<OllamaShowModel>(SHOW_TTL_MS);
+  private readonly changed = new vscode.EventEmitter<void>();
+  readonly onDidChangeLanguageModelChatInformation = this.changed.event;
+
+  /** Drop cached discovery and tell VS Code to re-query (after a settings change). */
+  refresh(): void {
+    this.tagsCache.clear();
+    this.showCache.clear();
+    this.changed.fire();
+  }
+
+  dispose(): void {
+    this.changed.dispose();
+  }
+
   constructor(
     private readonly getConfig: () => OllamaProviderConfig = () => ({
       baseUrl: DEFAULT_OLLAMA_BASE_URL,
@@ -32,26 +58,27 @@ export class OllamaLanguageModelChatProvider implements vscode.LanguageModelChat
     options: vscode.PrepareLanguageModelChatModelOptions,
     token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelChatInformation[]> {
-    const cancellation = createAbortController(token);
     try {
       const config = this.getConfig();
-      const tags = await this.fetchJson<OllamaTagsResponse>(
-        toOllamaApiBaseUrl(config.baseUrl) + "/tags",
-        { method: "GET", signal: cancellation.signal }
+      const apiBase = toOllamaApiBaseUrl(config.baseUrl);
+      const tags = await this.tagsCache.get(apiBase, () =>
+        this.fetchJson<OllamaTagsResponse>(apiBase + "/tags", {
+          method: "GET",
+          signal: AbortSignal.timeout(DISCOVERY_TIMEOUT_MS)
+        })
       );
       const models = tags.models ?? [];
 
       const enriched = await Promise.all(
         models.map(async (model) => {
           try {
-            const show = await this.fetchJson<OllamaShowModel>(
-              toOllamaApiBaseUrl(config.baseUrl) + "/show",
-              {
+            const show = await this.showCache.get(apiBase + "|" + model.name, () =>
+              this.fetchJson<OllamaShowModel>(apiBase + "/show", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ model: model.name }),
-                signal: cancellation.signal
-              }
+                signal: AbortSignal.timeout(DISCOVERY_TIMEOUT_MS)
+              })
             );
             return buildOllamaModelMetadata(model, show);
           } catch {
@@ -78,8 +105,6 @@ export class OllamaLanguageModelChatProvider implements vscode.LanguageModelChat
       if (token.isCancellationRequested) return [];
       if (options.silent) return [];
       throw new Error(formatOllamaConnectionError(this.getConfig().baseUrl, error));
-    } finally {
-      cancellation.dispose();
     }
   }
 
@@ -92,6 +117,7 @@ export class OllamaLanguageModelChatProvider implements vscode.LanguageModelChat
   ): Promise<void> {
     const config = this.getConfig();
     const cancellation = createAbortController(token);
+    logger.info(`Ollama request to ${model.id}: ${messages.length} message(s), ${(options.tools ?? []).length} tool(s)`);
     try {
       const llmMessages = toLlmMessages(messages);
       const tools = (options.tools ?? []).map<LlmToolDefinition>((tool) => ({
@@ -135,6 +161,7 @@ export class OllamaLanguageModelChatProvider implements vscode.LanguageModelChat
       }
     } catch (error) {
       if (token.isCancellationRequested) return;
+      logger.error(`Ollama request to ${model.id} failed`, error);
       throw error;
     } finally {
       cancellation.dispose();
@@ -178,7 +205,45 @@ export function registerOllamaLanguageModelChatProvider(): vscode.Disposable {
     };
   });
 
-  return vscode.lm.registerLanguageModelChatProvider(OLLAMA_LANGUAGE_MODEL_VENDOR, provider);
+  return vscode.Disposable.from(
+    provider,
+    vscode.lm.registerLanguageModelChatProvider(OLLAMA_LANGUAGE_MODEL_VENDOR, provider),
+    vscode.workspace.onDidChangeConfiguration((e) => {
+      if (e.affectsConfiguration("nodeforge.ollama")) provider.refresh();
+    }),
+    vscode.commands.registerCommand("nodeforge.ollama.configure", async () => {
+      const configuration = vscode.workspace.getConfiguration("nodeforge.ollama");
+      const current = configuration.get<string>("baseUrl", DEFAULT_OLLAMA_BASE_URL);
+      const pick = await vscode.window.showQuickPick(
+        [
+          { label: "Test connection", description: current, id: "test" },
+          { label: "Set server URL…", id: "url" },
+          { label: "Refresh models", id: "refresh" }
+        ],
+        { placeHolder: "Configure Ollama for NodeForge" }
+      );
+      if (!pick) return;
+
+      if (pick.id === "url") {
+        const value = await vscode.window.showInputBox({
+          prompt: "Ollama server URL (the API key is read from the OLLAMA_API_KEY environment variable)",
+          value: current,
+          validateInput: (v) => (/^https?:\/\/\S+$/.test(v.trim()) ? undefined : "Enter an http(s) URL")
+        });
+        if (value === undefined) return;
+        await configuration.update("baseUrl", value.trim().replace(/\/+$/, ""), vscode.ConfigurationTarget.Global);
+      } else if (pick.id === "refresh") {
+        provider.refresh();
+        return;
+      }
+
+      const result = await testOllamaConnection(
+        vscode.workspace.getConfiguration("nodeforge.ollama").get<string>("baseUrl", DEFAULT_OLLAMA_BASE_URL)
+      );
+      if (result.ok) void vscode.window.showInformationMessage(`NodeForge: ${result.message}`);
+      else void vscode.window.showWarningMessage(`NodeForge: ${result.message}`);
+    })
+  );
 }
 
 function toLlmMessages(
@@ -194,6 +259,7 @@ function toLlmMessages(
       function: { name: string; arguments: string };
     }> = [];
     const toolResults: vscode.LanguageModelToolResultPart[] = [];
+    const images: string[] = [];
 
     for (const part of message.content) {
       if (part instanceof vscode.LanguageModelTextPart) {
@@ -209,16 +275,24 @@ function toLlmMessages(
         });
       } else if (part instanceof vscode.LanguageModelToolResultPart) {
         toolResults.push(part);
+      } else if (part instanceof vscode.LanguageModelDataPart) {
+        if (!part.mimeType.toLowerCase().startsWith("image/")) {
+          throw new Error(
+            `Ollama provider cannot send "${part.mimeType}" data; only images, text and tool messages are supported.`
+          );
+        }
+        images.push(toImageDataUrl(part.mimeType, part.data));
       } else if (typeof part === "string") {
         text.push(part);
       } else {
         throw new Error(
-          "Ollama provider supports text and tool messages only; unsupported message content was received."
+          "Ollama provider supports text, image and tool messages only; unsupported message content was received."
         );
       }
     }
 
     if (message.role === vscode.LanguageModelChatMessageRole.Assistant) {
+      if (images.length > 0) throw new Error("Ollama provider cannot send images in assistant messages.");
       result.push({
         role: "assistant",
         content: text.join("") || null,
@@ -228,8 +302,8 @@ function toLlmMessages(
     }
 
     if (toolResults.length > 0) {
-      if (text.length > 0) {
-        result.push({ role: "user", content: text.join("") });
+      if (text.length > 0 || images.length > 0) {
+        result.push({ role: "user", content: text.join("") || null, ...(images.length > 0 ? { images } : {}) });
       }
       for (const toolResult of toolResults) {
         result.push({
@@ -241,7 +315,7 @@ function toLlmMessages(
       continue;
     }
 
-    result.push({ role: "user", content: text.join("") });
+    result.push({ role: "user", content: text.join("") || (images.length > 0 ? null : ""), ...(images.length > 0 ? { images } : {}) });
   }
 
   return result;
