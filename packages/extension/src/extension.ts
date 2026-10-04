@@ -46,8 +46,9 @@ import { ExtensionWorkspaceSession } from "./core/ExtensionWorkspaceSession.js";
 import { DependencyDiagnosticPublisher } from "./diagnostics/DependencyDiagnosticPublisher.js";
 import { ChatController } from "./chat/ChatController.js";
 import { ChatWebviewProvider } from "./chat/ChatWebviewProvider.js";
-import { DevDocsWebviewProvider } from "./docs/DevDocsWebviewProvider.js";
 import { DevDocsOfflineManager } from "./docs/DevDocsOfflineManager.js";
+import { DevDocsHoverProvider } from "./docs/DevDocsHoverProvider.js";
+import { DevDocsCompletionItemProvider } from "./docs/DevDocsCompletionItemProvider.js";
 import { openOfflineDocPanel } from "./docs/DevDocsOfflinePanel.js";
 import { DiagnosticsBridge } from "./core/DiagnosticsBridge.js";
 import { StatusBarController } from "./core/StatusBarController.js";
@@ -78,7 +79,6 @@ let processManager: ProcessManager | undefined;
 let databaseManager: DatabaseManager | undefined;
 let dependencyManager: DependencyManager | undefined;
 let dependencyDiagnostics: DependencyDiagnosticPublisher | undefined;
-let devDocsProvider: DevDocsWebviewProvider | undefined;
 let devDocsOffline: DevDocsOfflineManager | undefined;
 let gitAdapter: GitAdapter | undefined;
 let eventBus: EventBus | undefined;
@@ -187,10 +187,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<NodeFo
   const databaseView = new DatabaseViewProvider();
   const dependencyView = new DependencyViewProvider();
   const agentView = new AgentViewProvider(context);
-  const devDocs = new DevDocsWebviewProvider(context.extensionUri);
-  devDocsProvider = devDocs;
   const devDocsOfflineMgr = new DevDocsOfflineManager(context);
   devDocsOffline = devDocsOfflineMgr;
+  const devDocsHoverProvider = new DevDocsHoverProvider(devDocsOfflineMgr);
+  const devDocsCompletionProvider = new DevDocsCompletionItemProvider(devDocsOfflineMgr);
 
   const treeViews: Record<string, vscode.TreeView<unknown>> = {
     workspace: vscode.window.createTreeView("nodeforge.workspace", { treeDataProvider: workspaceView }),
@@ -235,9 +235,24 @@ export async function activate(context: vscode.ExtensionContext): Promise<NodeFo
     vscode.window.registerWebviewViewProvider("nodeforge.chat", chatProvider, {
       webviewOptions: { retainContextWhenHidden: true }
     }),
-    vscode.window.registerWebviewViewProvider("nodeforge.docs", devDocs, {
-      webviewOptions: { retainContextWhenHidden: true }
-    }),
+    vscode.languages.registerHoverProvider(
+      [
+        { scheme: "file", language: "typescript" },
+        { scheme: "file", language: "javascript" },
+        { scheme: "file", language: "typescriptreact" },
+        { scheme: "file", language: "javascriptreact" }
+      ],
+      devDocsHoverProvider
+    ),
+    vscode.languages.registerCompletionItemProvider(
+      [
+        { scheme: "file", language: "typescript" },
+        { scheme: "file", language: "javascript" },
+        { scheme: "file", language: "typescriptreact" },
+        { scheme: "file", language: "javascriptreact" }
+      ],
+      devDocsCompletionProvider
+    ),
     { dispose: () => depDiagPublisher.dispose() },
     diagnosticsBridge,
     statusBar,
@@ -328,7 +343,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<NodeFo
         const profile = await manager.analyze(r);
         workspaceView.render(profile);
         treeViews.workspace!.message = undefined;
-        devDocs.setProfile(profile);
         void vscode.window.showInformationMessage(formatProfileSummary(profile));
       } catch (err) {
         logger.error("Failed to analyze workspace", err);
@@ -806,7 +820,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<NodeFo
       const profile = await manager.analyze(r);
       workspaceView.render(profile);
       treeViews.workspace!.message = undefined;
-      devDocs.setProfile(profile);
       scheduleBackgroundDependencyAudit(r, depManager, session);
       scheduleBackgroundDependencyGraph(r, graphManager, session, dependencyView, depDiagPublisher);
       logger.info(`Re-analyzed workspace after config change: ${vscode.workspace.asRelativePath(uri, false)}`);
@@ -851,7 +864,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<NodeFo
       const profile = await manager.analyze(r);
       workspaceView.render(profile);
       treeViews.workspace!.message = undefined;
-      devDocs.setProfile(profile);
       scheduleBackgroundDependencyAudit(r, depManager, session);
       scheduleBackgroundDependencyGraph(r, graphManager, session, dependencyView, depDiagPublisher);
       logger.info(`Active folder ${r} (${reason})`);
@@ -953,7 +965,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<NodeFo
         (profile) => {
           workspaceView.render(profile);
           treeViews.workspace!.message = undefined;
-          devDocs.setProfile(profile);
         },
         (err) => logger.error("Analysis after workspace trust failed", err)
       );
@@ -970,7 +981,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<NodeFo
       (profile) => {
         workspaceView.render(profile);
         treeViews.workspace!.message = undefined;
-        devDocs.setProfile(profile);
         // Activation stays cheap: detect the workspace and render its profile.
         // Diagnostics, tests, Git, database, dependency, and docs scans run
         // on demand or from their existing file-change triggers.
@@ -995,7 +1005,6 @@ export function deactivate(): void {
   dependencyManager = undefined;
   dependencyDiagnostics?.dispose();
   dependencyDiagnostics = undefined;
-  devDocsProvider = undefined;
   devDocsOffline = undefined;
   gitAdapter = undefined;
   eventBus = undefined;
@@ -1027,16 +1036,7 @@ function resolveWorkspaceRoot(): string | undefined {
 }
 
 async function openDevDocs(url: string): Promise<void> {
-  const preferExternal = vscode.workspace
-    .getConfiguration("nodeforge.docs")
-    .get<boolean>("preferExternal", false);
-  if (preferExternal) {
-    await vscode.env.openExternal(vscode.Uri.parse(url));
-    return;
-  }
-  devDocsProvider?.navigate(url);
-  await vscode.commands.executeCommand("nodeforge-sidebar.focus");
-  await vscode.commands.executeCommand("nodeforge.docs.focus");
+  await vscode.env.openExternal(vscode.Uri.parse(url));
 }
 
 async function searchDevDocsWithOffline(context: vscode.ExtensionContext, query: string): Promise<void> {

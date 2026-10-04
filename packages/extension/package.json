@@ -44,7 +44,6 @@
     "onCommand:nodeforge.runTests",
     "onView:nodeforge.workspace",
     "onView:nodeforge.chat",
-    "onView:nodeforge.docs",
     "onLanguage:typescript",
     "onLanguage:typescriptreact",
     "onLanguage:javascript",
@@ -117,11 +116,6 @@
           "name": "Chat"
         },
         {
-          "id": "nodeforge.docs",
-          "type": "webview",
-          "name": "Docs"
-        },
-        {
           "id": "nodeforge.agent",
           "name": "Agent"
         }
@@ -167,16 +161,6 @@
         {
           "command": "nodeforge.clearChat",
           "when": "view == nodeforge.chat",
-          "group": "navigation"
-        },
-        {
-          "command": "nodeforge.openDevDocsForWorkspace",
-          "when": "view == nodeforge.docs",
-          "group": "navigation"
-        },
-        {
-          "command": "nodeforge.syncDevDocsOffline",
-          "when": "view == nodeforge.docs",
           "group": "navigation"
         }
       ],
@@ -373,7 +357,7 @@
       },
       {
         "command": "nodeforge.searchDevDocs",
-        "title": "NodeForge: Search DevDocs",
+        "title": "NodeForge: Search DevDocs in Editor",
         "category": "NodeForge"
       },
       {

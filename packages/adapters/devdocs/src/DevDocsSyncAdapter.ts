@@ -16,6 +16,8 @@ export interface DevDocsSyncOptions {
 }
 
 export class DevDocsSyncAdapter {
+  private readonly dbCache = new Map<string, DevDocsDb>();
+
   constructor(
     private readonly cacheRoot: string,
     private readonly runner: ProcessRunner
@@ -73,14 +75,18 @@ export class DevDocsSyncAdapter {
   async searchOffline(slugs: string[], query: string, limit = 15): Promise<DevDocsSearchHit[]> {
     const all: DevDocsSearchHit[] = [];
     for (const slug of slugs) {
-      const dbPath = path.join(this.cacheRoot, slug, "db.json");
-      try {
-        const raw = await fs.readFile(dbPath, "utf8");
-        const db = JSON.parse(raw) as DevDocsDb;
-        all.push(...searchDevDocsDb(slug, db, query, limit));
-      } catch {
-        // docset not synced
+      let db = this.dbCache.get(slug);
+      if (!db) {
+        const dbPath = path.join(this.cacheRoot, slug, "db.json");
+        try {
+          const raw = await fs.readFile(dbPath, "utf8");
+          db = JSON.parse(raw) as DevDocsDb;
+          this.dbCache.set(slug, db);
+        } catch {
+          continue;
+        }
       }
+      all.push(...searchDevDocsDb(slug, db, query, limit));
     }
     return all.slice(0, limit);
   }
