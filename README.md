@@ -199,7 +199,8 @@ Phase 11:
 | **[docs/README.md](./docs/README.md)** | Documentation index |
 | **[docs/INSTALL.md](./docs/INSTALL.md)** | Install `.vsix`, optional MCP |
 | **[docs/TESTING.md](./docs/TESTING.md)** | Manual QA checklists |
-| **[docs/SECURITY.md](./docs/SECURITY.md)** | Security model, trust boundaries, and MCP capability controls |
+| **[.github/SECURITY.md](./.github/SECURITY.md)** | Security model, trust boundaries, and MCP capability controls |
+| **[packages/extension/CHANGELOG.md](./packages/extension/CHANGELOG.md)** | Extension changelog and version release notes |
 | **[docs/security-and-privacy.md](./docs/security-and-privacy.md)** | Built-in chat, Ollama, prompt-injection, and model data flow |
 | **[packages/extension/README.md](./packages/extension/README.md)** | Extension package + F5 dev loop |
 

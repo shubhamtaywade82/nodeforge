@@ -149,5 +149,5 @@ Built-in Chat does **not** require MCP. To connect Claude Code or another MCP cl
 ## Getting help
 
 - Manual QA checklist: [TESTING.md](./TESTING.md)
-- Architecture / contributing: [CLAUDE.md](./CLAUDE.md)
+- Architecture / contributing: [CLAUDE.md](../.claude/CLAUDE.md)
 - Report issues in your project’s issue tracker (if published)

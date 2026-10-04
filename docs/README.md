@@ -6,7 +6,7 @@
 | [DevDocs integration](./devdocs.md) | Extension users + contributors | How DevDocs.io is integrated, limits, alternatives |
 | [INSTALL.md](./INSTALL.md) | Quick install | `.vsix` install, MCP optional setup |
 | [TESTING.md](./TESTING.md) | QA / contributors | Manual test checklists |
-| [SECURITY.md](./SECURITY.md) | Security model | Trust boundaries, MCP capability controls |
-| [CHANGELOG.md](./CHANGELOG.md) | Release history | Version changes and release notes |
-| [CLAUDE.md](./CLAUDE.md) | Contributors | Architecture rules, roadmap |
+| [SECURITY.md](../.github/SECURITY.md) | Security model | Trust boundaries, MCP capability controls |
+| [CHANGELOG.md](../packages/extension/CHANGELOG.md) | Release history | Version changes and release notes |
+| [CLAUDE.md](../.claude/CLAUDE.md) | Contributors | Architecture rules, roadmap |
 | [packages/agent/README.md](../packages/agent/README.md) | Agent / MCP users | MCP tools, prompts, resources |
