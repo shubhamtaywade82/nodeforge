@@ -23,6 +23,7 @@ import type { TestCase, TestRunResult, TestSuite } from "@nodeforge/contracts";
 import type { TestManager } from "./TestManager.js";
 import { logger } from "./Logger.js";
 import { buildTestDebugConfiguration, type TestRunnerKind } from "./testDebugConfiguration.js";
+import { isWorkspaceTrusted } from "./workspaceTrust.js";
 
 export class NodeForgeTestController {
   private readonly controller: vscode.TestController;
