@@ -4,6 +4,16 @@ const path = require("node:path");
 const vscode = require("vscode");
 const { activateExtension, invokeTool, waitFor, workspaceRoot } = require("../../lib/helpers");
 
+/** Reads a file or returns undefined if it does not exist yet (no exists-then-read window). */
+function readIfPresent(file) {
+  try {
+    return fs.readFileSync(file, "utf8");
+  } catch (err) {
+    if (err && err.code === "ENOENT") return undefined;
+    throw err;
+  }
+}
+
 suite("Trusted workspace", () => {
   suiteSetup(async () => {
     await activateExtension();
@@ -70,7 +80,7 @@ suite("Trusted workspace", () => {
     });
     try {
       assert.strictEqual(started, true, "debug session did not start");
-      const content = await waitFor(() => (fs.existsSync(out) ? fs.readFileSync(out, "utf8") : undefined), "debuggee output", 30000);
+      const content = await waitFor(() => readIfPresent(out), "debuggee output", 30000);
       assert.strictEqual(content, "from-dotenv");
     } finally {
       fs.rmSync(out, { force: true });
