@@ -172,7 +172,7 @@
       ],
       "editor/context": [
         {
-          "command": "nodeforge.searchDevDocs",
+          "submenu": "nodeforge.editorSubmenu",
           "when": "editorTextFocus",
           "group": "navigation@95"
         }
@@ -192,6 +192,93 @@
           "command": "nodeforge.copyAdvisoryUrl",
           "when": "view == nodeforge.dependencies && viewItem == detail",
           "group": "9_cutcopypaste"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "nodeforge.stopProcess",
+          "when": "false"
+        },
+        {
+          "command": "nodeforge.copyAdvisoryUrl",
+          "when": "false"
+        },
+        {
+          "command": "nodeforge.openAdvisoryUrl",
+          "when": "false"
+        },
+        {
+          "command": "nodeforge.runDiagnostics",
+          "when": "workspaceFolderCount > 0 && isWorkspaceTrusted"
+        },
+        {
+          "command": "nodeforge.runTests",
+          "when": "workspaceFolderCount > 0 && isWorkspaceTrusted"
+        },
+        {
+          "command": "nodeforge.auditDependencies",
+          "when": "workspaceFolderCount > 0 && isWorkspaceTrusted"
+        },
+        {
+          "command": "nodeforge.analyzeDependencyGraph",
+          "when": "workspaceFolderCount > 0 && isWorkspaceTrusted"
+        },
+        {
+          "command": "nodeforge.startDevServer",
+          "when": "workspaceFolderCount > 0 && isWorkspaceTrusted"
+        },
+        {
+          "command": "nodeforge.applyEslintFix",
+          "when": "workspaceFolderCount > 0 && isWorkspaceTrusted"
+        },
+        {
+          "command": "nodeforge.applyBiomeFix",
+          "when": "workspaceFolderCount > 0 && isWorkspaceTrusted"
+        },
+        {
+          "command": "nodeforge.formatCurrentFile",
+          "when": "workspaceFolderCount > 0 && isWorkspaceTrusted"
+        },
+        {
+          "command": "nodeforge.runTestFromFile",
+          "when": "workspaceFolderCount > 0 && isWorkspaceTrusted"
+        },
+        {
+          "command": "nodeforge.debugTestFromFile",
+          "when": "workspaceFolderCount > 0 && isWorkspaceTrusted"
+        },
+        {
+          "command": "nodeforge.showDependencyGraph",
+          "when": "workspaceFolderCount > 0"
+        },
+        {
+          "command": "nodeforge.showDatabaseSchema",
+          "when": "workspaceFolderCount > 0"
+        }
+      ],
+      "nodeforge.editorSubmenu": [
+        {
+          "command": "nodeforge.searchDevDocs",
+          "group": "1_docs"
+        },
+        {
+          "command": "nodeforge.formatCurrentFile",
+          "when": "isWorkspaceTrusted",
+          "group": "2_fix"
+        },
+        {
+          "command": "nodeforge.applyEslintFix",
+          "when": "isWorkspaceTrusted",
+          "group": "2_fix"
+        },
+        {
+          "command": "nodeforge.applyBiomeFix",
+          "when": "isWorkspaceTrusted",
+          "group": "2_fix"
+        },
+        {
+          "command": "nodeforge.openReport",
+          "group": "3_reports"
         }
       ]
     },
@@ -348,6 +435,12 @@
         "title": "NodeForge: Show Database Schema (ER Diagram)",
         "category": "NodeForge",
         "icon": "$(table)"
+      },
+      {
+        "command": "nodeforge.openReport",
+        "title": "NodeForge: Open Report",
+        "category": "NodeForge",
+        "icon": "$(file-code)"
       }
     ],
     "configuration": {
@@ -417,6 +510,26 @@
           },
           "default": [],
           "description": "Additional DevDocs slugs to include when syncing (e.g. react, express)."
+        },
+        "nodeforge.ollama.baseUrl": {
+          "type": "string",
+          "default": "http://localhost:11434",
+          "description": "Ollama server base URL. Use a URL such as http://localhost:11434 for a local server."
+        },
+        "nodeforge.mcp.allowExecution": {
+          "type": "boolean",
+          "default": true,
+          "description": "Let the bundled NodeForge MCP server run project tooling (tsc, linters, tests). Only offered in trusted workspaces."
+        },
+        "nodeforge.mcp.allowWrites": {
+          "type": "boolean",
+          "default": false,
+          "description": "Let the bundled NodeForge MCP server run mutating tools (scripts, formatters, auto-fix)."
+        },
+        "nodeforge.mcp.allowNetwork": {
+          "type": "boolean",
+          "default": false,
+          "description": "Let the bundled NodeForge MCP server run network-dependent tools (dependency audit)."
         }
       }
     },
@@ -445,7 +558,7 @@
           {
             "id": "tests",
             "title": "Run Tests",
-            "description": "Run Vitest or Jest with native Test Explorer integration.\n[Run Tests](command:nodeforge.runTests)",
+            "description": "Run Vitest, Jest, or Node test with native Test Explorer integration.\n[Run Tests](command:nodeforge.runTests)",
             "media": {
               "markdown": "NodeForge integrates with VS Code's Test Explorer:\n\n- Gutter glyphs (✓ green check / ✗ red X)\n- \"Run Test\" code lenses above `it()` calls\n- Per-test status icons\n- Click a test to jump to its source\n\nUse `Debug Test` to debug a single test with breakpoints."
             }
@@ -455,7 +568,7 @@
             "title": "Configure the MCP Agent",
             "description": "Enable AI agents (Cursor, Claude Code) to read your workspace and take actions.\n[Show Agent Setup](command:nodeforge.refresh)",
             "media": {
-              "markdown": "NodeForge ships an MCP server with **17 tools**, **6 prompts**, and **22 resource types**.\n\n**Quick setup:**\n1. Build: `cd packages/agent && pnpm build`\n2. Add to `.cursor/mcp.json`:\n```json\n{\n  \"mcpServers\": {\n    \"nodeforge\": {\n      \"command\": \"node\",\n      \"args\": [\"/path/to/nodeforge/packages/agent/dist/cli.js\"],\n      \"env\": { \"NODEFORGE_WORKSPACE_ROOT\": \"/your/project\" }\n    }\n  }\n}\n```\n3. Restart Cursor\n\nThen ask: \"What does this project use?\", \"Run diagnostics\", \"Validate the workspace\"."
+              "markdown": "NodeForge ships an MCP server with **18 tools**, **6 prompts**, and **22 resource types**.\n\n**Quick setup:**\n1. Build: `cd packages/agent && pnpm build`\n2. Add to `.cursor/mcp.json`:\n```json\n{\n  \"mcpServers\": {\n    \"nodeforge\": {\n      \"command\": \"node\",\n      \"args\": [\"/path/to/nodeforge/packages/agent/dist/cli.js\"],\n      \"env\": { \"NODEFORGE_WORKSPACE_ROOT\": \"/your/project\" }\n    }\n  }\n}\n```\n3. Restart Cursor\n\nThen ask: \"What does this project use?\", \"Run diagnostics\", \"Validate the workspace\"."
             }
           },
           {
@@ -481,10 +594,10 @@
     ],
     "chatSkills": [
       {
-        "path": "./skills/clean-node-typescript"
+        "path": "./skills/clean-node-typescript/SKILL.md"
       },
       {
-        "path": "./skills/safe-refactor"
+        "path": "./skills/safe-refactor/SKILL.md"
       }
     ],
     "languageModelTools": [
@@ -509,7 +622,7 @@
       {
         "name": "nodeforge_get_diagnostics",
         "displayName": "NodeForge: Diagnostics",
-        "modelDescription": "Run TypeScript plus the detected ESLint or Biome checks and return normalized diagnostics. Read-only.",
+        "modelDescription": "Run TypeScript plus the detected ESLint or Biome checks and return normalized diagnostics. Requires Workspace Trust because project tooling is executed.",
         "userDescription": "Inspect current compiler and lint findings.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "nodeforgeDiagnostics",
@@ -527,7 +640,7 @@
       {
         "name": "nodeforge_run_typecheck",
         "displayName": "NodeForge: Typecheck",
-        "modelDescription": "Run the workspace TypeScript compiler with no emit and return normalized type errors. Read-only.",
+        "modelDescription": "Run the workspace TypeScript compiler with no emit and return normalized type errors. Requires Workspace Trust because the project compiler is executed.",
         "userDescription": "Run TypeScript type checking.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "nodeforgeTypecheck",
@@ -545,7 +658,7 @@
       {
         "name": "nodeforge_run_linter",
         "displayName": "NodeForge: Lint",
-        "modelDescription": "Run the detected project linter and return normalized findings. Read-only.",
+        "modelDescription": "Run the detected project linter and return normalized findings. Requires Workspace Trust because project tooling is executed.",
         "userDescription": "Run project lint checks.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "nodeforgeLint",
@@ -563,7 +676,7 @@
       {
         "name": "nodeforge_get_tests",
         "displayName": "NodeForge: Test Results",
-        "modelDescription": "Run the detected Vitest or Jest suite and return per-test results, failures, locations, and durations. Read-only from NodeForge's perspective.",
+        "modelDescription": "Run the detected Vitest or Jest suite and return per-test results, failures, locations, and durations. Requires Workspace Trust because project code is executed.",
         "userDescription": "Run tests and inspect per-test outcomes.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "nodeforgeTests",
@@ -628,7 +741,7 @@
       {
         "name": "nodeforge_get_dependency_report",
         "displayName": "NodeForge: Dependency Report",
-        "modelDescription": "Run package-manager audit and outdated checks and return dependency vulnerability and version findings. Read-only.",
+        "modelDescription": "Run package-manager audit and outdated checks and return dependency vulnerability and version findings. Requires Workspace Trust and network capability because package-manager commands are executed.",
         "userDescription": "Inspect dependency vulnerabilities and drift.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "nodeforgeDependencyReport",
@@ -744,13 +857,152 @@
       {
         "path": "./prompts/nodeforge-test.prompt.md"
       }
+    ],
+    "languageModelChatProviders": [
+      {
+        "vendor": "nodeforge-ollama",
+        "displayName": "NodeForge Ollama"
+      }
+    ],
+    "chatParticipants": [
+      {
+        "id": "nodeforge.engineer",
+        "name": "nodeforge",
+        "fullName": "NodeForge",
+        "description": "Ask about your Node.js/TypeScript workspace: diagnostics, tests, dependencies, schema and Git changes.",
+        "isSticky": true,
+        "commands": [
+          {
+            "name": "context",
+            "description": "Describe the detected Node.js/TypeScript stack"
+          },
+          {
+            "name": "diagnostics",
+            "description": "Run compiler and lint checks and explain the findings"
+          },
+          {
+            "name": "tests",
+            "description": "Run the test suite and analyze failures"
+          },
+          {
+            "name": "deps",
+            "description": "Audit dependencies and the import graph"
+          },
+          {
+            "name": "db",
+            "description": "Inspect the database schema"
+          },
+          {
+            "name": "git",
+            "description": "Review the current Git changes"
+          },
+          {
+            "name": "validate",
+            "description": "Run the full validation pipeline (typecheck, lint, tests)"
+          }
+        ]
+      }
+    ],
+    "mcpServerDefinitionProviders": [
+      {
+        "id": "nodeforge.mcp",
+        "label": "NodeForge"
+      }
+    ],
+    "terminal": {
+      "profiles": [
+        {
+          "id": "nodeforge.terminal",
+          "title": "NodeForge",
+          "icon": "symbol-namespace"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "nodeforge.workspace",
+        "contents": "Open a folder to let NodeForge detect your Node.js/TypeScript stack.\n[Open Folder](command:workbench.action.files.openFolder)",
+        "when": "workspaceFolderCount == 0"
+      },
+      {
+        "view": "nodeforge.diagnostics",
+        "contents": "This workspace is in Restricted Mode, so NodeForge will not run compiler or lint tools.\n[Manage Workspace Trust](command:workbench.trust.manage)",
+        "when": "workspaceFolderCount > 0 && !isWorkspaceTrusted"
+      },
+      {
+        "view": "nodeforge.diagnostics",
+        "contents": "No diagnostics yet.\n[Run Diagnostics](command:nodeforge.runDiagnostics)",
+        "when": "workspaceFolderCount > 0 && isWorkspaceTrusted"
+      },
+      {
+        "view": "nodeforge.tests",
+        "contents": "This workspace is in Restricted Mode, so NodeForge will not run tests.\n[Manage Workspace Trust](command:workbench.trust.manage)",
+        "when": "workspaceFolderCount > 0 && !isWorkspaceTrusted"
+      },
+      {
+        "view": "nodeforge.tests",
+        "contents": "No test results yet.\n[Run Tests](command:nodeforge.runTests)",
+        "when": "workspaceFolderCount > 0 && isWorkspaceTrusted"
+      },
+      {
+        "view": "nodeforge.runtime",
+        "contents": "No NodeForge-managed processes are running.\n[Start Dev Server](command:nodeforge.startDevServer)",
+        "when": "workspaceFolderCount > 0 && isWorkspaceTrusted"
+      },
+      {
+        "view": "nodeforge.git",
+        "contents": "Git state has not been loaded.\n[Refresh Git State](command:nodeforge.refreshGit)",
+        "when": "workspaceFolderCount > 0"
+      },
+      {
+        "view": "nodeforge.database",
+        "contents": "No database schema loaded. NodeForge reads Prisma and Drizzle schemas.\n[Detect Database Schema](command:nodeforge.detectDatabase)",
+        "when": "workspaceFolderCount > 0"
+      },
+      {
+        "view": "nodeforge.dependencies",
+        "contents": "No dependency audit yet.\n[Audit Dependencies](command:nodeforge.auditDependencies)\n[Analyze Dependency Graph](command:nodeforge.analyzeDependencyGraph)",
+        "when": "workspaceFolderCount > 0 && isWorkspaceTrusted"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "nodeforge.runDiagnostics",
+        "key": "ctrl+alt+n d",
+        "mac": "cmd+alt+n d",
+        "when": "workspaceFolderCount > 0 && isWorkspaceTrusted"
+      },
+      {
+        "command": "nodeforge.runTests",
+        "key": "ctrl+alt+n t",
+        "mac": "cmd+alt+n t",
+        "when": "workspaceFolderCount > 0 && isWorkspaceTrusted"
+      },
+      {
+        "command": "nodeforge.openReport",
+        "key": "ctrl+alt+n r",
+        "mac": "cmd+alt+n r",
+        "when": "workspaceFolderCount > 0"
+      },
+      {
+        "command": "nodeforge.openChat",
+        "key": "ctrl+alt+n c",
+        "mac": "cmd+alt+n c",
+        "when": "workspaceFolderCount > 0"
+      }
+    ],
+    "submenus": [
+      {
+        "id": "nodeforge.editorSubmenu",
+        "label": "NodeForge"
+      }
     ]
   },
   "scripts": {
     "build": "node esbuild.mjs --production",
     "dev": "node esbuild.mjs --watch",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "echo \"[extension] integration tests live in packages/extension-vscode-tests — TBD\" && exit 0",
+    "test": "node --test \"test/*.test.mjs\" \"test/*.test.ts\"",
     "package": "node esbuild.mjs --production && echo y | npx @vscode/vsce package --no-dependencies --no-git-tag-version --allow-missing-repository --baseContentUrl https://github.com/shubhamtaywade82/nodeforge/blob/main/packages/extension",
     "clean": "rm -rf dist *.tsbuildinfo"
   },
@@ -770,6 +1022,7 @@
     "@nodeforge/adapter-dependency-graph": "workspace:*",
     "@nodeforge/adapter-devdocs": "workspace:*",
     "@nodeforge/adapter-prettier": "workspace:*",
+    "@nodeforge/adapter-node-test": "workspace:*",
     "@nodeforge/agent": "workspace:*"
   },
   "devDependencies": {

@@ -3,7 +3,7 @@
 > An autonomous Node.js/TypeScript engineering workspace — orchestration core for VS Code and Cursor.
 
 NodeForge is **not** an extension bundle. It is a control plane that wraps existing
-engineering tools (TypeScript, ESLint, Biome, Prettier, Vitest, Jest, Prisma, Drizzle,
+engineering tools (TypeScript, ESLint, Biome, Prettier, Vitest, Jest, Node test runner, Prisma, Drizzle,
 Docker, Git, etc.) behind a single normalized engineering model and exposes that model
 both to the IDE (VS Code / Cursor) and to AI coding agents.
 
@@ -27,10 +27,13 @@ Existing tools (tsc / eslint / biome / vitest / jest / git / docker / prisma)
         ▼
    Runner              (packages/runner — cancellable process execution)
         │
-   ┌────┴────┐
-   ▼         ▼
- IDE UI    Agent Interface
-(VS Code)   (MCP / context + tools)
+        ▼
+  Tool Runner + Policy Engine
+        │
+   ┌────┴─────┐
+   ▼          ▼
+ IDE UI     Agent Interface
+(VS Code)   (MCP / Chat / LM tools)
 ```
 
 ### Dependency rule
@@ -77,7 +80,7 @@ Phase 2:
 - [x] `packages/adapters/eslint` — discovers `eslint.config.*`, runs local ESLint with `--format json`, normalizes to `Diagnostic[]`
 - [x] `packages/core/diagnostics` — `DiagnosticStore` + `DiagnosticAggregator`, publishes `diagnostics.snapshot` events
 - [x] Integration tests against real `tsc` / `eslint` runs on fixtures
-- [x] 48 tests passing across the workspace
+- [x] Automated test coverage for the workspace
 
 Phase 3:
 
@@ -85,20 +88,20 @@ Phase 3:
 - [x] `packages/adapters/vitest` — wraps `vitest run --reporter=json`, normalizes to `TestSuite` / `TestRunResult`
 - [x] `packages/adapters/jest` — wraps `jest --json`, normalizes to `TestSuite` / `TestRunResult`
 - [x] Real fixtures with deliberate lint findings, passing tests, and failing tests
-- [x] 80 tests passing across the workspace
+- [x] Automated test coverage for the workspace
 
 Phase 4:
 
 - [x] Live extension UI — `DiagnosticManager` orchestrates TS/ESLint/Biome adapters based on `WorkspaceProfile`, runs them on save (debounced), records results into the `DiagnosticStore`
 - [x] `DiagnosticsViewProvider` renders real findings grouped by source with click-to-navigate
-- [x] `TestManager` runs Vitest/Jest based on profile; `TestsViewProvider` renders the test tree with pass/fail icons
+- [x] `TestManager` runs the detected Vitest/Jest/Node test runner; native Test Explorer renders nested suites with Run/Debug profiles
 - [x] `nodeforge.runDiagnostics` and `nodeforge.runTests` commands with progress UI
 - [x] `packages/core/runtime/ProcessManager` — long-lived process management with stdout/stderr streaming, runtime error detection, exit-code → diagnostic mapping
 - [x] `packages/adapters/git` — detects branch, dirty state, ahead/behind, changed/staged files via `git status --porcelain=v2`
 - [x] `RuntimeViewProvider` shows running processes with recent output
 - [x] `GitViewProvider` shows branch/HEAD/upstream/changed-files/staged-files
 - [x] `nodeforge.refreshGit` command + auto-detection on activation
-- [x] 103 tests passing across the workspace
+- [x] Automated test coverage for the workspace
 
 Phase 5:
 
@@ -111,7 +114,7 @@ Phase 5:
 - [x] `DependencyViewProvider` renders vulnerabilities + outdated packages with severity breakdown
 - [x] `nodeforge.detectDatabase` and `nodeforge.auditDependencies` commands
 - [x] Auto-detects database schema on activation when ORM is present
-- [x] 152 tests passing across the workspace
+- [x] Automated test coverage for the workspace
 
 Phase 6:
 
@@ -123,7 +126,7 @@ Phase 6:
 - [x] Standalone CLI entry point (`nodeforge-mcp`) that Cursor/Claude Code can spawn
 - [x] `AgentViewProvider` in the extension sidebar shows MCP server status + tool reference
 - [x] Full Cursor MCP config documentation in `packages/agent/README.md`
-- [x] 171 tests passing across the workspace
+- [x] Automated test coverage for the workspace
 
 Phase 7:
 
@@ -135,7 +138,7 @@ Phase 7:
   push/pull_request/schedule/workflow_dispatch, jobs, steps, matrix, env, concurrency, permissions)
 - [x] 3 new MCP tools: `getDockerConfig`, `getKubernetesManifests`, `getGitHubWorkflows` (12 total)
 - [x] Real fixture repo with Dockerfile, docker-compose.yml, k8s/ manifests, .github/workflows/
-- [x] 208 tests passing across the workspace
+- [x] Automated test coverage for the workspace
 
 Phase 8:
 
@@ -147,7 +150,7 @@ Phase 8:
 - [x] DFS-based circular dependency detection among file nodes
 - [x] 1 new MCP tool: `getDependencyGraph` (13 total)
 - [x] Real fixture with deliberate unused dep (`lodash`) and circular chain (`a → b → c → a`)
-- [x] 235 tests passing across the workspace
+- [x] Automated test coverage for the workspace
 
 Phase 9:
 
@@ -159,21 +162,31 @@ Phase 9:
   - `formatFiles` — runs Prettier or Biome formatter with `--write`
   - `applyEslintFix` — runs ESLint with `--fix` to auto-fix lint issues
   - `validateWorkspace` — combined typecheck + lint + tests + audit report
-- [x] All action tools are write operations (modify files / run commands)
-- [x] 240 tests passing across the workspace
+- [x] Action tools are centrally classified as read, execute, or write; mutating operations require explicit authorization
+- [x] Automated test coverage for the workspace
 
 Phase 10:
 
-- [x] MCP resources — `resources/list` + `resources/read` expose 22 config file
-  types (package.json, tsconfig.json, eslint.config, Dockerfile, docker-compose,
-  biome.json, .prettierrc, vitest.config, jest.config, drizzle.config, .env, etc.)
+- [x] MCP resources — `resources/list` + `resources/read` expose an explicit
+  allowlist of engineering configuration files; arbitrary workspace files and
+  secret-bearing files such as `.env` are not exposed
 - [x] MCP prompts — 6 engineering workflow prompts with argument substitution:
   `fix-lint-errors`, `audit-and-upgrade-deps`, `validate-and-fix`,
   `onboard-to-project`, `add-test-for`, `explain-errors`
 - [x] Extension packaged as installable .vsix (36.99 KB) via `vsce package`
 - [x] Full INSTALL.md guide covering extension install + MCP server config
 - [x] End-to-end verified: initialize returns tools + resources + prompts capabilities
-- [x] 246 tests passing across the workspace
+
+Phase 11:
+
+- [x] Central tool authorization policy shared by MCP, built-in chat, and native VS Code language-model tools
+- [x] Standalone MCP execution is fail-closed with explicit trust, execution, write, and network capabilities
+- [x] Interactive approval for built-in chat workspace writes and package-script execution
+- [x] Runtime tool argument validation rejects unknown, missing, and invalid values
+- [x] Canonical path containment blocks traversal and symlink/junction escapes
+- [x] MCP resource allowlist prevents arbitrary file and secret-file reads
+- [x] Prompt-injection boundary explicitly treats repository content and tool output as untrusted data
+- [x] Security model, Dependabot configuration, and capability-aware installation docs added
 
 ## Documentation
 
@@ -184,6 +197,8 @@ Phase 10:
 | **[docs/README.md](./docs/README.md)** | Documentation index |
 | **[INSTALL.md](./INSTALL.md)** | Install `.vsix`, optional MCP |
 | **[TESTING.md](./TESTING.md)** | Manual QA checklists |
+| **[SECURITY.md](./SECURITY.md)** | Security model, trust boundaries, and MCP capability controls |
+| **[docs/security-and-privacy.md](./docs/security-and-privacy.md)** | Built-in chat, Ollama, prompt-injection, and model data flow |
 | **[packages/extension/README.md](./packages/extension/README.md)** | Extension package + F5 dev loop |
 
 ## Installation
@@ -192,12 +207,12 @@ See **[INSTALL.md](./INSTALL.md)** for step-by-step instructions on:
 
 - Installing the VS Code / Cursor extension from .vsix
 - Configuring the MCP agent server in Cursor
-- Using all 17 MCP tools, 6 prompts, and config file resources
+- Using all 18 MCP tools, 6 prompts, and config file resources
 
 Quick install:
 
 ```bash
-code --install-extension packages/extension/nodeforge-0.0.1.vsix
+code --install-extension packages/extension/nodeforge-0.1.0.vsix
 ```
 
 Quick MCP config (`.cursor/mcp.json`):
@@ -208,7 +223,13 @@ Quick MCP config (`.cursor/mcp.json`):
     "nodeforge": {
       "command": "node",
       "args": ["~/projects/developer-tools/nodeforge/packages/agent/dist/cli.js"],
-      "env": { "NODEFORGE_WORKSPACE_ROOT": "~/projects/developer-tools/nodeforge" }
+      "env": {
+        "NODEFORGE_WORKSPACE_ROOT": "~/projects/developer-tools/nodeforge",
+        "NODEFORGE_WORKSPACE_TRUSTED": "true",
+        "NODEFORGE_ALLOW_EXECUTION": "true",
+        "NODEFORGE_ALLOW_WRITES": "true",
+        "NODEFORGE_ALLOW_NETWORK": "true"
+      }
     }
   }
 }
@@ -226,3 +247,28 @@ pnpm build
 ## License
 
 MIT
+
+
+## Repository quality gates
+
+NodeForge enforces the same baseline checks locally and in CI:
+
+```bash
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm build
+pnpm package
+```
+
+The test suite includes a real VS Code extension-host integration suite under `packages/extension-vscode-tests`. It launches the extension against the included TypeScript fixture using Microsoft's VS Code Test CLI. The test runner uses a stable VS Code desktop build in CI.
+
+
+### Release artifact verification
+
+NodeForge's release workflow generates a SHA-256 checksum and a GitHub artifact attestation for the VSIX. Verify a downloaded release with:
+
+```bash
+sha256sum -c nodeforge-<version>.vsix.sha256
+gh attestation verify nodeforge-<version>.vsix --repo shubhamtaywade82/nodeforge
+```

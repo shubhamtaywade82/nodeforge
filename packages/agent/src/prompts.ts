@@ -87,7 +87,7 @@ Then present a structured onboarding document covering:
   {
     name: "add-test-for",
     description:
-      "Analyze a source file and generate a test file for it using the detected test runner (Vitest or Jest).",
+      "Analyze a source file and generate a test file for it using the detected test runner (Vitest, Jest, or Node test runner).",
     arguments: [
       {
         name: "filePath",
@@ -97,7 +97,7 @@ Then present a structured onboarding document covering:
     ],
     message: `Generate tests for the file at {{filePath}}.
 
-1. Call "getProjectContext" to determine which test runner (Vitest or Jest) and assertion library this project uses.
+1. Call "getProjectContext" to determine which test runner (Vitest, Jest, or Node test runner) and assertion library this project uses.
 2. Read the source file to understand its exports, functions, and behavior.
 3. Look at existing test files in the project to match the testing style and conventions.
 4. Generate a test file that covers:

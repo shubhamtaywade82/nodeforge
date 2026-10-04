@@ -125,7 +125,10 @@ export class TestsViewProvider implements vscode.TreeDataProvider<TreeNode> {
     }
 
     if (element.kind === "root") {
-      return this.outcome.suite.suites.map((s) => toSuiteNode(s));
+      return [
+        ...this.outcome.suite.suites.map((s) => toSuiteNode(s)),
+        ...this.outcome.suite.tests.map((t) => toTestNode(t))
+      ];
     }
 
     if (element.kind === "file" || element.kind === "suite") {

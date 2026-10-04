@@ -21,7 +21,6 @@
 import * as path from "node:path";
 import { parseAllDocuments } from "yaml";
 import {
-  AdapterParseError,
   type KubernetesContainer,
   type KubernetesContainerPort,
   type KubernetesEnvVar,
@@ -364,7 +363,3 @@ function parseIngressSpec(spec: Record<string, unknown>): KubernetesResourceSpec
 function isEnoent(err: unknown): boolean {
   return typeof err === "object" && err !== null && "code" in err && (err as { code?: string }).code === "ENOENT";
 }
-
-// Suppress unused-import lint — we want `filePath` available for future
-// source-location tracking but don't currently use it.
-void path;

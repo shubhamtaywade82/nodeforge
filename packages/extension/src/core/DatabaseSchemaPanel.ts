@@ -14,7 +14,7 @@
  */
 
 import * as vscode from "vscode";
-import type { DatabaseSchema, Table, Relation } from "@nodeforge/contracts";
+import type { DatabaseSchema, Table } from "@nodeforge/contracts";
 
 export class DatabaseSchemaPanel {
   public static readonly viewType = "nodeforge.databaseSchema";

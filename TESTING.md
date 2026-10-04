@@ -13,7 +13,7 @@ extension or before a release. Check off each item as you go.
 | ------------- | ------- |
 | Node.js 20+ (`node --version`) | ☐ |
 | pnpm 9+ (`pnpm --version`) | ☐ |
-| VS Code 1.85+ or Cursor | ☐ |
+| VS Code 1.138+ or Cursor | ☐ |
 | git installed | ☐ |
 | Extension built and installed (see below) | ☐ |
 
@@ -28,7 +28,7 @@ pnpm install
 pnpm build
 cd packages/extension
 npx @vscode/vsce package --no-dependencies --no-git-tag-version
-cursor --install-extension ./nodeforge-0.0.1.vsix   # or: code --install-extension ...
+cursor --install-extension ./nodeforge-0.1.0.vsix   # or: code --install-extension ...
 ```
 
 Reload the editor: **Ctrl+Shift+P** → **Developer: Reload Window**.
@@ -272,7 +272,18 @@ Reset setting to `false` after testing.
 | Run Tests | Same structure as Vitest above | ☐ |
 | test runner in Workspace view | `jest` | ☐ |
 
-### 6.3 No test runner
+### 6.3 Node.js built-in test runner
+
+**Fixture:** `node-ts-node-test` (trusted, no extra dependencies)
+
+| Step | Expected | Pass |
+|------|----------|------|
+| Workspace detection | test runner = `node` | ☐ |
+| Run Tests | Pass/skip/todo results appear in Test Explorer | ☐ |
+| Nested suite | `nested math` contains `multiplies numbers` | ☐ |
+| Debug Test | Native Node debugger starts without installing packages | ☐ |
+
+### 6.4 No test runner
 
 **Fixture:** `node-ts-deps` (no test script)
 
@@ -281,6 +292,17 @@ Reset setting to `false` after testing.
 | Run Tests | Warning: "no test runner detected" | ☐ |
 
 ---
+
+### Native Test Explorer debugging
+
+For a test, file, or suite in the **Tests** view:
+
+| Step | Expected | Pass |
+|------|----------|------|
+| Select a test and choose **NodeForge Debug** | Debug session starts for the selected runner | ☐ |
+| Select a test file | Only that file is launched | ☐ |
+| Choose Debug with no selection | Whole detected test suite starts | ☐ |
+| Restricted Mode | Debug execution is blocked | ☐ |
 
 ## 7. Git
 
@@ -409,7 +431,7 @@ internals or future commands.
 | ------ | ---------- | ------ |
 | MCP Server → Status | `ready` | ☐ |
 | MCP Server → Workspace | Current folder path | ☐ |
-| Available Tools | Lists all MCP tools (17) | ☐ |
+| Available Tools | Lists all MCP tools (18) | ☐ |
 | Setup section | Cursor + Claude Code config hints | ☐ |
 
 ---
@@ -503,6 +525,7 @@ call_tool() {
 | `runTypeCheck` | `node-ts-with-errors` | TypeScript errors only | ☐ |
 | `runLinter` | `node-ts-with-errors` | ESLint findings only | ☐ |
 | `getTestResults` | `node-ts-vitest` | Suites + pass/fail counts | ☐ |
+| Node built-in test runner | `node-ts-node-test` | Pass/skip/todo normalization | ✅ |
 | `getGitState` | any in git repo | `branch`, `dirty` | ☐ |
 | `getDependencyReport` | `node-ts-eslint` | vulnerabilities or outdated | ☐ |
 | `getDatabaseSchema` | `node-ts-eslint` | Prisma tables | ☐ |
@@ -581,11 +604,11 @@ Use this for release or PR verification.
 | Area | Pass |
 | ------ | ------ |
 | Extension installs from `.vsix` | ☐ |
-| All 8 sidebar views render | ☐ |
+| All 10 contributed sidebar views render | ☐ |
 | Workspace detection (ESLint + Biome + monorepo fixtures) | ☐ |
 | Diagnostics (TS + ESLint + Biome) | ☐ |
 | Click-to-navigate diagnostics | ☐ |
-| Tests (Vitest + Jest) | ☐ |
+| Tests (Vitest + Jest + Node test) | ☐ |
 | Git state | ☐ |
 | Database (Prisma + Drizzle) | ☐ |
 | Dependency audit | ☐ |
@@ -596,7 +619,7 @@ Use this for release or PR verification.
 
 **Tester:** _______________
 **Date:** _______________
-**Extension version:** 0.0.1
+**Extension version:** 0.1.0
 **Editor:** VS Code / Cursor _______________
 
 ---
@@ -609,8 +632,15 @@ If you only have time for a minimal smoke test:
 2. Package and install the `.vsix` (see §0)
 3. `npm install` in `packages/test-fixtures/node-ts-eslint`
 4. Open that fixture in Cursor, trust workspace
-5. Verify all 8 sidebar views populate
+5. Verify all 10 contributed sidebar views populate
 6. Run **Analyze Workspace**, **Run Diagnostics**, **Run Tests**, **Refresh Git**,
    **Detect Database Schema**, **Audit Dependencies**
 7. Open `node-ts-with-errors`, run diagnostics, click a finding
 8. MCP: `initialize` + `tools/list` via CLI (§15.1)
+
+
+## Enforced VS Code extension-host tests
+
+The repository includes `packages/extension-vscode-tests`, which launches a real VS Code Extension Development Host against `packages/test-fixtures/node-ts-eslint`.
+
+The suite verifies extension activation, contributed command registration, workspace analysis, and the public test command. Deterministic adapter/manifest tests cover the Node built-in test runner and native Test Explorer debug configuration. CI runs the extension-host suite through the root `pnpm test` command.

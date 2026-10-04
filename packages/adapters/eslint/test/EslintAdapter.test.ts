@@ -134,7 +134,10 @@ describe("EslintAdapter (integration against fixture)", () => {
     try {
       await fs.access(eslintBin);
     } catch {
-      console.warn(`[nodeforge:test] skipping ESLint integration test — fixture eslint missing at ${eslintBin}`);
+      console.warn(`[nodeforge:test] fixture eslint missing at ${eslintBin}`);
+      if (process.env.CI) {
+        throw new Error("Fixture dependency is required in CI: install fixture dependencies before running integration tests.");
+      }
       return;
     }
 

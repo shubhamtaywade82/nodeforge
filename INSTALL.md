@@ -7,7 +7,7 @@ configuring the MCP agent server for Cursor.
 
 - **Node.js** 20+ (check with `node --version`)
 - **pnpm** 9+ (install with `npm install -g pnpm` or `corepack enable`)
-- **VS Code** 1.85+ or **Cursor** (any recent version)
+- **VS Code** 1.138+ or **Cursor** (any recent version)
 - **git** (for the Git adapter)
 - **Your project's dev dependencies installed** (`npm install` or `pnpm install`
   in your project root — NodeForge runs your project's own `tsc`, `eslint`,
@@ -29,7 +29,7 @@ cd packages/extension
 npx @vscode/vsce package --no-dependencies --no-git-tag-version --allow-missing-repository --baseContentUrl https://github.com/shubhamtaywade82/nodeforge/blob/main/packages/extension
 ```
 
-This creates `packages/extension/nodeforge-0.0.1.vsix`.
+This creates `packages/extension/nodeforge-0.1.0.vsix`.
 
 ### Step 2: Install into Cursor or VS Code
 
@@ -37,12 +37,12 @@ This creates `packages/extension/nodeforge-0.0.1.vsix`.
 
 For **Cursor**:
 ```bash
-cursor --install-extension /home/nemesis/projects/developer-tools/nodeforge/packages/extension/nodeforge-0.0.1.vsix
+cursor --install-extension /home/nemesis/projects/developer-tools/nodeforge/packages/extension/nodeforge-0.1.0.vsix
 ```
 
 For **VS Code**:
 ```bash
-code --install-extension /home/nemesis/projects/developer-tools/nodeforge/packages/extension/nodeforge-0.0.1.vsix
+code --install-extension /home/nemesis/projects/developer-tools/nodeforge/packages/extension/nodeforge-0.1.0.vsix
 ```
 
 #### Via Editor UI
@@ -50,7 +50,7 @@ code --install-extension /home/nemesis/projects/developer-tools/nodeforge/packag
 2. Open Extensions (`Ctrl+Shift+X` / `Cmd+Shift+X`).
 3. Click the Views & More Actions menu (`...`) at the top of the Extensions view.
 4. Select **Install from VSIX...**
-5. Select `nodeforge-0.0.1.vsix`.
+5. Select `nodeforge-0.1.0.vsix`.
 6. Reload the window: press `Ctrl+Shift+P` → run **Developer: Reload Window**.
 
 ### Step 3: Prepare Your Target Project
@@ -113,11 +113,17 @@ will appear in the Activity Bar on the left with 10 views:
 3. Ask questions or use workflow chips / slash commands:
    - `/audit-and-upgrade-deps`, `/validate-and-fix`, `/onboard-to-project`, `/explain-errors`
 
-The chat uses the same 17 engineering tools as the MCP server. Write tools
-(`formatFiles`, `applyEslintFix`, `runScript`, `validateWorkspace`) run automatically
-when the workspace is **Trusted**; they are blocked in Restricted Mode.
+The chat uses the same engineering tool layer as the MCP server. Workspace writes
+and package-script execution require explicit confirmation and are blocked in
+Restricted Mode.
 
 Configure the model and API base URL under **Settings → NodeForge → Chat**.
+
+### Native Ollama provider
+
+NodeForge also registers **NodeForge Ollama** as a native VS Code language-model provider. Set `nodeforge.ollama.baseUrl` (default: `http://localhost:11434`) and start Ollama. Models available from the server are discovered through Ollama's model APIs; capability metadata is used to advertise tool calling and vision support to VS Code.
+
+For local Ollama, no account key is required. Ollama's OpenAI-compatible interface accepts the placeholder API key `ollama`. Cloud or authenticated custom endpoints can use `OLLAMA_API_KEY` in the extension host environment.
 
 On activation (trusted workspaces), NodeForge can automatically run a dependency
 **audit** and **graph analysis** — toggle under **Settings → NodeForge → Dependencies**
@@ -127,7 +133,7 @@ On activation (trusted workspaces), NodeForge can automatically run a dependency
 
 - `NodeForge: Analyze Workspace` — re-detect the workspace profile
 - `NodeForge: Run Diagnostics` — run TypeScript + ESLint/Biome
-- `NodeForge: Run Tests` — run Vitest or Jest
+- `NodeForge: Run Tests` — run the detected Vitest, Jest, or Node test runner
 - `NodeForge: Refresh Git State` — re-detect git state
 - `NodeForge: Detect Database Schema` — parse Prisma or Drizzle schema
 - `NodeForge: Audit Dependencies` — run `npm audit` + `outdated`
@@ -177,7 +183,11 @@ Create or edit `.cursor/mcp.json` in your project root:
       "command": "node",
       "args": ["/home/nemesis/projects/developer-tools/nodeforge/packages/agent/dist/cli.js"],
       "env": {
-        "NODEFORGE_WORKSPACE_ROOT": "/home/nemesis/projects/developer-tools/nodeforge/packages/test-fixtures/node-ts-eslint"
+        "NODEFORGE_WORKSPACE_ROOT": "/home/nemesis/projects/developer-tools/nodeforge/packages/test-fixtures/node-ts-eslint",
+        "NODEFORGE_WORKSPACE_TRUSTED": "true",
+        "NODEFORGE_ALLOW_EXECUTION": "true",
+        "NODEFORGE_ALLOW_WRITES": "true",
+        "NODEFORGE_ALLOW_NETWORK": "true"
       }
     }
   }
@@ -206,32 +216,40 @@ Now you can ask Cursor things like:
 - "Onboard me to this project"
 
 The agent will call the appropriate NodeForge MCP tools and get structured
-JSON back.
+JSON back. Standalone MCP execution is fail-closed; the environment variables
+above explicitly grant trust, execution, write, and network capabilities.
 
 ### Available MCP Tools (18 total)
 
-**Read-only tools (13):**
+**Read-only repository state:**
 
 - `getProjectContext` — workspace profile
-- `getDiagnostics` — TS + ESLint/Biome findings
-- `runTypeCheck` — TypeScript compiler errors only
-- `runLinter` — ESLint or Biome findings only
-- `getTestResults` — test suite + run result
-- `runTests` — alias for getTestResults
 - `getGitState` — branch, dirty status, changed files
-- `getDependencyReport` — vulnerabilities + outdated
+- `getGitDiff` — working, staged, or HEAD-vs-upstream patch
 - `getDatabaseSchema` — Prisma or Drizzle schema
 - `getDockerConfig` — Dockerfile + docker-compose
-- `getKubernetesManifests` — k8s resources
+- `getKubernetesManifests` — Kubernetes resources
 - `getGitHubWorkflows` — CI/CD workflows
-- `getDependencyGraph` — unused + circular + missing deps
+- `getDependencyGraph` — unused + circular + missing dependencies
 
-**Action tools (4):**
+**Execution / analysis tools:**
 
-- `runScript` — run `npm run <script>` / `pnpm run <script>` / `yarn <script>`
-- `formatFiles` — run Prettier or Biome with `--write`
-- `applyEslintFix` — run ESLint with `--fix`
+- `getDiagnostics` — TypeScript + ESLint/Biome findings
+- `runTypeCheck` — TypeScript compiler errors only
+- `runLinter` — ESLint or Biome findings only
+- `getTestResults` / `runTests` — test suite + run result
+- `getDependencyReport` — vulnerability/outdated dependency report
 - `validateWorkspace` — combined typecheck + lint + tests + audit
+
+**Write / code-execution tools:**
+
+- `runScript` — run an existing package.json script
+- `formatFiles` — format workspace files with Prettier or Biome
+- `applyEslintFix` — run ESLint with `--fix`
+
+Execution tools are trust-gated. Workspace mutations and package-script execution are
+explicitly approval-gated in built-in NodeForge chat; standalone MCP uses environment
+capabilities to fail closed by default.
 
 **MCP Resources:** Config files (package.json, tsconfig.json, eslint.config,
 Dockerfile, etc.) are exposed as MCP resources — the agent can read them
@@ -319,3 +337,16 @@ You should see 18 tools listed.
 - **More MCP prompts** for common workflows
 - **Monorepo-aware diagnostics** (per-package adapter runs)
 - **Custom adapter SDK** so you can add your own adapters
+
+
+### MCP security configuration
+
+The standalone MCP server does not inherit VS Code Workspace Trust. It starts fail-closed:
+
+- reads are available by default;
+- project code execution requires `NODEFORGE_ALLOW_EXECUTION=true` and `NODEFORGE_WORKSPACE_TRUSTED=true`;
+- workspace mutations additionally require `NODEFORGE_ALLOW_WRITES=true`;
+- network-dependent tools additionally require `NODEFORGE_ALLOW_NETWORK=true`;
+- `runScript` is arbitrary project-controlled code execution and should be treated as high risk.
+
+Enable these capabilities only for workspaces and package scripts you trust.

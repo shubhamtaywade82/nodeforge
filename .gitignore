@@ -11,6 +11,7 @@ out/
 .turbo/
 
 # VS Code extension artifacts
+.vscode-test/
 *.vsix
 .vsix/
 
@@ -39,3 +40,7 @@ Thumbs.db
 
 # Test fixtures: their own node_modules live in repo but not as workspace pkg
 packages/test-fixtures/*/node_modules/
+
+# VS Code integration test output
+out-test/
+.vscode-test/

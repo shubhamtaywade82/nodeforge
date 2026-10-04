@@ -60,6 +60,13 @@ import { DependencyGraphPanel } from "./core/DependencyGraphPanel.js";
 import { DatabaseSchemaPanel } from "./core/DatabaseSchemaPanel.js";
 import { logger } from "./core/Logger.js";
 import { registerNodeForgeLanguageModelTools } from "./ai/LanguageModelTools.js";
+import { registerNodeForgeChatParticipant } from "./ai/NodeForgeChatParticipant.js";
+import { registerNodeForgeMcpProvider } from "./ai/NodeForgeMcpProvider.js";
+import { registerReports } from "./reports/ReportContentProvider.js";
+import { terminalProfileOptions } from "./core/terminalProfile.js";
+import { PersistentCache } from "./core/PersistentCache.js";
+import { registerOllamaLanguageModelChatProvider } from "./ai/OllamaLanguageModelChatProvider.js";
+import { isWorkspaceTrusted } from "./core/workspaceTrust.js";
 
 let workspaceManager: WorkspaceManager | undefined;
 let diagnosticManager: DiagnosticManager | undefined;
@@ -67,14 +74,19 @@ let testManager: TestManager | undefined;
 let processManager: ProcessManager | undefined;
 let databaseManager: DatabaseManager | undefined;
 let dependencyManager: DependencyManager | undefined;
-let dependencyGraphManager: DependencyGraphManager | undefined;
-let workspaceSession: ExtensionWorkspaceSession | undefined;
 let dependencyDiagnostics: DependencyDiagnosticPublisher | undefined;
-let chatWebviewProvider: ChatWebviewProvider | undefined;
 let devDocsProvider: DevDocsWebviewProvider | undefined;
 let devDocsOffline: DevDocsOfflineManager | undefined;
 let gitAdapter: GitAdapter | undefined;
 let eventBus: EventBus | undefined;
+
+const PROFILE_CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+
+function isCachedProfile(data: unknown): data is WorkspaceProfile {
+  if (typeof data !== "object" || data === null) return false;
+  const p = data as Record<string, unknown>;
+  return typeof p["root"] === "string" && typeof p["runtime"] === "string" && typeof p["packageManager"] === "string";
+}
 
 const CHAT_API_KEY_SECRET = "nodeforge.chat.apiKey";
 let depAuditTimer: ReturnType<typeof setTimeout> | undefined;
@@ -100,10 +112,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const depManager = new DependencyManager(runner, bus);
   dependencyManager = depManager;
   const graphManager = new DependencyGraphManager(bus);
-  dependencyGraphManager = graphManager;
   const session = new ExtensionWorkspaceSession(bus);
   registerNodeForgeLanguageModelTools(context, session);
-  workspaceSession = session;
+  context.subscriptions.push(registerOllamaLanguageModelChatProvider());
+  registerNodeForgeChatParticipant(context, isTrusted);
+  registerNodeForgeMcpProvider(context, isTrusted, resolveWorkspaceRoot);
+  registerReports(context, session, isTrusted);
   const depDiagPublisher = new DependencyDiagnosticPublisher();
   dependencyDiagnostics = depDiagPublisher;
   const chatController = new ChatController(
@@ -112,7 +126,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     isTrusted
   );
   const chatProvider = new ChatWebviewProvider(context, session, chatController, isTrusted);
-  chatWebviewProvider = chatProvider;
   const git = new GitAdapter(runner);
   gitAdapter = git;
 
@@ -128,7 +141,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const statusBar = new StatusBarController(bus);
 
   // Native Test Explorer integration.
-  const testController = new NodeForgeTestController(tests, bus);
+  const testController = new NodeForgeTestController(tests);
+  context.subscriptions.push(testController);
 
   // Quick Fix lightbulbs for ESLint/Biome diagnostics.
   const codeActionProvider = new NodeForgeCodeActionProvider(diagManager.getStore());
@@ -172,6 +186,27 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const root = resolveWorkspaceRoot();
   if (!root) {
     treeViews.workspace!.message = "Open a workspace folder to begin";
+  }
+
+  // Persist the last profile so views are populated instantly (and in Restricted Mode).
+  const profileCache = new PersistentCache<WorkspaceProfile>(
+    context.workspaceState,
+    "nodeforge.cache.profile",
+    1,
+    PROFILE_CACHE_MAX_AGE_MS,
+    isCachedProfile
+  );
+  bus.subscribe("workspace.profiled", (e) => {
+    void profileCache.write(e.profile.root, e.profile).then(undefined, (err) =>
+      logger.warn(`Could not persist workspace profile: ${String(err)}`)
+    );
+  });
+  const cachedProfile = root ? profileCache.read(root) : undefined;
+  if (cachedProfile) {
+    workspaceView.render(cachedProfile);
+    treeViews.workspace!.message = isTrusted()
+      ? "Showing last known profile — refreshing"
+      : "Showing last known profile — trust this workspace to refresh";
   }
 
   context.subscriptions.push(
@@ -330,7 +365,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       }
       if (!tests.isEnabled()) {
         void vscode.window.showWarningMessage(
-          "NodeForge: no test runner detected (expected Vitest or Jest in dependencies)."
+          "NodeForge: no supported test runner detected (expected Vitest, Jest, or Node test runner)."
         );
         return;
       }
@@ -586,7 +621,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       if (!r || !isTrusted()) return;
       if (!manager.current()) await manager.analyze(r);
       if (!tests.isEnabled()) {
-        void vscode.window.showWarningMessage("NodeForge: no supported test runner detected.");
+        void vscode.window.showWarningMessage("NodeForge: no supported test runner detected (Vitest, Jest, or Node test runner).");
         return;
       }
 
@@ -606,7 +641,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       if (!manager.current()) await manager.analyze(r);
 
       const profile = manager.current();
-      if (!profile?.testRunner || (profile.testRunner !== "vitest" && profile.testRunner !== "jest")) {
+      if (!profile?.testRunner || (profile.testRunner !== "vitest" && profile.testRunner !== "jest" && profile.testRunner !== "node")) {
         void vscode.window.showWarningMessage("NodeForge: no supported test runner detected.");
         return;
       }
@@ -614,13 +649,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       const runner = profile.testRunner;
       const runtimeArgs = runner === "vitest"
         ? ["vitest", "run", filePath]
-        : ["jest", filePath];
+        : runner === "jest"
+          ? ["jest", filePath]
+          : ["--test", filePath];
+      const runtimeExecutable = runner === "node" ? "node" : "npx";
 
       const config: vscode.DebugConfiguration = {
         name: "Debug " + runner + " file",
         type: "node",
         request: "launch",
-        runtimeExecutable: "npx",
+        runtimeExecutable,
         runtimeArgs,
         cwd: r,
         console: "integratedTerminal",
@@ -795,34 +833,56 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   // ─── Auto-run on activation ───
 
-  if (root && isTrusted()) {
-    logger.info(`Auto-running for workspace: ${root}`);
-
-    // Register the Task Provider after we have a workspace root.
-    const taskProviderImpl = new NodeForgeTaskProvider(root, "npm");
-    const taskProvider = vscode.tasks.registerTaskProvider(
-      NodeForgeTaskProvider.taskType,
-      taskProviderImpl
-    );
-    context.subscriptions.push(taskProvider);
-
-    // Register the Debug Configuration Provider for F5 debugging.
-    const debugProvider = new NodeForgeDebugConfigurationProvider(root, "npm");
+  // Task and debug providers only read package.json and generate configurations; VS Code
+  // itself blocks executing tasks and launching debuggers in untrusted workspaces.
+  const taskProviderImpl = root ? new NodeForgeTaskProvider(root, "npm") : undefined;
+  const debugProvider = root ? new NodeForgeDebugConfigurationProvider(root, "npm") : undefined;
+  if (taskProviderImpl && debugProvider) {
     context.subscriptions.push(
+      vscode.tasks.registerTaskProvider(NodeForgeTaskProvider.taskType, taskProviderImpl),
       vscode.debug.registerDebugConfigurationProvider("node", debugProvider)
     );
+  }
+  bus.subscribe("workspace.profiled", (e) => {
+    const pm =
+      e.profile.packageManager === "pnpm" || e.profile.packageManager === "yarn" ? e.profile.packageManager : "npm";
+    taskProviderImpl?.setPackageManager(pm);
+    debugProvider?.setPackageManager(pm);
+  });
+
+  // NodeForge terminal profile (new-terminal dropdown); a shell is a process launch, so trusted only.
+  context.subscriptions.push(
+    vscode.window.registerTerminalProfileProvider("nodeforge.terminal", {
+      provideTerminalProfile: () => {
+        const r = resolveWorkspaceRoot();
+        if (!r || !isTrusted()) return undefined;
+        return new vscode.TerminalProfile(terminalProfileOptions(r));
+      }
+    }),
+    // Trust can be granted after activation: run the analysis that was skipped.
+    vscode.workspace.onDidGrantWorkspaceTrust(() => {
+      const r = resolveWorkspaceRoot();
+      if (!r) return;
+      session.bindRoot(r);
+      void manager.analyze(r).then(
+        (profile) => {
+          workspaceView.render(profile);
+          treeViews.workspace!.message = undefined;
+          devDocs.setProfile(profile);
+        },
+        (err) => logger.error("Analysis after workspace trust failed", err)
+      );
+    })
+  );
+
+
+  if (root && isTrusted()) {
+    logger.info(`Auto-running for workspace: ${root}`);
 
     // Test discovery is demand-driven. Do not execute the entire suite during activation.
     session.bindRoot(root);
     void manager.analyze(root).then(
       (profile) => {
-        const packageManager =
-          profile.packageManager === "pnpm" || profile.packageManager === "yarn"
-            ? profile.packageManager
-            : "npm";
-        taskProviderImpl.setPackageManager(packageManager);
-        debugProvider.setPackageManager(packageManager);
-
         workspaceView.render(profile);
         treeViews.workspace!.message = undefined;
         devDocs.setProfile(profile);
@@ -847,11 +907,8 @@ export function deactivate(): void {
   processManager = undefined;
   databaseManager = undefined;
   dependencyManager = undefined;
-  dependencyGraphManager = undefined;
-  workspaceSession = undefined;
   dependencyDiagnostics?.dispose();
   dependencyDiagnostics = undefined;
-  chatWebviewProvider = undefined;
   devDocsProvider = undefined;
   devDocsOffline = undefined;
   gitAdapter = undefined;
@@ -864,16 +921,10 @@ export function deactivate(): void {
     clearTimeout(depGraphTimer);
     depGraphTimer = undefined;
   }
-  if (devDocsSyncTimer) {
-    clearTimeout(devDocsSyncTimer);
-    devDocsSyncTimer = undefined;
-  }
 }
 
 function isTrusted(): boolean {
-  // isWorkspaceTrusted is stable since VS Code 1.83 but not yet in @types/vscode.
-  const ws = vscode.workspace as typeof vscode.workspace & { isWorkspaceTrusted?: boolean };
-  return typeof ws.isWorkspaceTrusted === "boolean" ? ws.isWorkspaceTrusted : true;
+  return isWorkspaceTrusted();
 }
 
 function resolveWorkspaceRoot(): string | undefined {
@@ -920,19 +971,6 @@ async function searchDevDocsWithOffline(context: vscode.ExtensionContext, query:
   await openDevDocs(buildDevDocsUrl({ query }));
 }
 
-let devDocsSyncTimer: ReturnType<typeof setTimeout> | undefined;
-
-function scheduleBackgroundDevDocsSync(profile: WorkspaceProfile, mgr: DevDocsOfflineManager): void {
-  const cfg = vscode.workspace.getConfiguration("nodeforge.docs.offline");
-  if (!cfg.get<boolean>("autoSync", false)) return;
-
-  if (devDocsSyncTimer) clearTimeout(devDocsSyncTimer);
-  devDocsSyncTimer = setTimeout(() => {
-    const slugs = mgr.slugsToSync(profile);
-    void mgr.sync(slugs);
-  }, 4000);
-}
-
 function readEditorSearchQuery(): string | undefined {
   const editor = vscode.window.activeTextEditor;
   if (!editor) return undefined;
@@ -945,7 +983,7 @@ function readEditorSearchQuery(): string | undefined {
 }
 
 function scheduleBackgroundDependencyAudit(
-  root: string,
+  _root: string,
   depManager: DependencyManager,
   session: ExtensionWorkspaceSession
 ): void {

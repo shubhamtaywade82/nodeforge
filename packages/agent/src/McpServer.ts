@@ -13,15 +13,20 @@
  *   - `notifications/initialized` — client notification (no response)
  *   - `tools/list`           — returns available tool definitions
  *   - `tools/call`           — calls a tool by name with arguments
+ *   - `resources/list`       — returns the explicit configuration-resource allowlist
+ *   - `resources/read`       — reads an allowlisted configuration resource
+ *   - `prompts/list`         — returns built-in engineering workflows
+ *   - `prompts/get`          — renders a built-in engineering workflow
  *   - `ping`                 — health check
  *
- * The server is intentionally minimal — it doesn't implement resources,
- * prompts, or subscriptions. Those can be added later.
+ * Tool execution is authorization-gated by the shared NodeForge policy layer.
+ * The standalone server fails closed for project execution, writes, and network use.
  */
 
 import { createContextFromEnv, NodeForgeContext } from "./NodeForgeContext.js";
 import { findTool, listToolDefinitions } from "./tools.js";
-import { executeTool, UnknownToolError } from "./toolRunner.js";
+import { executeTool, ToolArgumentValidationError, ToolAuthorizationError, UnknownToolError } from "./toolRunner.js";
+import { getMcpExecutionContext, type ToolExecutionContext } from "./toolPolicy.js";
 import { PROMPTS } from "./prompts.js";
 
 // JSON-RPC 2.0 types
@@ -58,10 +63,15 @@ const SERVER_CAPABILITIES = {
 
 export class McpServer {
   private readonly context: NodeForgeContext;
+  private readonly executionContext: ToolExecutionContext;
   private initialized = false;
 
-  constructor(context?: NodeForgeContext) {
+  constructor(
+    context?: NodeForgeContext,
+    executionContext: ToolExecutionContext = getMcpExecutionContext()
+  ) {
     this.context = context ?? createContextFromEnv();
+    this.executionContext = executionContext;
   }
 
   /**
@@ -177,15 +187,42 @@ export class McpServer {
     }
 
     const args = p.arguments ?? {};
+    if (args !== null && (typeof args !== "object" || Array.isArray(args))) {
+      return {
+        jsonrpc: "2.0",
+        id,
+        error: {
+          code: -32602,
+          message: "Invalid params: arguments must be an object"
+        }
+      };
+    }
+
     let resultText: string;
     try {
-      resultText = await executeTool(p.name, args, this.context);
+      resultText = await executeTool(
+        p.name,
+        (args ?? {}) as Record<string, unknown>,
+        this.context,
+        this.executionContext
+      );
     } catch (err) {
-      if (err instanceof UnknownToolError) {
+      if (err instanceof UnknownToolError || err instanceof ToolArgumentValidationError) {
         return {
           jsonrpc: "2.0",
           id,
           error: { code: -32602, message: err.message }
+        };
+      }
+      if (err instanceof ToolAuthorizationError) {
+        return {
+          jsonrpc: "2.0",
+          id,
+          error: {
+            code: -32001,
+            message: `Tool denied: ${err.message}`,
+            data: { tool: err.toolName, reason: err.code }
+          }
         };
       }
       throw err;

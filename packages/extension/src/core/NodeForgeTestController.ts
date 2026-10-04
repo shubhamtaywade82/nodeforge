@@ -9,28 +9,30 @@
  *   - Continuous Testing mode
  *   - Native test result navigation
  *
- * The controller creates a TestRunProfile for "run" mode. Debug mode is
- * declared but requires a debug adapter to be useful (future work).
+ * The controller creates native Run and Debug TestRunProfiles.
  *
  * On each run, the controller:
- *   1. Calls the TestManager to run Vitest/Jest
+ *   1. Calls the TestManager to run the detected test runner (Vitest, Jest, or Node test)
  *   2. Maps the result back to TestItems by file path + test name
  *   3. Marks each TestItem as passed/failed/skipped
  *   4. Shows failure messages inline
  */
 
 import * as vscode from "vscode";
-import type { EventBus, TestCase, TestRunResult, TestSuite } from "@nodeforge/contracts";
+import type { TestCase, TestRunResult, TestSuite } from "@nodeforge/contracts";
 import type { TestManager } from "./TestManager.js";
 import { logger } from "./Logger.js";
+import { buildTestDebugConfiguration, type TestRunnerKind } from "./testDebugConfiguration.js";
+import { isWorkspaceTrusted } from "./workspaceTrust.js";
 
 export class NodeForgeTestController {
   private readonly controller: vscode.TestController;
   private readonly runProfile: vscode.TestRunProfile;
+  private readonly debugProfile: vscode.TestRunProfile;
+  private readonly testCasesById = new Map<string, TestCase>();
 
   constructor(
-    private readonly testManager: TestManager,
-    bus: EventBus
+    private readonly testManager: TestManager
   ) {
     this.controller = vscode.tests.createTestController(
       "nodeforge-tests",
@@ -42,7 +44,14 @@ export class NodeForgeTestController {
       "NodeForge Run",
       vscode.TestRunProfileKind.Run,
       (request, token) => this.runHandler(request, token),
-      true // isDefault
+      true
+    );
+
+    this.debugProfile = this.controller.createRunProfile(
+      "NodeForge Debug",
+      vscode.TestRunProfileKind.Debug,
+      (request, token) => this.debugHandler(request, token),
+      false
     );
 
     // Discover tests on controller creation (lazy — VS Code calls refresh).
@@ -77,9 +86,7 @@ export class NodeForgeTestController {
     const run = this.controller.createTestRun(request);
     const included = request.include ?? this.collectLeafTests(this.controller.items);
     const targetTest =
-      request.include?.length === 1 &&
-      request.include[0] &&
-      request.include[0].children.size === 0
+      request.include?.length === 1 && request.include[0]
         ? request.include[0]
         : undefined;
 
@@ -166,6 +173,7 @@ export class NodeForgeTestController {
   /** Build the test tree from a TestSuite. */
   private buildTestTree(suite: TestSuite): void {
     this.controller.items.replace([]);
+    this.testCasesById.clear();
 
     for (const fileSuite of suite.suites) {
       const fileItem = this.controller.createTestItem(
@@ -174,47 +182,147 @@ export class NodeForgeTestController {
         fileSuite.file ? vscode.Uri.file(fileSuite.file) : undefined
       );
 
-      // Add describe-block children.
-      for (const describeSuite of fileSuite.suites) {
-        const describeItem = this.controller.createTestItem(
-          describeSuite.id,
-          describeSuite.name,
-          fileSuite.file ? vscode.Uri.file(fileSuite.file) : undefined
-        );
-        for (const test of describeSuite.tests) {
-          const testItem = this.controller.createTestItem(
-            test.id,
-            test.name,
-            fileSuite.file ? vscode.Uri.file(fileSuite.file) : undefined
-          );
-          if (test.line) {
-            testItem.range = new vscode.Range(
-              new vscode.Position(test.line - 1, 0),
-              new vscode.Position(test.line - 1, 100)
-            );
-          }
-          describeItem.children.add(testItem);
-        }
-        fileItem.children.add(describeItem);
-      }
+      this.appendSuiteChildren(fileItem, fileSuite);
 
-      // Add top-level tests (not inside a describe block).
       for (const test of fileSuite.tests) {
-        const testItem = this.controller.createTestItem(
-          test.id,
-          test.name,
-          fileSuite.file ? vscode.Uri.file(fileSuite.file) : undefined
-        );
-        if (test.line) {
-          testItem.range = new vscode.Range(
-            new vscode.Position(test.line - 1, 0),
-            new vscode.Position(test.line - 1, 100)
-          );
-        }
-        fileItem.children.add(testItem);
+        this.addTestItem(fileItem, test);
       }
 
       this.controller.items.add(fileItem);
+    }
+
+    for (const test of suite.tests) {
+      this.testCasesById.set(test.id, test);
+      this.controller.items.add(this.createTestItem(test));
+    }
+  }
+
+  private appendSuiteChildren(parentItem: vscode.TestItem, suite: TestSuite): void {
+    for (const childSuite of suite.suites) {
+      const suiteItem = this.controller.createTestItem(
+        childSuite.id,
+        childSuite.name,
+        childSuite.file ? vscode.Uri.file(childSuite.file) : undefined
+      );
+
+      this.appendSuiteChildren(suiteItem, childSuite);
+
+      for (const test of childSuite.tests) {
+        this.addTestItem(suiteItem, test);
+      }
+
+      parentItem.children.add(suiteItem);
+    }
+  }
+
+  private createTestItem(test: TestCase): vscode.TestItem {
+    const testItem = this.controller.createTestItem(
+      test.id,
+      test.name,
+      test.file ? vscode.Uri.file(test.file) : undefined
+    );
+
+    if (test.line) {
+      testItem.range = new vscode.Range(
+        new vscode.Position(test.line - 1, 0),
+        new vscode.Position(test.line - 1, 100)
+      );
+    }
+
+    return testItem;
+  }
+
+  private addTestItem(parentItem: vscode.TestItem, test: TestCase): void {
+    this.testCasesById.set(test.id, test);
+    parentItem.children.add(this.createTestItem(test));
+  }
+
+  private async debugHandler(
+    request: vscode.TestRunRequest,
+    token: vscode.CancellationToken
+  ): Promise<void> {
+    const run = this.controller.createTestRun(request);
+    const included = request.include ?? [];
+
+    try {
+      if (!isWorkspaceTrusted()) {
+        const item = included[0];
+        if (item) {
+          run.errored(item, new vscode.TestMessage("Debugging tests requires Workspace Trust."));
+        }
+        return;
+      }
+
+      if (token.isCancellationRequested) return;
+
+      if (included.length > 1) {
+        const item = included[0];
+        if (item) {
+          run.errored(
+            item,
+            new vscode.TestMessage("Select one test, test suite, or test file to debug.")
+          );
+        }
+        return;
+      }
+
+      const item = included[0];
+      if (item && request.exclude?.includes(item)) {
+        return;
+      }
+
+      if (item) run.enqueued(item);
+
+      const runner: TestRunnerKind | undefined = this.testManager.getTestRunner();
+      const workspaceRoot = this.testManager.getWorkspaceRoot();
+      if (!runner || !workspaceRoot) {
+        if (item) {
+          run.errored(item, new vscode.TestMessage("No supported test runner is detected."));
+        }
+        return;
+      }
+
+      const test = item ? this.testCasesById.get(item.id) : undefined;
+      const file = test?.file ?? item?.uri?.fsPath;
+
+      const configuration = buildTestDebugConfiguration({
+        runner,
+        workspaceRoot,
+        ...(file ? { file } : {}),
+        ...(test?.fullName ? { fullName: test.fullName } : {})
+      });
+
+      const folder = vscode.workspace.getWorkspaceFolder(
+        item?.uri ?? vscode.Uri.file(workspaceRoot)
+      );
+      if (!folder) {
+        if (item) {
+          run.errored(
+            item,
+            new vscode.TestMessage("Unable to resolve the VS Code workspace folder.")
+          );
+        }
+        return;
+      }
+
+      const started = await vscode.debug.startDebugging(folder, configuration);
+      if (!started && item) {
+        run.errored(item, new vscode.TestMessage("VS Code did not start the test debugger."));
+      }
+      if (!started && !item) {
+        void vscode.window.showErrorMessage("NodeForge: VS Code did not start the test debugger.");
+      }
+    } catch (err) {
+      logger.error("Test debug failed", err);
+      const item = included[0];
+      if (item) {
+        run.errored(
+          item,
+          new vscode.TestMessage(err instanceof Error ? err.message : String(err))
+        );
+      }
+    } finally {
+      run.end();
     }
   }
 

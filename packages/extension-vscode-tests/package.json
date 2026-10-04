@@ -1,0 +1,11 @@
+{
+  "name": "@nodeforge/extension-vscode-tests",
+  "version": "0.0.1",
+  "private": true,
+  "description": "NodeForge VS Code extension-host integration tests.",
+  "license": "MIT",
+  "type": "commonjs",
+  "scripts": {
+    "test": "pnpm -C ../extension run build && npm install --no-save --no-package-lock --ignore-scripts @vscode/test-cli@0.0.15 @vscode/test-electron@3.1.0 && npx --no-install vscode-test"
+  }
+}

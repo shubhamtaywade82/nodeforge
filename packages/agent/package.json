@@ -43,7 +43,8 @@
     "@nodeforge/adapter-kubernetes": "workspace:*",
     "@nodeforge/adapter-github-actions": "workspace:*",
     "@nodeforge/adapter-dependency-graph": "workspace:*",
-    "@nodeforge/adapter-prettier": "workspace:*"
+    "@nodeforge/adapter-prettier": "workspace:*",
+    "@nodeforge/adapter-node-test": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",

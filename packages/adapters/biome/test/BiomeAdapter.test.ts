@@ -171,13 +171,68 @@ describe("parseBiomeJsonOutput (pure parser)", () => {
   });
 });
 
+describe("parseBiomeJsonOutput (Biome 2.x shape)", () => {
+  const v2 = JSON.stringify({
+    summary: { changed: 0, unchanged: 4, errors: 2, warnings: 1, skipped: 0 },
+    diagnostics: [
+      {
+        severity: "error",
+        message: "This let declares a variable that is only assigned once.",
+        category: "lint/style/useConst",
+        location: { path: "src/broken.ts", start: { line: 15, column: 1 }, end: { line: 15, column: 4 } },
+        advices: [{ start: { line: 15, column: 5 }, end: { line: 15, column: 20 }, text: "Safe fix: Use const instead." }]
+      },
+      {
+        severity: "warning",
+        message: "Don't use console.",
+        category: "lint/suspicious/noConsole",
+        location: { path: "src/broken.ts", start: { line: 19, column: 3 }, end: { line: 19, column: 14 } },
+        advices: []
+      },
+      {
+        severity: "error",
+        message: "File content differs from formatting output",
+        category: "format",
+        location: { path: "src/broken.ts", start: { line: 0, column: 0 }, end: { line: 0, column: 0 } },
+        advices: []
+      }
+    ],
+    command: "ci"
+  });
+
+  it("reads string paths, start positions, string messages and safe-fix advice", () => {
+    const { diagnostics, summary } = parseBiomeJsonOutput(v2, "/workspace");
+    expect(diagnostics).toHaveLength(3);
+    const [useConst, noConsole, format] = diagnostics;
+    expect(useConst).toMatchObject({
+      file: "/workspace/src/broken.ts",
+      rule: "useConst",
+      severity: "error",
+      message: "This let declares a variable that is only assigned once.",
+      range: { line: 15, column: 1 },
+      fixable: true
+    });
+    expect(noConsole).toMatchObject({ rule: "noConsole", severity: "warning", fixable: false });
+    expect(format?.range).toEqual({ line: 1, column: 1 });
+    expect(summary).toMatchObject({ errors: 2, warnings: 1 });
+  });
+
+  it("skips diagnostics that have no file", () => {
+    const out = JSON.stringify({ diagnostics: [{ severity: "error", message: "x", category: "internalError/io" }] });
+    expect(parseBiomeJsonOutput(out, "/workspace").diagnostics).toEqual([]);
+  });
+});
+
 describe("BiomeAdapter (integration against fixture)", () => {
   it("resolves local biome and reports real diagnostics", async () => {
     const biomeBin = path.join(FIXTURE, "node_modules", ".bin", "biome");
     try {
       await fs.access(biomeBin);
     } catch {
-      console.warn(`[nodeforge:test] skipping Biome integration test — fixture biome missing at ${biomeBin}`);
+      console.warn(`[nodeforge:test] fixture biome missing at ${biomeBin}`);
+      if (process.env.CI) {
+        throw new Error("Fixture dependency is required in CI: install fixture dependencies before running integration tests.");
+      }
       return;
     }
 

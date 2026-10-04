@@ -172,7 +172,10 @@ describe("JestAdapter (integration against fixture)", () => {
     try {
       await fs.access(jestBin);
     } catch {
-      console.warn(`[nodeforge:test] skipping Jest integration test — fixture jest missing at ${jestBin}`);
+      console.warn(`[nodeforge:test] fixture jest missing at ${jestBin}`);
+      if (process.env.CI) {
+        throw new Error("Fixture dependency is required in CI: install fixture dependencies before running integration tests.");
+      }
       return;
     }
 
@@ -187,7 +190,7 @@ describe("JestAdapter (integration against fixture)", () => {
     expect(result.result.status).toBe("failed");
     expect(result.result.cases).toHaveLength(6);
     expect(result.result.cases?.find((test) => test.status === "failed")?.fullName).toBe(
-      "intentionally failing assertion"
+      "divide intentionally failing assertion"
     );
 
     // The fixture has one test file → one file-level suite.

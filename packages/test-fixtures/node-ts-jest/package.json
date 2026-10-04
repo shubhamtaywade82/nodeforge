@@ -10,5 +10,10 @@
       "^.+\\.ts$": "@swc/jest"
     },
     "testRegex": "test/.+\\.test\\.ts$"
+  },
+  "devDependencies": {
+    "@swc/core": "^1.7.0",
+    "@swc/jest": "^0.2.36",
+    "jest": "^29.7.0"
   }
 }

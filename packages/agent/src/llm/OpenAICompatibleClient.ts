@@ -20,9 +20,11 @@ export class OpenAICompatibleClient implements LlmClient {
   async complete(request: LlmCompletionRequest): Promise<LlmCompletionResult> {
     const url = `${this.config.baseUrl.replace(/\/$/, "")}/chat/completions`;
     const body = {
+      ...(request.modelOptions ?? {}),
       model: request.model || this.config.model,
       messages: request.messages,
       tools: request.tools,
+      ...(request.toolChoice ? { tool_choice: request.toolChoice } : {}),
       stream: Boolean(request.onTextDelta)
     };
 

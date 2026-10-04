@@ -140,7 +140,10 @@ describe("VitestAdapter (integration against fixture)", () => {
     try {
       await fs.access(vitestBin);
     } catch {
-      console.warn(`[nodeforge:test] skipping Vitest integration test — fixture vitest missing at ${vitestBin}`);
+      console.warn(`[nodeforge:test] fixture vitest missing at ${vitestBin}`);
+      if (process.env.CI) {
+        throw new Error("Fixture dependency is required in CI: install fixture dependencies before running integration tests.");
+      }
       return;
     }
 
@@ -155,7 +158,7 @@ describe("VitestAdapter (integration against fixture)", () => {
     expect(result.result.status).toBe("failed");
     expect(result.result.cases).toHaveLength(6);
     expect(result.result.cases?.find((test) => test.status === "failed")?.fullName).toBe(
-      "intentionally failing assertion"
+      "divide intentionally failing assertion"
     );
 
     // The fixture has one test file → one file-level suite.

@@ -12,9 +12,7 @@
  */
 
 import * as vscode from "vscode";
-import type { EventBus } from "@nodeforge/contracts";
-import type { GitState } from "@nodeforge/contracts";
-import { logger } from "./Logger.js";
+import type { EventBus, GitState } from "@nodeforge/contracts";
 
 export class StatusBarController {
   private readonly item: vscode.StatusBarItem;

@@ -4,7 +4,7 @@
  * When a `WorkspaceProfile` arrives:
  *   testRunner === "vitest"  → use VitestAdapter
  *   testRunner === "jest"    → use JestAdapter
- *   testRunner === "node"    → not yet supported (placeholder)
+ *   testRunner === "node"    → NodeTestAdapter
  *   otherwise                → no test adapter
  *
  * The manager publishes `test.runCompleted` events on the bus so the
@@ -15,6 +15,7 @@ import type { EventBus, TestCase, TestRunResult, TestSuite, WorkspaceProfile } f
 import { ProcessRunner } from "@nodeforge/runner";
 import { VitestAdapter } from "@nodeforge/adapter-vitest";
 import { JestAdapter } from "@nodeforge/adapter-jest";
+import { NodeTestAdapter } from "@nodeforge/adapter-node-test";
 
 export interface TestRunOutcome {
   suite: TestSuite;
@@ -22,7 +23,7 @@ export interface TestRunOutcome {
 }
 
 interface EnabledTestAdapter {
-  kind: "vitest" | "jest";
+  kind: "vitest" | "jest" | "node";
   // We keep both adapters around as one-of; only the active one is invoked.
   // The shape makes it explicit that we run one type at a time.
   run: (root: string, signal?: AbortSignal, test?: TestCase) => Promise<TestRunOutcome>;
@@ -74,6 +75,15 @@ export class TestManager {
           return { suite: result.suite, result: result.result };
         }
       };
+    } else if (profile.testRunner === "node") {
+      const adapter = new NodeTestAdapter(this.runner);
+      this.adapter = {
+        kind: "node",
+        run: async (root, signal, test) => {
+          const result = await adapter.run(root, signal, test);
+          return { suite: result.suite, result: result.result };
+        }
+      };
     } else {
       this.adapter = undefined;
     }
@@ -81,7 +91,9 @@ export class TestManager {
 
   /** Run the enabled test adapter. Cancels any in-flight run. */
   async run(testId?: string, externalSignal?: AbortSignal): Promise<TestRunOutcome | undefined> {
-    const target = testId ? this.findTestCase(this.lastOutcome?.suite, testId) : undefined;
+    const target = testId
+      ? this.findTestTarget(this.lastOutcome?.suite, testId, [], true)
+      : undefined;
     return this.runTarget(target, externalSignal);
   }
 
@@ -118,16 +130,47 @@ export class TestManager {
     }
   }
 
-  private findTestCase(suite: TestSuite | undefined, testId: string): TestCase | undefined {
+  private findTestTarget(
+    suite: TestSuite | undefined,
+    testId: string,
+    suitePath: string[],
+    isRoot: boolean
+  ): TestCase | undefined {
     if (!suite) return undefined;
+
     for (const test of suite.tests) {
       if (test.id === testId) return test;
     }
+
     for (const child of suite.suites) {
-      const found = this.findTestCase(child, testId);
+      const childIsFileSuite = isRoot;
+      const childPath = childIsFileSuite ? [] : [...suitePath, child.name];
+
+      if (child.id === testId && child.file) {
+        return {
+          id: child.id,
+          name: child.name,
+          file: child.file,
+          fullName: childIsFileSuite ? undefined : childPath.join(" > "),
+          status: "running"
+        };
+      }
+
+      const found = this.findTestTarget(child, testId, childPath, false);
       if (found) return found;
     }
+
     return undefined;
+  }
+
+  /** Return the detected test runner for the current workspace. */
+  getTestRunner(): EnabledTestAdapter["kind"] | undefined {
+    return this.adapter?.kind;
+  }
+
+  /** Return the current workspace root used for test execution. */
+  getWorkspaceRoot(): string | undefined {
+    return this.profile?.root;
   }
 
   /** Run all tests contained in a single test file. */

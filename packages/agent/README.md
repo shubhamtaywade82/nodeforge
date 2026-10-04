@@ -24,7 +24,11 @@ Add to your Cursor MCP settings (`.cursor/mcp.json` or via Settings → MCP):
       "command": "node",
       "args": ["/absolute/path/to/nodeforge/packages/agent/dist/cli.js"],
       "env": {
-        "NODEFORGE_WORKSPACE_ROOT": "/absolute/path/to/your/project"
+        "NODEFORGE_WORKSPACE_ROOT": "/absolute/path/to/your/project",
+        "NODEFORGE_WORKSPACE_TRUSTED": "true",
+        "NODEFORGE_ALLOW_EXECUTION": "true",
+        "NODEFORGE_ALLOW_WRITES": "true",
+        "NODEFORGE_ALLOW_NETWORK": "true"
       }
     }
   }
@@ -49,17 +53,29 @@ back — not terminal text.
 
 ## Available tools
 
-| Tool | Description |
-|------|-------------|
-| `getProjectContext` | Returns the `WorkspaceProfile`: runtime, package manager, TypeScript, linter, formatter, test runner, ORM, Docker/K8s/GitHub Actions, monorepo kind. |
-| `getDiagnostics` | Runs TypeScript + ESLint/Biome and returns all findings as a JSON array. Each finding has `source`, `severity`, `file`, `line`, `column`, `message`, `rule`, `fixable`. |
-| `runTypeCheck` | Runs only `tsc --noEmit` and returns type errors. Faster than `getDiagnostics` when you only care about types. |
-| `runLinter` | Runs only the linter (ESLint or Biome). Returns lint findings without type errors. |
-| `getTestResults` | Runs the detected test runner (Vitest or Jest) and returns the test suite tree + run result with pass/fail counts, durations, and failure messages. |
-| `runTests` | Alias for `getTestResults`. |
-| `getGitState` | Returns branch, HEAD short hash, dirty status, changed files, staged files, upstream, ahead/behind. |
-| `getDependencyReport` | Runs `npm audit` / `pnpm audit` + `outdated` and returns vulnerabilities (with severity, advisory IDs, recommended fixes) and outdated packages. |
-| `getDatabaseSchema` | Detects the database schema (Prisma or Drizzle) and returns tables, columns, indexes, and relations. |
+| Tool | Capability | Description |
+|------|------------|-------------|
+| `getProjectContext` | Read | Workspace profile and detected engineering stack. |
+| `getGitState` | Read | Branch, dirty state, changed/staged files, upstream and ahead/behind. |
+| `getGitDiff` | Read | Bounded working, staged, or HEAD-vs-upstream diff. |
+| `getDatabaseSchema` | Read | Prisma or Drizzle schema structure. |
+| `getDockerConfig` | Read | Dockerfile and Compose configuration. |
+| `getKubernetesManifests` | Read | Kubernetes resources from standard manifest directories. |
+| `getGitHubWorkflows` | Read | GitHub Actions workflow structure and permissions. |
+| `getDependencyGraph` | Read | Import graph plus unused, circular, and missing dependency findings. |
+| `getDiagnostics` | Execute | Runs TypeScript plus detected ESLint/Biome checks. Requires execution capability. |
+| `runTypeCheck` | Execute | Runs the project's TypeScript compiler. Requires execution capability. |
+| `runLinter` | Execute | Runs the project's detected linter. Requires execution capability. |
+| `getTestResults` / `runTests` | Execute | Runs the detected Vitest, Jest, or built-in Node test suite. Requires execution capability. |
+| `getDependencyReport` | Execute + Network | Runs dependency audit/outdated checks. Requires execution and network capability. |
+| `validateWorkspace` | Execute + Network | Runs typecheck, lint, tests, and dependency audit. Requires execution and network capability. |
+| `runScript` | Execute + Write | Runs an existing package script. High-risk project-controlled code execution. |
+| `formatFiles` | Write | Formats workspace files with the detected formatter. |
+| `applyEslintFix` | Write | Runs ESLint with `--fix`. |
+
+The standalone MCP server fails closed: read tools are available by default, while execution,
+writes, and network-dependent tools require explicit environment capabilities. Built-in chat
+uses the same authorization layer and asks for approval before workspace mutations or package scripts.
 
 ## Architecture
 
@@ -83,7 +99,8 @@ Cursor / MCP Client
         ▼       ▼                   ▼
   detectWorkspaceProfile  TypescriptAdapter  EslintAdapter
                          BiomeAdapter       VitestAdapter
-                         JestAdapter        GitAdapter
+                         JestAdapter
+                         NodeTestAdapter        GitAdapter
                          PrismaAdapter      DrizzleAdapter
                          DependencyAdapter
 ```
@@ -97,21 +114,26 @@ with file-watch invalidation.
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `NODEFORGE_WORKSPACE_ROOT` | Absolute path to the workspace root. | `process.cwd()` |
+| `NODEFORGE_WORKSPACE_ROOT` | Absolute workspace root. | `process.cwd()` |
+| `NODEFORGE_WORKSPACE_TRUSTED` | Explicit trust assertion for standalone MCP execution. | `false` |
+| `NODEFORGE_ALLOW_EXECUTION` | Enables tools that execute project-controlled code. | `false` |
+| `NODEFORGE_ALLOW_WRITES` | Enables workspace-mutating tools. Requires execution + trust. | `false` |
+| `NODEFORGE_ALLOW_NETWORK` | Enables network-dependent tools such as dependency audit. | `false` |
+
+The standalone MCP server is fail-closed. Static inspection tools are available by default;
+execution, writes, and network access require explicit opt-in. Treat `runScript` as arbitrary
+project-controlled code execution.
 
 ## Protocol
 
-The server implements MCP protocol version `2024-11-05` with:
+The server currently advertises MCP protocol version `2024-11-05` with:
 
 - **Tools**: `listChanged: false` (static tool list)
-- **Resources**: not implemented
-- **Prompts**: not implemented
+- **Resources**: config-file resources via `resources/list` + `resources/read`
+- **Prompts**: pre-built workflows via `prompts/list` + `prompts/get`
 - **Subscriptions**: not implemented
 
-Future versions will add:
-- `resources/list` + `resources/read` for exposing config files as MCP resources
-- `prompts/list` + `prompts/get` for pre-built engineering prompts
-- Tool result caching with file-watch invalidation
+Future versions can add tool result caching with file-watch invalidation and additional engineering workflows.
 
 ## Development
 

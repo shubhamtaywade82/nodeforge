@@ -211,9 +211,6 @@ describe("DependencyGraphAdapter (integration against fixture)", () => {
     const analysis = await adapter.analyze(FIXTURE);
 
     // Should have file→file edges (a.ts → b.ts, b.ts → c.ts, c.ts → a.ts)
-    const fileEdges = analysis.graph.edges.filter(
-      (e) => !e.specifier.startsWith("@") && !e.specifier.startsWith("express") && !e.specifier.startsWith("zod")
-    );
     // Actually, filter by checking if the target is a file path
     const fileToFileEdges = analysis.graph.edges.filter((e) => {
       const fromNode = analysis.graph.nodes.find((n) => n.id === e.from);

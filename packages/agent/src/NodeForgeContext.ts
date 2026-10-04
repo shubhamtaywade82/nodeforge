@@ -13,7 +13,7 @@
  * version can add caching with file-watch invalidation.
  */
 
-import * as path from "node:path";
+import { resolveContainedPath } from "./safePath.js";
 import { detectWorkspaceProfile, NodeFilesystemReader } from "@nodeforge/core";
 import { ProcessRunner } from "@nodeforge/runner";
 import { TypescriptAdapter } from "@nodeforge/adapter-typescript";
@@ -21,6 +21,7 @@ import { EslintAdapter } from "@nodeforge/adapter-eslint";
 import { BiomeAdapter } from "@nodeforge/adapter-biome";
 import { VitestAdapter } from "@nodeforge/adapter-vitest";
 import { JestAdapter } from "@nodeforge/adapter-jest";
+import { NodeTestAdapter } from "@nodeforge/adapter-node-test";
 import { GitAdapter } from "@nodeforge/adapter-git";
 import { PrismaAdapter } from "@nodeforge/adapter-prisma";
 import { DrizzleAdapter } from "@nodeforge/adapter-drizzle";
@@ -45,6 +46,29 @@ import type {
   TestSuite,
   WorkspaceProfile
 } from "@nodeforge/contracts";
+
+const CONFIG_RESOURCE_CANDIDATES: ReadonlyArray<{ name: string; description: string }> = [
+  { name: "package.json", description: "Node.js package manifest with dependencies and scripts" },
+  { name: "tsconfig.json", description: "TypeScript compiler configuration" },
+  { name: "eslint.config.mjs", description: "ESLint flat config" },
+  { name: "eslint.config.js", description: "ESLint flat config" },
+  { name: "eslint.config.cjs", description: "ESLint flat config" },
+  { name: "biome.json", description: "Biome linter/formatter configuration" },
+  { name: ".prettierrc.json", description: "Prettier formatter configuration" },
+  { name: ".prettierrc", description: "Prettier formatter configuration" },
+  { name: "vitest.config.ts", description: "Vitest test runner configuration" },
+  { name: "vitest.config.js", description: "Vitest test runner configuration" },
+  { name: "jest.config.js", description: "Jest test runner configuration" },
+  { name: "jest.config.ts", description: "Jest test runner configuration" },
+  { name: "drizzle.config.ts", description: "Drizzle ORM configuration" },
+  { name: "drizzle.config.js", description: "Drizzle ORM configuration" },
+  { name: "Dockerfile", description: "Docker build instructions" },
+  { name: "docker-compose.yml", description: "Docker Compose service definitions" },
+  { name: "docker-compose.yaml", description: "Docker Compose service definitions" },
+  { name: ".editorconfig", description: "Editor configuration for consistent formatting" },
+  { name: ".gitignore", description: "Git ignore patterns" },
+  { name: "README.md", description: "Project documentation" }
+];
 
 export class NodeForgeContext {
   private readonly runner: ProcessRunner;
@@ -113,6 +137,10 @@ export class NodeForgeContext {
     }
     if (profile.testRunner === "jest") {
       const result = await new JestAdapter(this.runner).run(this.workspaceRoot);
+      return { suite: result.suite, result: result.result };
+    }
+    if (profile.testRunner === "node") {
+      const result = await new NodeTestAdapter(this.runner).run(this.workspaceRoot);
       return { suite: result.suite, result: result.result };
     }
     return undefined;
@@ -258,55 +286,43 @@ export class NodeForgeContext {
    * Used by the MCP resources/read handler.
    */
   async readConfigFile(filePath: string): Promise<string | undefined> {
+    const resource = CONFIG_RESOURCE_CANDIDATES.find(
+      (candidate) => candidate.name === filePath
+    );
+    if (!resource) return undefined;
+
     const fs = await import("node:fs/promises");
-    const abs = path.resolve(this.workspaceRoot, filePath);
-    const relative = path.relative(this.workspaceRoot, abs);
-    if (relative === "" || relative.startsWith(".." + path.sep) || path.isAbsolute(relative)) {
-      return undefined;
-    }
+    const safePath = await resolveContainedPath(this.workspaceRoot, resource.name);
+    if (!safePath) return undefined;
+
     try {
-      return await fs.readFile(abs, "utf8");
+      return await fs.readFile(safePath, "utf8");
     } catch {
       return undefined;
     }
   }
 
   /**
-   * List all config files in the workspace that NodeForge can expose as
-   * MCP resources.
+   * List the explicit config files that NodeForge exposes as MCP resources.
+   *
+   * This is intentionally an allowlist. Arbitrary workspace files — including
+   * source files and secret-bearing files such as .env — are not MCP resources.
    */
   async listConfigFiles(): Promise<Array<{ path: string; description: string }>> {
     const fs = await import("node:fs/promises");
-    const candidates: Array<{ name: string; description: string }> = [
-      { name: "package.json", description: "Node.js package manifest with dependencies and scripts" },
-      { name: "tsconfig.json", description: "TypeScript compiler configuration" },
-      { name: "eslint.config.mjs", description: "ESLint flat config" },
-      { name: "eslint.config.js", description: "ESLint flat config" },
-      { name: "eslint.config.cjs", description: "ESLint flat config" },
-      { name: "biome.json", description: "Biome linter/formatter configuration" },
-      { name: ".prettierrc.json", description: "Prettier formatter configuration" },
-      { name: ".prettierrc", description: "Prettier formatter configuration" },
-      { name: "vitest.config.ts", description: "Vitest test runner configuration" },
-      { name: "vitest.config.js", description: "Vitest test runner configuration" },
-      { name: "jest.config.js", description: "Jest test runner configuration" },
-      { name: "jest.config.ts", description: "Jest test runner configuration" },
-      { name: "drizzle.config.ts", description: "Drizzle ORM configuration" },
-      { name: "drizzle.config.js", description: "Drizzle ORM configuration" },
-      { name: "Dockerfile", description: "Docker build instructions" },
-      { name: "docker-compose.yml", description: "Docker Compose service definitions" },
-      { name: "docker-compose.yaml", description: "Docker Compose service definitions" },
-      { name: ".editorconfig", description: "Editor configuration for consistent formatting" },
-      { name: ".gitignore", description: "Git ignore patterns" },
-      { name: "README.md", description: "Project documentation" }
-    ];
 
     const results: Array<{ path: string; description: string }> = [];
-    for (const c of candidates) {
+    for (const candidate of CONFIG_RESOURCE_CANDIDATES) {
+      const safePath = await resolveContainedPath(this.workspaceRoot, candidate.name);
+      if (!safePath) continue;
+
       try {
-        await fs.access(path.join(this.workspaceRoot, c.name));
-        results.push({ path: c.name, description: c.description });
+        const stat = await fs.stat(safePath);
+        if (stat.isFile()) {
+          results.push({ path: candidate.name, description: candidate.description });
+        }
       } catch {
-        // file doesn't exist — skip
+        // file doesn't exist or is no longer accessible — skip
       }
     }
     return results;

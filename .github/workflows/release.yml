@@ -1,0 +1,103 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+concurrency:
+  group: nodeforge-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v6
+        with:
+          version: 9.15.9
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify tag matches extension version
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME#v}"
+          version="$(node -p 'require("./packages/extension/package.json").version')"
+          test "$tag" = "$version"
+
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - name: Install integration fixture dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          for fixture in \
+            node-ts-eslint \
+            node-ts-with-errors \
+            node-ts-biome-lint \
+            node-ts-jest \
+            node-ts-vitest
+          do
+            pnpm --dir "packages/test-fixtures/$fixture" install --no-frozen-lockfile --ignore-scripts
+          done
+
+      - name: Start Xvfb for VS Code extension-host tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          Xvfb :99 -screen 0 1280x1024x24 >/tmp/nodeforge-xvfb.log 2>&1 &
+          echo $! > /tmp/nodeforge-xvfb.pid
+          for _ in {1..20}; do
+            if kill -0 "$(cat /tmp/nodeforge-xvfb.pid)" 2>/dev/null; then
+              break
+            fi
+            sleep 0.5
+          done
+          kill -0 "$(cat /tmp/nodeforge-xvfb.pid)"
+      - run: pnpm test
+        env:
+          DISPLAY: ":99.0"
+      - run: pnpm build
+      - run: pnpm package
+
+      - name: Verify VSIX
+        shell: bash
+        run: |
+          set -euo pipefail
+          vsix="$(find packages/extension -maxdepth 1 -type f -name '*.vsix' -print -quit)"
+          test -n "$vsix"
+          unzip -t "$vsix" >/dev/null
+          unzip -l "$vsix" | grep -q 'extension/package.json'
+          unzip -l "$vsix" | grep -q 'extension/dist/extension.cjs'
+          sha256sum "$vsix" > "${vsix}.sha256"
+
+      - name: Attest VSIX provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: packages/extension/*.vsix
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          vsix="$(find packages/extension -maxdepth 1 -type f -name '*.vsix' -print -quit)"
+          gh release create "${GITHUB_REF_NAME}" "$vsix" "${vsix}.sha256"             --title "NodeForge ${GITHUB_REF_NAME}"             --generate-notes

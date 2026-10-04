@@ -2,13 +2,13 @@
 
 NodeForge is a **control plane** for Node.js, JavaScript, and TypeScript projects in VS Code and Cursor. It detects your stack, runs your existing tools (`tsc`, ESLint, Biome, Vitest, Jest, …), surfaces results in the sidebar, and provides built-in **Chat** (OpenAI-compatible) plus optional **MCP** for external agents.
 
-**Version:** 0.0.1 (alpha). See [readiness notes](#limitations) before adopting team-wide.
+**Version:** 0.1.0. Native VS Code AI integration is available when using VS Code 1.138+.
 
 ---
 
 ## Prerequisites
 
-- VS Code **1.85+** or **Cursor**
+- VS Code **1.138+** or **Cursor**
 - **Node.js 20+** on your PATH (or set `nodeforge.runtime.preferredNodeBinary`)
 - Project dependencies installed (`npm install` / `pnpm install`) so local `tsc`, `eslint`, etc. resolve
 - **Git** (optional, for Git view)
@@ -17,10 +17,10 @@ NodeForge is a **control plane** for Node.js, JavaScript, and TypeScript project
 
 ## Installation
 
-1. Build or obtain `nodeforge-0.0.1.vsix` (see [INSTALL.md](../INSTALL.md)).
+1. Build or obtain `nodeforge-0.1.0.vsix` (see [INSTALL.md](../INSTALL.md)).
 2. Install via CLI or UI:
-   - In Cursor: `cursor --install-extension /home/nemesis/projects/developer-tools/nodeforge/packages/extension/nodeforge-0.0.1.vsix`
-   - In VS Code: `code --install-extension /home/nemesis/projects/developer-tools/nodeforge/packages/extension/nodeforge-0.0.1.vsix`
+   - In Cursor: `cursor --install-extension /home/nemesis/projects/developer-tools/nodeforge/packages/extension/nodeforge-0.1.0.vsix`
+   - In VS Code: `code --install-extension /home/nemesis/projects/developer-tools/nodeforge/packages/extension/nodeforge-0.1.0.vsix`
    - Or UI: **Extensions → … → Install from VSIX...**
 3. Reload the window (`Ctrl+Shift+P` → **Developer: Reload Window**).
 4. In your target project, ensure dev dependencies are installed (`npm install` / `pnpm install`) so local tools (`tsc`, `eslint`, etc.) resolve.
@@ -34,7 +34,7 @@ NodeForge is a **control plane** for Node.js, JavaScript, and TypeScript project
 |------|---------|
 | **Workspace** | Detected runtime, package manager, TypeScript, linter, formatter, tests, ORM, Docker, CI, monorepo |
 | **Diagnostics** | TypeScript + ESLint/Biome findings (refreshes on save when trusted) |
-| **Tests** | Vitest/Jest tree after **Run Tests** |
+| **Tests** | Detected Vitest, Jest, or Node test tree after **Run Tests**, with native Run/Debug profiles |
 | **Runtime** | Long-lived processes managed by NodeForge |
 | **Git** | Branch, dirty state, changed/staged files |
 | **Database** | Prisma/Drizzle schema tree |
@@ -51,7 +51,7 @@ NodeForge is a **control plane** for Node.js, JavaScript, and TypeScript project
 |---------|--------|
 | `NodeForge: Analyze Workspace` | Re-run stack detection |
 | `NodeForge: Run Diagnostics` | Typecheck + lint |
-| `NodeForge: Run Tests` | Vitest or Jest |
+| `NodeForge: Run Tests` | Detected Vitest, Jest, or Node test runner |
 | `NodeForge: Audit Dependencies` | `audit` + outdated |
 | `NodeForge: Analyze Dependency Graph` | Unused / circular / missing imports |
 | `NodeForge: Set Chat API Key` | Store OpenAI-compatible key |
@@ -63,6 +63,17 @@ Full list: Command Palette → filter `NodeForge`.
 
 ---
 
+
+### Native Test Explorer
+
+NodeForge registers native VS Code Test Explorer Run and Debug profiles. Debugging is runner-aware:
+
+- Node.js built-in test runner: node --test with the selected file/test name when applicable.
+- Vitest: local workspace Vitest entrypoint with run and optional -t filter.
+- Jest: local workspace Jest entrypoint with --runInBand and optional -t filter.
+
+Debugging requires Workspace Trust. NodeForge does not perform an implicit package installation to start a debug session.
+
 ## Built-in Chat
 
 1. **NodeForge: Set Chat API Key** (Secret Storage).
@@ -70,7 +81,7 @@ Full list: Command Palette → filter `NodeForge`.
 3. Ask in plain language or use chips / slash workflows:
    `/audit-and-upgrade-deps`, `/validate-and-fix`, `/onboard-to-project`, `/explain-errors`
 
-The assistant calls the same engineering tools as the MCP server (diagnostics, tests, git, deps, format/fix when trusted).
+The assistant uses the same centralized engineering tool layer as the MCP server. Execution tools require Workspace Trust; workspace-mutating tools and package-script execution additionally require explicit confirmation.
 
 ### Chat settings
 
@@ -80,8 +91,9 @@ The assistant calls the same engineering tools as the MCP server (diagnostics, t
 | `nodeforge.chat.model` | `gpt-4o-mini` | Model id |
 | `nodeforge.chat.maxToolRounds` | `8` | Tool loop limit per message |
 | `nodeforge.chat.injectWorkspaceSnapshot` | `true` | Profile + dep summary each turn |
+| `nodeforge.ollama.baseUrl` | `http://localhost:11434` | Native Ollama server base URL |
 
-**Trust:** Write tools (`formatFiles`, `applyEslintFix`, `runScript`, `validateWorkspace`) run only in **Trusted** workspaces.
+**Trust:** Execution tools require **Trusted** workspaces. Workspace-mutating tools (`formatFiles`, `applyEslintFix`) and package-script execution (`runScript`) require explicit approval in built-in chat.
 
 ---
 
@@ -102,7 +114,7 @@ See [devdocs.md](./devdocs.md). Summary:
 | Mode | Inspection | Run tools / tests / audits | Chat write tools |
 |------|------------|----------------------------|------------------|
 | **Restricted** | Profile visible | Blocked | Blocked |
-| **Trusted** | Full | Allowed | Allowed |
+| **Trusted** | Full | Allowed | Approval required for mutations / scripts |
 
 ---
 
@@ -124,13 +136,13 @@ Built-in Chat does **not** require MCP. To connect Claude Code or another MCP cl
 
 ---
 
-## Limitations (0.0.1)
+## Limitations (0.1.0)
 
-- **Companion, not replacement** for the TypeScript language service, ESLint extension, or Test Explorer.
+- **Companion, not replacement** for the TypeScript language service or ESLint extension; NodeForge provides native VS Code Test Explorer integration.
 - TypeScript/ESLint/Biome results appear primarily in the **NodeForge Diagnostics** tree; dependency issues also appear in **Problems**.
 - **First workspace folder** only in multi-root setups.
 - Distributed via **VSIX / source**, not the public Marketplace yet.
-- Extension automated integration tests are still planned (`TESTING.md` for manual QA).
+- The current extension-host suite covers activation, command registration, workspace analysis, and the public test command. Deeper Test Explorer interaction coverage remains future work.
 
 ---
 

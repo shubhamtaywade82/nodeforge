@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
-import type { NodeForgeContext } from "@nodeforge/agent";
+import { executeTool } from "@nodeforge/agent";
 import type { ExtensionWorkspaceSession } from "../core/ExtensionWorkspaceSession.js";
+import { isWorkspaceTrusted } from "../core/workspaceTrust.js";
 
 type EmptyInput = Record<string, never>;
 
@@ -10,8 +11,8 @@ interface RunScriptInput {
 }
 
 interface ToolSpec<TInput extends object> {
+  readonly toolName: string;
   readonly invocationMessage: string;
-  readonly execute: (context: NodeForgeContext, input: TInput) => Promise<unknown>;
   readonly confirmation?: (
     input: TInput
   ) => { title: string; message: vscode.MarkdownString };
@@ -50,8 +51,24 @@ class NodeForgeLanguageModelTool<TInput extends object>
       });
     }
 
+    const trusted = isWorkspaceTrusted();
+
     try {
-      const result = await this.spec.execute(nodeforge, options.input);
+      const result = await executeTool(
+        this.spec.toolName,
+        options.input as Record<string, unknown>,
+        nodeforge,
+        {
+          caller: "vscode",
+          workspaceTrusted: trusted,
+          executionAllowed: trusted,
+          writesAllowed: trusted,
+          networkAllowed: trusted,
+          // A native VS Code tool reaches invoke() after the host has handled
+          // prepareInvocation. write-tool specs provide explicit confirmation.
+          approvalGranted: true
+        }
+      );
       return this.textResult(result);
     } catch (error) {
       return this.textResult({
@@ -87,57 +104,55 @@ export function registerNodeForgeLanguageModelTools(
   };
 
   register<EmptyInput>("nodeforge_get_project_context", {
-    invocationMessage: "Reading NodeForge project context",
-    execute: (nodeforge) => nodeforge.getProfile()
+    toolName: "getProjectContext",
+    invocationMessage: "Reading NodeForge project context"
   });
 
   register<EmptyInput>("nodeforge_get_diagnostics", {
-    invocationMessage: "Running TypeScript and lint diagnostics",
-    execute: (nodeforge) => nodeforge.getDiagnostics()
+    toolName: "getDiagnostics",
+    invocationMessage: "Running TypeScript and lint diagnostics"
   });
 
   register<EmptyInput>("nodeforge_run_typecheck", {
-    invocationMessage: "Running TypeScript typecheck",
-    execute: (nodeforge) => nodeforge.runTypeCheck()
+    toolName: "runTypeCheck",
+    invocationMessage: "Running TypeScript typecheck"
   });
 
   register<EmptyInput>("nodeforge_run_linter", {
-    invocationMessage: "Running project linter",
-    execute: (nodeforge) => nodeforge.runLinter()
+    toolName: "runLinter",
+    invocationMessage: "Running project linter"
   });
 
   register<EmptyInput>("nodeforge_get_tests", {
-    invocationMessage: "Running project tests",
-    execute: (nodeforge) => nodeforge.getTestResults()
+    toolName: "getTestResults",
+    invocationMessage: "Running project tests"
   });
 
   register<{
     scope?: "working" | "staged" | "head-vs-upstream";
   }>("nodeforge_get_git_diff", {
-    invocationMessage: "Reading Git changes",
-    execute: (nodeforge, input) =>
-      nodeforge.getGitDiff(input.scope ?? "working")
+    toolName: "getGitDiff",
+    invocationMessage: "Reading Git changes"
   });
 
   register<EmptyInput>("nodeforge_get_dependency_graph", {
-    invocationMessage: "Analyzing dependency graph",
-    execute: (nodeforge) => nodeforge.getDependencyGraph()
+    toolName: "getDependencyGraph",
+    invocationMessage: "Analyzing dependency graph"
   });
 
   register<EmptyInput>("nodeforge_get_dependency_report", {
-    invocationMessage: "Auditing dependencies",
-    execute: (nodeforge) => nodeforge.getDependencyReport()
+    toolName: "getDependencyReport",
+    invocationMessage: "Auditing dependencies"
   });
 
   register<EmptyInput>("nodeforge_get_database_schema", {
-    invocationMessage: "Reading database schema",
-    execute: (nodeforge) => nodeforge.getDatabaseSchema()
+    toolName: "getDatabaseSchema",
+    invocationMessage: "Reading database schema"
   });
 
   register<RunScriptInput>("nodeforge_run_script", {
+    toolName: "runScript",
     invocationMessage: "Running package script",
-    execute: (nodeforge, input) =>
-      nodeforge.runScript(input.script, input.args ?? []),
     confirmation: (input) => ({
       title: "Run package script",
       message: new vscode.MarkdownString(
@@ -152,8 +167,8 @@ export function registerNodeForgeLanguageModelTools(
   });
 
   register<EmptyInput>("nodeforge_format_workspace", {
+    toolName: "formatFiles",
     invocationMessage: "Formatting workspace files",
-    execute: (nodeforge) => nodeforge.formatFiles(),
     confirmation: () => ({
       title: "Format workspace",
       message: new vscode.MarkdownString(
@@ -163,7 +178,7 @@ export function registerNodeForgeLanguageModelTools(
   });
 
   register<EmptyInput>("nodeforge_validate_workspace", {
-    invocationMessage: "Running workspace verification",
-    execute: (nodeforge) => nodeforge.validateWorkspace()
+    toolName: "validateWorkspace",
+    invocationMessage: "Running workspace verification"
   });
 }

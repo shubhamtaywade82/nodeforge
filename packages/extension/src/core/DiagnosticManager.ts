@@ -21,7 +21,6 @@
 
 import type { EventBus, WorkspaceProfile } from "@nodeforge/contracts";
 import { DiagnosticAggregator, DiagnosticStore, type FilesystemReader } from "@nodeforge/core";
-import { detectWorkspaceProfile } from "@nodeforge/core";
 import { ProcessRunner } from "@nodeforge/runner";
 import { TypescriptAdapter } from "@nodeforge/adapter-typescript";
 import { EslintAdapter } from "@nodeforge/adapter-eslint";
