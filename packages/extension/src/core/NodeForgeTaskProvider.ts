@@ -23,9 +23,13 @@ export class NodeForgeTaskProvider implements vscode.TaskProvider {
   static taskType = "nodeforge";
 
   constructor(
-    private readonly workspaceRoot: string,
+    private workspaceRoot: string,
     private packageManager: PackageManager
   ) {}
+
+  setWorkspaceRoot(workspaceRoot: string): void {
+    this.workspaceRoot = workspaceRoot;
+  }
 
   setPackageManager(packageManager: PackageManager): void {
     this.packageManager = packageManager;

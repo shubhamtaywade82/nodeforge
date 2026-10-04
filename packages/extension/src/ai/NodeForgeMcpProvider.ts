@@ -12,7 +12,7 @@ export function registerNodeForgeMcpProvider(
   context: vscode.ExtensionContext,
   isTrusted: () => boolean,
   resolveRoot: () => string | undefined
-): void {
+): { refresh(): void } {
   const changed = new vscode.EventEmitter<void>();
   const version = String(
     (context.extension.packageJSON as { version?: string }).version ?? "0.0.0"
@@ -67,4 +67,6 @@ export function registerNodeForgeMcpProvider(
       }
     })
   );
+
+  return { refresh: () => changed.fire() };
 }
