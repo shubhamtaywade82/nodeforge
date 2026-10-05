@@ -47,6 +47,7 @@ import { DependencyDiagnosticPublisher } from "./diagnostics/DependencyDiagnosti
 import { ChatController } from "./chat/ChatController.js";
 import { ChatWebviewProvider } from "./chat/ChatWebviewProvider.js";
 import { DevDocsOfflineManager } from "./docs/DevDocsOfflineManager.js";
+import { registerExplainCommands } from "./ai/explainCommands.js";
 import { DevDocsHoverProvider } from "./docs/DevDocsHoverProvider.js";
 import { DevDocsCompletionItemProvider } from "./docs/DevDocsCompletionItemProvider.js";
 import { openOfflineDocPanel } from "./docs/DevDocsOfflinePanel.js";
@@ -136,6 +137,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<NodeFo
   registerNodeForgeLanguageModelTools(context, session);
   context.subscriptions.push(registerOllamaLanguageModelChatProvider());
   registerNodeForgeChatParticipant(context, isTrusted);
+  registerExplainCommands(context);
   const mcpProvider = registerNodeForgeMcpProvider(context, isTrusted, resolveWorkspaceRoot);
   registerReports(context, session, isTrusted);
   const depDiagPublisher = new DependencyDiagnosticPublisher();

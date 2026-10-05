@@ -9,6 +9,7 @@
 import * as vscode from "vscode";
 import type { Diagnostic as NFDiagnostic } from "@nodeforge/contracts";
 import type { DiagnosticStore } from "@nodeforge/core";
+import { EXPLAIN_DIAGNOSTIC_COMMAND, type DiagnosticExplainArgs } from "../ai/explainCommands.js";
 
 export class NodeForgeCodeActionProvider implements vscode.CodeActionProvider {
   public static readonly providedCodeActionKinds = [
@@ -54,6 +55,22 @@ export class NodeForgeCodeActionProvider implements vscode.CodeActionProvider {
     diagnostic: NFDiagnostic
   ): vscode.CodeAction[] {
     const actions: vscode.CodeAction[] = [];
+
+    const explainArgs: DiagnosticExplainArgs = {
+      file: diagnostic.file,
+      line: diagnostic.range.line,
+      column: diagnostic.range.column,
+      source: diagnostic.source,
+      severity: diagnostic.severity,
+      message: diagnostic.message,
+      ...(diagnostic.rule ? { rule: diagnostic.rule } : {})
+    };
+    const explain = new vscode.CodeAction(
+      `Explain with NodeForge: ${diagnostic.rule ?? diagnostic.source}`,
+      vscode.CodeActionKind.QuickFix
+    );
+    explain.command = { command: EXPLAIN_DIAGNOSTIC_COMMAND, title: "Explain with NodeForge", arguments: [explainArgs] };
+    actions.push(explain);
 
     if (diagnostic.fixable && diagnostic.source === "eslint") {
       const action = new vscode.CodeAction(

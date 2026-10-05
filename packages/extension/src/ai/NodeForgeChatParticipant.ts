@@ -10,6 +10,7 @@ import * as vscode from "vscode";
 import {
   buildSystemPrompt,
   clampToolRounds,
+  commandAllowedInRestrictedMode,
   findParticipantCommand,
   selectTools
 } from "./participantCommands.js";
@@ -56,7 +57,7 @@ export async function handleParticipantRequest(
     (t) => ({ name: t.name, description: t.description, inputSchema: t.inputSchema })
   );
 
-  if (!trusted && command) {
+  if (!trusted && command && !commandAllowedInRestrictedMode(command)) {
     stream.markdown(
       "This workspace is in **Restricted Mode**. Trust the workspace to let NodeForge run diagnostics, tests and scripts."
     );
