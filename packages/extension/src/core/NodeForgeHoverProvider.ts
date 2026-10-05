@@ -14,6 +14,8 @@
 
 import * as vscode from "vscode";
 import type { DiagnosticStore } from "@nodeforge/core";
+import { EXPLAIN_DIAGNOSTIC_COMMAND } from "../ai/explainCommands.js";
+import { explainCommandLink } from "../ai/explainPrompt.js";
 
 export class NodeForgeHoverProvider implements vscode.HoverProvider {
   constructor(private readonly store: DiagnosticStore) {}
@@ -46,6 +48,9 @@ export class NodeForgeHoverProvider implements vscode.HoverProvider {
       const sourceIcon = this.getSourceIcon(diag.source);
       const severityText = vscode.DiagnosticSeverity[diag.severity].toLowerCase();
       const md = new vscode.MarkdownString();
+      // Only the Explain command may run from links in this hover.
+      md.isTrusted = { enabledCommands: [EXPLAIN_DIAGNOSTIC_COMMAND] };
+      md.supportThemeIcons = true;
 
       md.appendMarkdown(`**${sourceIcon} ${diag.source}** — \`${severityText}\`\n\n`);
       md.appendMarkdown(`${diag.message}\n\n`);
@@ -61,8 +66,20 @@ export class NodeForgeHoverProvider implements vscode.HoverProvider {
         }
       }
 
-      // Quick fix hint
-      md.appendMarkdown(`*Click the lightbulb (\$(lightbulb)) for Quick Fixes.*`);
+      const explainLink = explainCommandLink(
+        EXPLAIN_DIAGNOSTIC_COMMAND,
+        {
+          file: document.uri.fsPath,
+          line: diag.range.start.line + 1,
+          column: diag.range.start.character + 1,
+          ...(diag.source ? { source: diag.source } : {}),
+          severity: severityText,
+          message: diag.message,
+          ...(diag.code !== undefined ? { rule: String(diag.code) } : {})
+        },
+        "$(sparkle) Explain with NodeForge"
+      );
+      md.appendMarkdown(`${explainLink} · *lightbulb for Quick Fixes*`);
 
       markdownParts.push(md);
     }

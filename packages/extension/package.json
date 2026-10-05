@@ -190,6 +190,10 @@
       ],
       "commandPalette": [
         {
+          "command": "nodeforge.explainDiagnostic",
+          "when": "false"
+        },
+        {
           "command": "nodeforge.stopProcess",
           "when": "false"
         },
@@ -252,6 +256,10 @@
       ],
       "nodeforge.editorSubmenu": [
         {
+          "command": "nodeforge.explainSelection",
+          "group": "1_docs@0"
+        },
+        {
           "command": "nodeforge.searchDevDocs",
           "group": "1_docs"
         },
@@ -277,6 +285,16 @@
       ]
     },
     "commands": [
+      {
+        "command": "nodeforge.explainSelection",
+        "title": "Explain with NodeForge",
+        "category": "NodeForge"
+      },
+      {
+        "command": "nodeforge.explainDiagnostic",
+        "title": "Explain Diagnostic",
+        "category": "NodeForge"
+      },
       {
         "command": "nodeforge.selectWorkspaceFolder",
         "title": "NodeForge: Select Workspace Folder",
@@ -1038,6 +1056,10 @@
           {
             "name": "git",
             "description": "Review the current Git changes"
+          },
+          {
+            "name": "explain",
+            "description": "Explain a diagnostic or selected code and suggest the smallest fix"
           },
           {
             "name": "validate",

@@ -4,6 +4,7 @@ import {
   PARTICIPANT_COMMANDS,
   buildSystemPrompt,
   clampToolRounds,
+  commandAllowedInRestrictedMode,
   findParticipantCommand,
   selectTools
 } from "../src/ai/participantCommands.ts";
@@ -58,5 +59,24 @@ describe("participant commands", () => {
   it("mentions Restricted Mode in the prompt only when untrusted", () => {
     assert.match(buildSystemPrompt(undefined, false), /Restricted Mode/);
     assert.doesNotMatch(buildSystemPrompt(undefined, true), /Restricted Mode/);
+  });
+});
+
+describe("Restricted Mode routing", () => {
+  const allowed = (name: string): boolean => {
+    const cmd = findParticipantCommand(name);
+    assert.ok(cmd, name);
+    return commandAllowedInRestrictedMode(cmd);
+  };
+  it("allows only commands whose tools are all read-only", () => {
+    assert.deepEqual(
+      PARTICIPANT_COMMANDS.filter((c) => commandAllowedInRestrictedMode(c)).map((c) => c.name).sort(),
+      ["context", "explain"]
+    );
+  });
+  it("blocks anything that can execute or write", () => {
+    for (const name of ["diagnostics", "tests", "fix", "addtests", "validate", "deps", "git", "db"]) {
+      assert.equal(allowed(name), false, name);
+    }
   });
 });
