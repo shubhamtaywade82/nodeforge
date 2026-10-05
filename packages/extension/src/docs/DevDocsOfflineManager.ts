@@ -7,9 +7,11 @@ import { ProcessRunner } from "@nodeforge/runner";
 
 export class DevDocsOfflineManager {
   private readonly adapter: DevDocsSyncAdapter;
+  private readonly rootDir: string;
 
   constructor(private readonly context: vscode.ExtensionContext) {
     const root = path.join(context.globalStorageUri.fsPath, "devdocs");
+    this.rootDir = root;
     this.adapter = new DevDocsSyncAdapter(root, new ProcessRunner());
   }
 
@@ -44,6 +46,13 @@ export class DevDocsOfflineManager {
     const synced = await this.adapter.listSynced();
     const slugs = synced.map((s) => s.slug);
     return this.adapter.searchOffline(slugs, query);
+  }
+
+  /** Resolves a docset page and returns it only if it stays inside the offline cache. */
+  safeHtmlPath(slug: string, htmlFile: string): string | undefined {
+    const resolved = path.resolve(this.adapter.resolveHtmlPath(slug, htmlFile));
+    const rel = path.relative(path.resolve(this.rootDir), resolved);
+    return rel !== "" && !rel.startsWith("..") && !path.isAbsolute(rel) ? resolved : undefined;
   }
 
   htmlPath(slug: string, htmlFile: string): string {

@@ -190,6 +190,10 @@
       ],
       "commandPalette": [
         {
+          "command": "nodeforge.openOfflineDoc",
+          "when": "false"
+        },
+        {
           "command": "nodeforge.explainDiagnostic",
           "when": "false"
         },
@@ -293,6 +297,11 @@
       {
         "command": "nodeforge.explainDiagnostic",
         "title": "Explain Diagnostic",
+        "category": "NodeForge"
+      },
+      {
+        "command": "nodeforge.openOfflineDoc",
+        "title": "Open Offline Doc",
         "category": "NodeForge"
       },
       {

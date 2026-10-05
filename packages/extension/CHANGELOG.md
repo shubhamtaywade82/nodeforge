@@ -5,6 +5,8 @@ All notable changes to NodeForge. Format follows [Keep a Changelog](https://keep
 ## [Unreleased]
 
 ### Added
+- **Explain with NodeForge:** Quick Fix on every NodeForge diagnostic, a link in diagnostic hovers, and an editor context-menu command. Each opens chat with `@nodeforge /explain`, which reads the real file through the source tools and explains the finding and the smallest fix. `/explain` and `/context` now work in Restricted Mode (read-only tools only).
+- DevDocs hovers open the offline page beside the editor (`nodeforge.openOfflineDoc`; arguments are validated and confined to the offline cache).
 - Agent source tools: `readFile`, `searchCode`, `applyPatch` (VS Code LM tools, MCP, `@nodeforge /fix`, `/addtests`). Reads/searches work in Restricted Mode; patching requires Workspace Trust and an explicit confirmation. Secrets (`.env*`, keys, `.npmrc`), `.git`, `node_modules` and symlinks are never read or written.
 - Granular `runScript` risk classification (`low`/`medium`/`high`) with the resolved commands shown in the confirmation, following scripts that call other scripts and `pre`/`post` hooks.
 - Multi-root workspaces: one active folder at a time, `NodeForge: Select Workspace Folder`, a status bar item, optional `nodeforge.workspace.followActiveEditor`, automatic fallback when the active folder is removed. Tasks, debug configurations, the MCP server and the agent session follow the active folder.
