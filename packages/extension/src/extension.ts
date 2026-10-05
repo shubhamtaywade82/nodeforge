@@ -22,7 +22,8 @@ import {
   ProcessManager,
   buildDevDocsUrl,
   devDocsDefaultSlug,
-  DEVDOCS_HOME_URL
+  DEVDOCS_HOME_URL,
+  type DiagnosticStore
 } from "@nodeforge/core";
 import { ProcessRunner } from "@nodeforge/runner";
 import { GitAdapter } from "@nodeforge/adapter-git";
@@ -47,7 +48,7 @@ import { DependencyDiagnosticPublisher } from "./diagnostics/DependencyDiagnosti
 import { ChatController } from "./chat/ChatController.js";
 import { ChatWebviewProvider } from "./chat/ChatWebviewProvider.js";
 import { DevDocsOfflineManager } from "./docs/DevDocsOfflineManager.js";
-import { registerExplainCommands } from "./ai/explainCommands.js";
+import { registerExplainCommands, setChatOpenerForTests } from "./ai/explainCommands.js";
 import { parseOfflineDocArgs } from "./docs/offlineDocLink.js";
 import { DevDocsHoverProvider } from "./docs/DevDocsHoverProvider.js";
 import { DevDocsCompletionItemProvider } from "./docs/DevDocsCompletionItemProvider.js";
@@ -106,6 +107,8 @@ export interface NodeForgeExtensionExports {
     readonly handleParticipantRequest: typeof handleParticipantRequest;
     readonly activeRoot: () => string | undefined;
     readonly selectFolder: (fsPath: string) => Promise<void>;
+    readonly diagnosticStore: DiagnosticStore;
+    readonly setChatOpener: typeof setChatOpenerForTests;
   };
 }
 
@@ -1012,7 +1015,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<NodeFo
   }
 
   logger.info(`NodeForge extension activated in ${Date.now() - activationStartedAt}ms`);
-  return { __testing: { handleParticipantRequest, activeRoot: resolveWorkspaceRoot, selectFolder } };
+  return { __testing: { handleParticipantRequest, activeRoot: resolveWorkspaceRoot, selectFolder, diagnosticStore: diagManager.getStore(), setChatOpener: setChatOpenerForTests } };
 }
 
 export function deactivate(): void {

@@ -16,11 +16,20 @@ export interface DiagnosticExplainArgs {
   message?: string;
 }
 
+type ChatOpener = (query: string) => Thenable<unknown>;
+
+const openInChatView: ChatOpener = (query) =>
+  vscode.commands.executeCommand("workbench.action.chat.open", { query, isPartialQuery: false });
+
+let chatOpener: ChatOpener = openInChatView;
+
+/** Test hook: capture the query the commands would send to chat. Pass undefined to restore the real chat view. */
+export function setChatOpenerForTests(opener: ChatOpener | undefined): void {
+  chatOpener = opener ?? openInChatView;
+}
+
 async function openChat(target: ExplainTarget): Promise<void> {
-  await vscode.commands.executeCommand("workbench.action.chat.open", {
-    query: buildExplainQuery(target),
-    isPartialQuery: false
-  });
+  await chatOpener(buildExplainQuery(target));
 }
 
 function relativeToWorkspace(absolute: string): string | undefined {
