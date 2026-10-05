@@ -64,4 +64,13 @@ suite("Explain with NodeForge", () => {
     await vscode.commands.executeCommand("nodeforge.explainDiagnostic", { file: 5 });
     await vscode.commands.executeCommand("nodeforge.explainDiagnostic", { file: "/etc/passwd", line: 1 });
   });
+
+  test("openOfflineDoc validates its arguments and never opens a panel for traversal or unsynced docs", async () => {
+    const tabs = () => vscode.window.tabGroups.all.flatMap((g) => g.tabs).length;
+    const before = tabs();
+    for (const arg of [undefined, { slug: "../x", htmlFile: "a.html" }, { slug: "node", htmlFile: "../../etc/passwd.html" }, { slug: "node", htmlFile: "missing.html" }]) {
+      await vscode.commands.executeCommand("nodeforge.openOfflineDoc", arg);
+    }
+    assert.strictEqual(tabs(), before);
+  });
 });

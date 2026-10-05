@@ -1,6 +1,9 @@
 import * as vscode from "vscode";
 import type { DevDocsOfflineManager } from "./DevDocsOfflineManager.js";
 import type { DevDocsSearchHit } from "@nodeforge/contracts";
+import { isSafeDocFile, isSafeDocSlug, offlineDocCommandLink, plainMarkdownText } from "./offlineDocLink.js";
+
+export const OPEN_OFFLINE_DOC_COMMAND = "nodeforge.openOfflineDoc";
 
 const SKIP_KEYWORDS = new Set([
   "const", "let", "var", "function", "return", "import", "export",
@@ -45,10 +48,17 @@ export class DevDocsHoverProvider implements vscode.HoverProvider {
 
   private formatMarkdown(hit: DevDocsSearchHit): vscode.MarkdownString {
     const md = new vscode.MarkdownString();
-    md.isTrusted = false;
-    md.appendMarkdown(`### $(book) DevDocs: \`${hit.title}\` *(${hit.slug})*\n\n`);
+    md.supportThemeIcons = true;
+    // Docset data is untrusted: only the offline-open command may run from this hover, and its arguments are re-validated.
+    md.isTrusted = { enabledCommands: [OPEN_OFFLINE_DOC_COMMAND] };
+    md.appendMarkdown(`### $(book) DevDocs: \`${plainMarkdownText(hit.title)}\` *(${plainMarkdownText(hit.slug, 60)})*\n\n`);
     if (hit.snippet) {
-      md.appendMarkdown(`${hit.snippet}\n\n`);
+      md.appendMarkdown(`${plainMarkdownText(hit.snippet, 400)}\n\n`);
+    }
+    if (isSafeDocSlug(hit.slug) && isSafeDocFile(hit.htmlFile)) {
+      md.appendMarkdown(
+        `${offlineDocCommandLink(OPEN_OFFLINE_DOC_COMMAND, { slug: hit.slug, htmlFile: hit.htmlFile }, "$(book) Open beside editor")} · `
+      );
     }
     const onlineUrl = `https://devdocs.io/${encodeURIComponent(hit.slug)}/${encodeURIComponent(hit.pageKey)}`;
     md.appendMarkdown(`[View on DevDocs](${onlineUrl}) · *offline copy*`);

@@ -48,6 +48,7 @@ import { ChatController } from "./chat/ChatController.js";
 import { ChatWebviewProvider } from "./chat/ChatWebviewProvider.js";
 import { DevDocsOfflineManager } from "./docs/DevDocsOfflineManager.js";
 import { registerExplainCommands } from "./ai/explainCommands.js";
+import { parseOfflineDocArgs } from "./docs/offlineDocLink.js";
 import { DevDocsHoverProvider } from "./docs/DevDocsHoverProvider.js";
 import { DevDocsCompletionItemProvider } from "./docs/DevDocsCompletionItemProvider.js";
 import { openOfflineDocPanel } from "./docs/DevDocsOfflinePanel.js";
@@ -591,6 +592,23 @@ export async function activate(context: vscode.ExtensionContext): Promise<NodeFo
     vscode.commands.registerCommand("nodeforge.openChat", async () => {
       await vscode.commands.executeCommand("nodeforge-sidebar.focus");
       await vscode.commands.executeCommand("nodeforge.chat.focus");
+    }),
+    // Internal: opens an offline docset page beside the editor. Arguments come from hover links, so they are validated.
+    vscode.commands.registerCommand("nodeforge.openOfflineDoc", async (raw: unknown) => {
+      const ref = parseOfflineDocArgs(raw);
+      const mgr = devDocsOffline;
+      const file = ref && mgr ? mgr.safeHtmlPath(ref.slug, ref.htmlFile) : undefined;
+      if (!ref || !file) {
+        logger.warn("openOfflineDoc called with invalid arguments");
+        return;
+      }
+      try {
+        await import("node:fs/promises").then((fs) => fs.access(file));
+      } catch {
+        void vscode.window.showWarningMessage(`NodeForge: ${ref.slug} is not synced. Run “NodeForge: Sync DevDocs Offline”.`);
+        return;
+      }
+      openOfflineDocPanel(context, file, ref.htmlFile.replace(/\.html$/i, ""));
     }),
     vscode.commands.registerCommand("nodeforge.openDevDocs", async () => {
       await openDevDocs(DEVDOCS_HOME_URL);
