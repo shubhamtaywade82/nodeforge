@@ -27,7 +27,7 @@
     "@nodeforge/runner": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "^20.14.0",
+    "@types/node": "^26.6.4",
     "typescript": "^5.6.3",
     "vitest": "^2.1.4"
   }

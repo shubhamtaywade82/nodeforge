@@ -1209,7 +1209,7 @@
     "@nodeforge/agent": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "^20.14.0",
+    "@types/node": "^26.6.4",
     "@types/vscode": "^1.140.0",
     "esbuild": "^0.28.2",
     "typescript": "^5.6.3"
