@@ -457,8 +457,8 @@ importers:
         specifier: ^26.6.4
         version: 26.6.4
       '@types/vscode':
-        specifier: ^1.140.0
-        version: 1.140.0
+        specifier: ^1.145.0
+        version: 1.145.0
       esbuild:
         specifier: ^0.28.2
         version: 0.28.2
@@ -920,8 +920,8 @@ packages:
   '@types/node@26.6.4':
     resolution: {integrity: sha512-ldVPDCzj7fsaGZrLB0NuHuTvJcsNasysBAqMolr/cgxrLd1xbqxIr3XJiPnHHJUCxj5sNF1vnRj9aWnrVh5Jcg==}
 
-  '@types/vscode@1.140.0':
-    resolution: {integrity: sha512-KAB5RBZIgnUhpp4mKsVJPPHLOQKu6WtGy2xpfWjaajEXO4xIIC+UESAXLiQ9ewx6QD1uBmvC/S8BJzkbvv4bRA==}
+  '@types/vscode@1.145.0':
+    resolution: {integrity: sha512-mADZK4SF/j1n0+Qk4bH8NT1qTQGYDAsbhb5hStbzuB3hKP3mRH7xja5yUaIm7ExCh65Ff+C9XGwxcBvSlTCvkQ==}
 
   '@vitest/expect@2.1.9':
     resolution: {integrity: sha512-UJCIkTBenHeKT1TTlKMJWy1laZewsRIzYighyYiJKZreqtdxSos/S1t+ktRMQWu2CKqaarrkeszJx1cgC5tGZw==}
@@ -1384,7 +1384,7 @@ snapshots:
     dependencies:
       undici-types: 8.9.0
 
-  '@types/vscode@1.140.0': {}
+  '@types/vscode@1.145.0': {}
 
   '@vitest/expect@2.1.9':
     dependencies:
