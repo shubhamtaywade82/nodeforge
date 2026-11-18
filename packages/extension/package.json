@@ -3,7 +3,7 @@
   "displayName": "NodeForge",
   "description": "Autonomous Node.js/TypeScript engineering workspace — orchestration core for VS Code and Cursor.",
   "version": "0.2.0",
-  "publisher": "nodeforge",
+  "publisher": "ShubhamTaywade",
   "license": "MIT",
   "repository": {
     "type": "git",
