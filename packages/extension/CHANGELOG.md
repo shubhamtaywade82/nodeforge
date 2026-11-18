@@ -2,7 +2,7 @@
 
 All notable changes to NodeForge. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
-## [Unreleased]
+## [0.2.0] - 2026-11-18
 
 ### Added
 - **Multi-provider AI & Chat architecture:** Configurable provider selection (`nodeforge.ai.provider`: `openai`, `anthropic`, or `ollama`) with granular scoping and independent `baseUrl`, `model`, `apiKey`, `temperature`, `maxTokens`, and `timeoutMs`.

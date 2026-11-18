@@ -40,7 +40,7 @@ Press **F5** in `packages/extension` to launch the Extension Development Host.
 pnpm --filter nodeforge package
 ```
 
-Produces `nodeforge-0.1.0.vsix` in this directory.
+Produces `nodeforge-0.2.0.vsix` in this directory.
 
 ## AI Providers & Chat Configuration
 
