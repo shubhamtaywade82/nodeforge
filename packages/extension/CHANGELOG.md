@@ -5,6 +5,10 @@ All notable changes to NodeForge. Format follows [Keep a Changelog](https://keep
 ## [Unreleased]
 
 ### Added
+- **Multi-provider AI & Chat architecture:** Configurable provider selection (`nodeforge.ai.provider`: `openai`, `anthropic`, or `ollama`) with granular scoping and independent `baseUrl`, `model`, `apiKey`, `temperature`, `maxTokens`, and `timeoutMs`.
+- **Anthropic Messages API client (`AnthropicClient`):** Full tool use integration, streaming token output (`onTextDelta`), custom baseUrl support with trailing slash normalization, automatic `/v1/messages` endpoint resolution, and HTTPS enforcement with localhost bypass.
+- **NodeForge: Set AI Provider API Key command (`nodeforge.setAiApiKey`):** Secure multi-provider API key storage in VS Code SecretStorage with provider selection picker (`Anthropic`, `OpenAI / Compatible`, `Ollama Cloud`). Multi-tier fallback resolves keys via SecretStorage -> Settings (`nodeforge.ai.<provider>.apiKey`) -> Environment variables (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `OLLAMA_API_KEY`).
+- **Restricted Mode configuration guards:** Added `capabilities.untrustedWorkspaces.restrictedConfigurations` for all AI endpoints and API key settings to prevent unauthorized network redirection in untrusted workspaces.
 - **Explain with NodeForge:** Quick Fix on every NodeForge diagnostic, a link in diagnostic hovers, and an editor context-menu command. Each opens chat with `@nodeforge /explain`, which reads the real file through the source tools and explains the finding and the smallest fix. `/explain` and `/context` now work in Restricted Mode (read-only tools only).
 - DevDocs hovers open the offline page beside the editor (`nodeforge.openOfflineDoc`; arguments are validated and confined to the offline cache).
 - Agent source tools: `readFile`, `searchCode`, `applyPatch` (VS Code LM tools, MCP, `@nodeforge /fix`, `/addtests`). Reads/searches work in Restricted Mode; patching requires Workspace Trust and an explicit confirmation. Secrets (`.env*`, keys, `.npmrc`), `.git`, `node_modules` and symlinks are never read or written.

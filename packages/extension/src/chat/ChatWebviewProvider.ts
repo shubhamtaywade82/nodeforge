@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { ChatController, type ChatControllerConfig } from "./ChatController.js";
+import { ChatController, type ChatControllerConfig, type AiProvider } from "./ChatController.js";
 import type { ExtensionWorkspaceSession } from "../core/ExtensionWorkspaceSession.js";
 
 const CHAT_API_KEY_SECRET = "nodeforge.chat.apiKey";
@@ -11,7 +11,8 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
     private readonly context: vscode.ExtensionContext,
     private readonly session: ExtensionWorkspaceSession,
     private readonly controller: ChatController,
-    private readonly isTrusted: () => boolean
+    private readonly isTrusted: () => boolean,
+    private readonly getApiKey?: (provider?: AiProvider) => Promise<string | undefined>
   ) {}
 
   resolveWebviewView(
@@ -51,10 +52,13 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
 
   private async postInit(): Promise<void> {
     const config = this.readConfig();
-    const hasApiKey = Boolean(await this.context.secrets.get(CHAT_API_KEY_SECRET));
+    const resolvedKey = this.getApiKey
+      ? await this.getApiKey(config.provider)
+      : await this.context.secrets.get(CHAT_API_KEY_SECRET);
+    const hasApiKey = config.provider === "ollama" || Boolean(resolvedKey);
     this.view?.webview.postMessage({
       type: "init",
-      model: config.model,
+      model: `${config.provider}: ${config.model}`,
       trusted: this.isTrusted(),
       hasApiKey
     });
@@ -99,12 +103,40 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
   }
 
   private readConfig(): ChatControllerConfig {
-    const cfg = vscode.workspace.getConfiguration("nodeforge.chat");
+    const cfg = vscode.workspace.getConfiguration("nodeforge");
+    const provider = cfg.get<AiProvider>("ai.provider", "openai");
+    const { baseUrl, model } = this.resolveEndpoint(cfg, provider);
+
     return {
-      baseUrl: cfg.get<string>("baseUrl", "https://api.openai.com/v1"),
-      model: cfg.get<string>("model", "gpt-4o-mini"),
-      maxToolRounds: cfg.get<number>("maxToolRounds", 8),
-      injectWorkspaceSnapshot: cfg.get<boolean>("injectWorkspaceSnapshot", true)
+      provider,
+      baseUrl,
+      model,
+      temperature: cfg.get<number>("ai.temperature", 0.2),
+      maxTokens: cfg.get<number>("ai.maxTokens", 2048),
+      maxToolRounds: cfg.get<number>("chat.maxToolRounds", 8),
+      injectWorkspaceSnapshot: cfg.get<boolean>("chat.injectWorkspaceSnapshot", true)
+    };
+  }
+
+  private resolveEndpoint(
+    cfg: vscode.WorkspaceConfiguration,
+    provider: AiProvider
+  ): { baseUrl: string; model: string } {
+    if (provider === "anthropic") {
+      return {
+        baseUrl: cfg.get<string>("ai.anthropic.baseUrl", "https://api.anthropic.com"),
+        model: cfg.get<string>("ai.anthropic.model", "claude-sonnet-4-5")
+      };
+    }
+    if (provider === "ollama") {
+      return {
+        baseUrl: cfg.get<string>("ai.ollama.baseUrl") || cfg.get<string>("ollama.baseUrl", "http://localhost:11434"),
+        model: cfg.get<string>("ai.ollama.model", "qwen2.5-coder:14b")
+      };
+    }
+    return {
+      baseUrl: cfg.get<string>("ai.openai.baseUrl") || cfg.get<string>("chat.baseUrl", "https://api.openai.com/v1"),
+      model: cfg.get<string>("ai.openai.model") || cfg.get<string>("chat.model", "gpt-4o-mini")
     };
   }
 

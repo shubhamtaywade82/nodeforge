@@ -60,3 +60,31 @@ test("Ollama language model provider is declared exactly once", async () => {
   assert.equal(matches.length, 1);
   assert.equal(matches[0]?.displayName, "NodeForge Ollama");
 });
+
+test("restrictedConfigurations guards AI provider URLs and credentials", async () => {
+  const manifest = await readJson(packagePath);
+  const restricted = manifest.capabilities?.untrustedWorkspaces?.restrictedConfigurations ?? [];
+
+  assert.ok(restricted.includes("nodeforge.chat.baseUrl"));
+  assert.ok(restricted.includes("nodeforge.ollama.baseUrl"));
+  assert.ok(restricted.includes("nodeforge.ai.provider"));
+  assert.ok(restricted.includes("nodeforge.ai.anthropic.baseUrl"));
+  assert.ok(restricted.includes("nodeforge.ai.anthropic.apiKey"));
+  assert.ok(restricted.includes("nodeforge.ai.openai.baseUrl"));
+  assert.ok(restricted.includes("nodeforge.ai.openai.apiKey"));
+  assert.ok(restricted.includes("nodeforge.ai.ollama.baseUrl"));
+  assert.ok(restricted.includes("nodeforge.ai.ollama.apiKey"));
+});
+
+test("AI configuration properties have valid schemas and defaults", async () => {
+  const manifest = await readJson(packagePath);
+  const props = manifest.contributes?.configuration?.properties ?? {};
+
+  assert.equal(props["nodeforge.ai.provider"]?.default, "openai");
+  assert.deepEqual(props["nodeforge.ai.provider"]?.enum, ["openai", "anthropic", "ollama"]);
+  assert.equal(props["nodeforge.ai.anthropic.baseUrl"]?.default, "https://api.anthropic.com");
+  assert.equal(props["nodeforge.ai.anthropic.model"]?.default, "claude-sonnet-4-5");
+  assert.equal(props["nodeforge.ai.openai.baseUrl"]?.default, "https://api.openai.com/v1");
+  assert.equal(props["nodeforge.ai.openai.model"]?.default, "gpt-4o-mini");
+  assert.equal(props["nodeforge.ai.ollama.baseUrl"]?.default, "http://localhost:11434");
+});

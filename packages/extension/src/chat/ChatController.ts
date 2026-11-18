@@ -2,11 +2,14 @@ import * as vscode from "vscode";
 import type { ChatMessage, ToolInvocationRecord } from "@nodeforge/contracts";
 import {
   AgentLoop,
+  AnthropicClient,
   ChatCancelledError,
   OpenAICompatibleClient,
   findPromptByName
 } from "@nodeforge/agent";
 import type { ExtensionWorkspaceSession } from "../core/ExtensionWorkspaceSession.js";
+
+export type AiProvider = "openai" | "anthropic" | "ollama";
 
 export interface ChatRunCallbacks {
   onAssistantDelta: (text: string) => void;
@@ -17,8 +20,11 @@ export interface ChatRunCallbacks {
 }
 
 export interface ChatControllerConfig {
+  provider?: AiProvider;
   baseUrl: string;
   model: string;
+  temperature?: number;
+  maxTokens?: number;
   maxToolRounds: number;
   injectWorkspaceSnapshot: boolean;
 }
@@ -29,7 +35,7 @@ export class ChatController {
 
   constructor(
     private readonly session: ExtensionWorkspaceSession,
-    private readonly getApiKey: () => Promise<string | undefined>,
+    private readonly getApiKey: (provider?: AiProvider) => Promise<string | undefined>,
     private readonly isTrusted: () => boolean
   ) {}
 
@@ -43,9 +49,10 @@ export class ChatController {
   }
 
   async runUserMessage(text: string, config: ChatControllerConfig, callbacks: ChatRunCallbacks): Promise<void> {
-    const apiKey = await this.getApiKey();
+    const provider = config.provider ?? "openai";
+    const apiKey = (await this.getApiKey(provider)) || (provider === "ollama" ? "ollama" : undefined);
     if (!apiKey) {
-      callbacks.onError("Set an API key with “NodeForge: Set Chat API Key”.");
+      callbacks.onError(`No ${provider} API key configured. Run "NodeForge: Set AI Provider API Key" first.`);
       return;
     }
 
@@ -58,11 +65,9 @@ export class ChatController {
     const userText = expandSlashCommand(text);
     this.history.push({ role: "user", content: userText });
 
-    const client = new OpenAICompatibleClient({
-      apiKey,
-      baseUrl: config.baseUrl,
-      model: config.model
-    });
+    const client = provider === "anthropic"
+      ? new AnthropicClient({ apiKey, baseUrl: config.baseUrl, model: config.model })
+      : new OpenAICompatibleClient({ apiKey, baseUrl: config.baseUrl, model: config.model });
     const loop = new AgentLoop(client, ctx, config.model);
 
     const controller = new AbortController();
@@ -78,6 +83,10 @@ export class ChatController {
         maxToolRounds: config.maxToolRounds,
         workspaceTrusted: this.isTrusted(),
         workspaceContextJson: workspaceJson,
+        modelOptions: {
+          ...(config.temperature !== undefined ? { temperature: config.temperature } : {}),
+          ...(config.maxTokens !== undefined ? { max_tokens: config.maxTokens } : {})
+        },
         signal: controller.signal,
         onTextDelta: (delta) => {
           assistantText += delta;

@@ -17,7 +17,7 @@
   "private": true,
   "type": "module",
   "engines": {
-    "vscode": "^1.96.0"
+    "vscode": "^1.140.0"
   },
   "categories": [
     "Other",
@@ -53,7 +53,20 @@
   "capabilities": {
     "untrustedWorkspaces": {
       "supported": "limited",
-      "description": "Workspace inspection, configuration display, and read-only diagnostics run in Restricted Mode. Running commands, tests, processes, and agent execution require Workspace Trust."
+      "description": "Workspace inspection, configuration display, and read-only diagnostics run in Restricted Mode. Running commands, tests, processes, and agent execution require Workspace Trust.",
+      "restrictedConfigurations": [
+        "nodeforge.runtime.preferredNodeBinary",
+        "nodeforge.chat.baseUrl",
+        "nodeforge.ollama.baseUrl",
+        "nodeforge.ai.provider",
+        "nodeforge.ai.openai.baseUrl",
+        "nodeforge.ai.openai.apiKey",
+        "nodeforge.ai.anthropic.baseUrl",
+        "nodeforge.ai.anthropic.apiKey",
+        "nodeforge.ai.ollama.baseUrl",
+        "nodeforge.ai.ollama.apiKey",
+        "nodeforge.ai.ollama.model"
+      ]
     }
   },
   "contributes": {
@@ -356,6 +369,11 @@
         "icon": "$(type-hierarchy)"
       },
       {
+        "command": "nodeforge.setAiApiKey",
+        "title": "NodeForge: Set AI Provider API Key",
+        "category": "NodeForge"
+      },
+      {
         "command": "nodeforge.setChatApiKey",
         "title": "NodeForge: Set Chat API Key",
         "category": "NodeForge"
@@ -487,15 +505,101 @@
           "default": false,
           "description": "If true, refresh diagnostics on every file save instead of debouncing."
         },
+        "nodeforge.ai.provider": {
+          "type": "string",
+          "enum": [
+            "openai",
+            "anthropic",
+            "ollama"
+          ],
+          "enumDescriptions": [
+            "OpenAI / Compatible — uses nodeforge.ai.openai.baseUrl and nodeforge.ai.openai.model (OpenAI, OpenRouter, LiteLLM, vLLM)",
+            "Anthropic — uses nodeforge.ai.anthropic.baseUrl and nodeforge.ai.anthropic.model (Claude 3.5/3.7 Sonnet, Opus)",
+            "Ollama — local or remote Ollama instance using nodeforge.ai.ollama.baseUrl and nodeforge.ai.ollama.model"
+          ],
+          "default": "openai",
+          "description": "[AI: Core] Active backend provider for NodeForge AI and Chat ('openai', 'anthropic', or 'ollama'). Scope: User or Workspace settings."
+        },
+        "nodeforge.ai.temperature": {
+          "type": "number",
+          "default": 0.2,
+          "minimum": 0,
+          "maximum": 2,
+          "description": "[AI: Core] Sampling temperature for AI models (0.0 to 2.0). 0.2 keeps code suggestions deterministic. Scope: User or Workspace settings."
+        },
+        "nodeforge.ai.maxTokens": {
+          "type": "number",
+          "default": 2048,
+          "minimum": 256,
+          "maximum": 16384,
+          "description": "[AI: Core] Maximum tokens generated per completion request. Scope: User or Workspace settings."
+        },
+        "nodeforge.ai.timeoutMs": {
+          "type": "number",
+          "default": 120000,
+          "minimum": 5000,
+          "maximum": 600000,
+          "description": "[AI: Core] Request timeout in milliseconds for AI requests. Scope: User or Workspace settings."
+        },
+        "nodeforge.ai.anthropic.baseUrl": {
+          "type": "string",
+          "default": "https://api.anthropic.com",
+          "description": "[AI Provider: Anthropic] Base URL for Anthropic API or proxy (the extension appends /v1/messages). Scope: User or Workspace settings."
+        },
+        "nodeforge.ai.anthropic.model": {
+          "type": "string",
+          "default": "claude-sonnet-4-5",
+          "description": "[AI Provider: Anthropic] Model identifier to use when nodeforge.ai.provider is 'anthropic'. Scope: User or Workspace settings."
+        },
+        "nodeforge.ai.anthropic.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "[AI Provider: Anthropic] Optional API key for Anthropic. Can also be set securely via 'NodeForge: Set AI Provider API Key' or ANTHROPIC_API_KEY env var. Scope: User or Workspace settings."
+        },
+        "nodeforge.ai.openai.baseUrl": {
+          "type": "string",
+          "default": "https://api.openai.com/v1",
+          "description": "[AI Provider: OpenAI] Base URL for OpenAI-compatible endpoints (OpenRouter, LiteLLM, vLLM). Scope: User or Workspace settings."
+        },
+        "nodeforge.ai.openai.model": {
+          "type": "string",
+          "default": "gpt-4o-mini",
+          "description": "[AI Provider: OpenAI] Model identifier to use when nodeforge.ai.provider is 'openai'. Scope: User or Workspace settings."
+        },
+        "nodeforge.ai.openai.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "[AI Provider: OpenAI] Optional API key for OpenAI. Can also be set securely via 'NodeForge: Set AI Provider API Key' or OPENAI_API_KEY env var. Scope: User or Workspace settings."
+        },
+        "nodeforge.ai.ollama.baseUrl": {
+          "type": "string",
+          "default": "http://localhost:11434",
+          "description": "[AI Provider: Ollama] Base URL of the Ollama server. Mirrors nodeforge.ollama.baseUrl. Scope: User or Workspace settings."
+        },
+        "nodeforge.ai.ollama.model": {
+          "type": "string",
+          "default": "qwen2.5-coder:14b",
+          "description": "[AI Provider: Ollama] Default chat model when nodeforge.ai.provider is 'ollama'. Scope: User or Workspace settings."
+        },
+        "nodeforge.ai.ollama.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "[AI Provider: Ollama] Optional API key for Ollama Cloud. Scope: User or Workspace settings."
+        },
+        "nodeforge.ai.vscodeLm.family": {
+          "type": "string",
+          "default": "",
+          "description": "[AI Provider: VS Code LM] Preferred language model family (e.g. gpt-4o, claude-sonnet) when using VS Code LM. Scope: User or Workspace settings."
+        },
         "nodeforge.chat.baseUrl": {
           "type": "string",
           "default": "https://api.openai.com/v1",
-          "description": "OpenAI-compatible API base URL for NodeForge chat."
+          "description": "[AI Provider: OpenAI Legacy] OpenAI-compatible API base URL for NodeForge chat (mirrored by nodeforge.ai.openai.baseUrl)."
         },
         "nodeforge.chat.model": {
           "type": "string",
           "default": "gpt-4o-mini",
-          "description": "Model id for NodeForge chat."
+          "description": "[AI Provider: OpenAI Legacy] Model id for NodeForge chat (mirrored by nodeforge.ai.openai.model)."
         },
         "nodeforge.chat.maxToolRounds": {
           "type": "number",
@@ -1190,23 +1294,23 @@
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "dependencies": {
-    "@nodeforge/contracts": "workspace:*",
-    "@nodeforge/core": "workspace:*",
-    "@nodeforge/runner": "workspace:*",
-    "@nodeforge/adapter-typescript": "workspace:*",
-    "@nodeforge/adapter-eslint": "workspace:*",
     "@nodeforge/adapter-biome": "workspace:*",
-    "@nodeforge/adapter-vitest": "workspace:*",
-    "@nodeforge/adapter-jest": "workspace:*",
-    "@nodeforge/adapter-git": "workspace:*",
-    "@nodeforge/adapter-prisma": "workspace:*",
-    "@nodeforge/adapter-drizzle": "workspace:*",
     "@nodeforge/adapter-dependencies": "workspace:*",
     "@nodeforge/adapter-dependency-graph": "workspace:*",
     "@nodeforge/adapter-devdocs": "workspace:*",
-    "@nodeforge/adapter-prettier": "workspace:*",
+    "@nodeforge/adapter-drizzle": "workspace:*",
+    "@nodeforge/adapter-eslint": "workspace:*",
+    "@nodeforge/adapter-git": "workspace:*",
+    "@nodeforge/adapter-jest": "workspace:*",
     "@nodeforge/adapter-node-test": "workspace:*",
-    "@nodeforge/agent": "workspace:*"
+    "@nodeforge/adapter-prettier": "workspace:*",
+    "@nodeforge/adapter-prisma": "workspace:*",
+    "@nodeforge/adapter-typescript": "workspace:*",
+    "@nodeforge/adapter-vitest": "workspace:*",
+    "@nodeforge/agent": "workspace:*",
+    "@nodeforge/contracts": "workspace:*",
+    "@nodeforge/core": "workspace:*",
+    "@nodeforge/runner": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",

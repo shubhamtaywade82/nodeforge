@@ -45,7 +45,7 @@ import { DependencyManager } from "./core/DependencyManager.js";
 import { DependencyGraphManager } from "./core/DependencyGraphManager.js";
 import { ExtensionWorkspaceSession } from "./core/ExtensionWorkspaceSession.js";
 import { DependencyDiagnosticPublisher } from "./diagnostics/DependencyDiagnosticPublisher.js";
-import { ChatController } from "./chat/ChatController.js";
+import { ChatController, type AiProvider } from "./chat/ChatController.js";
 import { ChatWebviewProvider } from "./chat/ChatWebviewProvider.js";
 import { DevDocsOfflineManager } from "./docs/DevDocsOfflineManager.js";
 import { registerExplainCommands, setChatOpenerForTests } from "./ai/explainCommands.js";
@@ -95,6 +95,55 @@ function isCachedProfile(data: unknown): data is WorkspaceProfile {
 }
 
 const CHAT_API_KEY_SECRET = "nodeforge.chat.apiKey";
+
+export function aiApiKeySecretKey(provider: string): string {
+  return `nodeforge.aiApiKey.${provider}`;
+}
+
+export async function resolveAiApiKey(
+  secrets: vscode.SecretStorage,
+  provider: AiProvider,
+  cfg: vscode.WorkspaceConfiguration
+): Promise<string | undefined> {
+  const secretKey = await secrets.get(aiApiKeySecretKey(provider));
+  if (secretKey?.trim()) return secretKey.trim();
+
+  // Legacy fallback for OpenAI
+  if (provider === "openai") {
+    const legacyKey = await secrets.get(CHAT_API_KEY_SECRET);
+    if (legacyKey?.trim()) return legacyKey.trim();
+  }
+
+  const settingKey = cfg.get<string>(`ai.${provider}.apiKey`);
+  if (settingKey?.trim()) return settingKey.trim();
+
+  const envMap: Record<AiProvider, string> = {
+    anthropic: "ANTHROPIC_API_KEY",
+    openai: "OPENAI_API_KEY",
+    ollama: "OLLAMA_API_KEY"
+  };
+  const envVal = process.env[envMap[provider]];
+  return envVal?.trim() ? envVal.trim() : undefined;
+}
+
+async function saveProviderKey(
+  secrets: vscode.SecretStorage,
+  provider: AiProvider,
+  label: string,
+  key: string | undefined
+): Promise<void> {
+  if (key === undefined) return;
+  const secretKey = aiApiKeySecretKey(provider);
+  if (!key.trim()) {
+    await secrets.delete(secretKey);
+    if (provider === "openai") await secrets.delete(CHAT_API_KEY_SECRET);
+    void vscode.window.showInformationMessage(`NodeForge: ${label} API key cleared.`);
+    return;
+  }
+  await secrets.store(secretKey, key.trim());
+  if (provider === "openai") await secrets.store(CHAT_API_KEY_SECRET, key.trim());
+  void vscode.window.showInformationMessage(`NodeForge: ${label} API key saved.`);
+}
 let depAuditTimer: ReturnType<typeof setTimeout> | undefined;
 let depGraphTimer: ReturnType<typeof setTimeout> | undefined;
 /** Latest-wins: a newer schedule or deactivation aborts the in-flight background run. */
@@ -146,12 +195,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<NodeFo
   registerReports(context, session, isTrusted);
   const depDiagPublisher = new DependencyDiagnosticPublisher();
   dependencyDiagnostics = depDiagPublisher;
-  const chatController = new ChatController(
-    session,
-    async () => context.secrets.get(CHAT_API_KEY_SECRET),
-    isTrusted
-  );
-  const chatProvider = new ChatWebviewProvider(context, session, chatController, isTrusted);
+  const chatApiKeyResolver = (provider?: AiProvider) =>
+    resolveAiApiKey(context.secrets, provider ?? "openai", vscode.workspace.getConfiguration("nodeforge"));
+  const chatController = new ChatController(session, chatApiKeyResolver, isTrusted);
+  const chatProvider = new ChatWebviewProvider(context, session, chatController, isTrusted, chatApiKeyResolver);
   const git = new GitAdapter(runner);
   gitAdapter = git;
 
@@ -571,6 +618,23 @@ export async function activate(context: vscode.ExtensionContext): Promise<NodeFo
           }
         }
       );
+    }),
+
+    vscode.commands.registerCommand("nodeforge.setAiApiKey", async () => {
+      const items: Array<vscode.QuickPickItem & { provider: AiProvider }> = [
+        { label: "Anthropic", description: "Claude 3.5 / 3.7 Sonnet, Opus", provider: "anthropic" },
+        { label: "OpenAI / Compatible", description: "OpenAI, OpenRouter, LiteLLM, vLLM", provider: "openai" },
+        { label: "Ollama Cloud", description: "Ollama Cloud API Key (optional for local Ollama)", provider: "ollama" }
+      ];
+      const pick = await vscode.window.showQuickPick(items, { title: "Select AI Provider" });
+      if (!pick) return;
+      const key = await vscode.window.showInputBox({
+        title: `${pick.label} API Key`,
+        password: true,
+        ignoreFocusOut: true,
+        prompt: `Enter API key for ${pick.label} (leave empty to clear)`
+      });
+      await saveProviderKey(context.secrets, pick.provider, pick.label, key);
     }),
 
     vscode.commands.registerCommand("nodeforge.setChatApiKey", async () => {

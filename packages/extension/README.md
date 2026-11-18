@@ -42,6 +42,19 @@ pnpm --filter nodeforge package
 
 Produces `nodeforge-0.1.0.vsix` in this directory.
 
+## AI Providers & Chat Configuration
+
+NodeForge Chat supports multiple backend AI providers with scoped endpoints and secure credential resolution:
+
+- **Anthropic**: Set `nodeforge.ai.provider` to `"anthropic"`. Configurable via `nodeforge.ai.anthropic.baseUrl` (default `https://api.anthropic.com`) and `nodeforge.ai.anthropic.model` (default `claude-sonnet-4-5`).
+- **OpenAI / Compatible**: Set `nodeforge.ai.provider` to `"openai"`. Configurable via `nodeforge.ai.openai.baseUrl` (supports OpenAI, OpenRouter, LiteLLM, vLLM) and `nodeforge.ai.openai.model` (default `gpt-4o-mini`).
+- **Ollama**: Set `nodeforge.ai.provider` to `"ollama"`. Configurable via `nodeforge.ai.ollama.baseUrl` (default `http://localhost:11434`) and `nodeforge.ai.ollama.model` (default `qwen2.5-coder:14b`).
+
+To configure API keys securely, run command:
+`NodeForge: Set AI Provider API Key` (`nodeforge.setAiApiKey`)
+
+Key resolution follows multi-tier fallback: VS Code SecretStorage → Workspace/User settings → Environment variables (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `OLLAMA_API_KEY`).
+
 ## Native Ollama provider
 
 NodeForge registers **NodeForge Ollama** as a native VS Code language-model provider. With Ollama running locally (default `http://localhost:11434`), available models are discovered from the Ollama API and advertised to VS Code with tool-calling/vision capability metadata. Configure `nodeforge.ollama.baseUrl` for a different server.

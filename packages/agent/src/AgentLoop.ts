@@ -17,6 +17,7 @@ export interface AgentLoopOptions {
   maxToolRounds: number;
   workspaceTrusted: boolean;
   workspaceContextJson?: string;
+  modelOptions?: Record<string, unknown>;
   signal?: AbortSignal;
   onTextDelta?: (text: string) => void;
   onToolStart?: (name: string) => void;
@@ -47,6 +48,7 @@ export class AgentLoop {
         messages,
         tools,
         model: this.model,
+        modelOptions: options.modelOptions,
         signal: options.signal,
         onTextDelta: options.onTextDelta
       });

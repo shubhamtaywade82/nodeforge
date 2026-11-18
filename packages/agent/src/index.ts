@@ -27,6 +27,7 @@ export type {
 } from "./toolPolicy.js";
 export { AgentLoop, ChatCancelledError } from "./AgentLoop.js";
 export { OpenAICompatibleClient } from "./llm/OpenAICompatibleClient.js";
+export { AnthropicClient, resolveAnthropicUrl } from "./llm/AnthropicClient.js";
 export { buildWorkspaceSnapshot, formatSnapshotForPrompt } from "./WorkspaceSnapshot.js";
 export type { WorkspaceSnapshot } from "./WorkspaceSnapshot.js";
 export { PROMPTS, findPromptByName } from "./prompts.js";
