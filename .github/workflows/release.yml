@@ -53,10 +53,11 @@ jobs:
             node-ts-eslint \
             node-ts-with-errors \
             node-ts-biome-lint \
+            node-ts-docker \
             node-ts-jest \
             node-ts-vitest
           do
-            pnpm --dir "packages/test-fixtures/$fixture" install --no-frozen-lockfile --ignore-scripts
+            pnpm --dir "packages/test-fixtures/$fixture" install --ignore-workspace --lockfile=false --ignore-scripts
           done
 
       - name: Start Xvfb for VS Code extension-host tests
